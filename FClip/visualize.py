@@ -42,11 +42,12 @@ class VisualizeResults(object):
 
     def imshow(self, im):
         plt.close()
-        plt.tight_layout()
-        plt.imshow(im)
-        plt.colorbar(self.sm, fraction=0.046)
-        plt.xlim([0, im.shape[0]])
-        plt.ylim([im.shape[0], 0])
+        fig, ax = plt.subplots()
+        ax.imshow(im)
+        fig.colorbar(self.sm, ax=ax, fraction=0.046)
+        ax.set_xlim([0, im.shape[0]])
+        ax.set_ylim([im.shape[0], 0])
+        fig.tight_layout()
 
     def plot_samples(self, fn, i, result, target, meta, prefix):
         """
@@ -127,7 +128,6 @@ class VisualizeResults(object):
             if isjunc:
                 plt.scatter(v0[1], v0[0], c="blue", s=16, zorder=100)
                 plt.scatter(v1[1], v1[0], c="blue", s=16, zorder=100)
-
 
 
 

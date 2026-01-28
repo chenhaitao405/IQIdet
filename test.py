@@ -105,7 +105,14 @@ def build_model(cpu=False):
             checkpoint = torch.load(C.io.model_initialize_file, map_location=torch.device('cpu'))
         else:
             checkpoint = torch.load(C.io.model_initialize_file)
-        model.load_state_dict(checkpoint["model_state_dict"])
+        state_dict = checkpoint["model_state_dict"]
+        # Handle DataParallel/non-DataParallel checkpoints transparently.
+        if any(k.startswith("module.") for k in state_dict.keys()):
+            state_dict = {k[len("module."):]: v for k, v in state_dict.items()}
+        if isinstance(model, torch.nn.DataParallel):
+            model.module.load_state_dict(state_dict)
+        else:
+            model.load_state_dict(state_dict)
         del checkpoint
         print('=> loading model from {}'.format(C.io.model_initialize_file))
 

@@ -1,6 +1,6 @@
 io:
   logdir: logs/
-  datadir: /home/dxl/Data/wireframe1_datarota_3w  # /home/dxl/Data/wireframe     wireframe1_datarota_3w
+  datadir: /datasets/PAR/CODE/F-Clip/data/wireframe  # /home/dxl/Data/wireframe     wireframe1_datarota_3w
   num_workers: 4
   tensorboard_port: 0
   validation_interval: 60000
@@ -11,7 +11,7 @@ model:
       mean: [109.730, 103.832, 98.681]
       stddev: [22.275, 22.124, 23.229]
 
-  batch_size: 6
+  batch_size: 16
   eval_batch_size: 2
 
   # backbone multi-task parameters

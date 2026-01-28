@@ -205,7 +205,11 @@ class FClipDetect:
         print('Using device: ', self.device)
 
         self.model = build_model(cpu=iscpu)
+        # Demo runs with batch size 1; DataParallel can send empty inputs to extra GPUs.
+        if isinstance(self.model, torch.nn.DataParallel):
+            self.model = self.model.module
         self.model.to(self.device)
+        self.model.eval()
         self.input_resolution = (M.resolution * 4, M.resolution * 4)
         self.image_mean = M.image.mean
         self.image_stddev = M.image.stddev

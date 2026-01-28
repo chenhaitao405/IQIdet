@@ -59,6 +59,7 @@ def save_heatmap(prefix, image, lines):
     lines[:, :, 0] = np.clip(lines[:, :, 0] * fx, 0, heatmap_scale[0] - 1e-4)
     lines[:, :, 1] = np.clip(lines[:, :, 1] * fy, 0, heatmap_scale[1] - 1e-4)
     lines = lines[:, :, ::-1]  # change position of x and y --> (r, c)
+    lpos = lines.astype(np.float32, copy=True)
 
     for v0, v1 in lines:
         v = (v0 + v1) / 2
@@ -132,6 +133,7 @@ def save_heatmap(prefix, image, lines):
         lcoff=lcoff,
         lleng=lleng,
         angle=angle,
+        lpos=lpos,
     )
     cv2.imwrite(f"{prefix}.png", image)
 

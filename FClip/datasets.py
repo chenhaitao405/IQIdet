@@ -1,4 +1,5 @@
 import glob
+import os
 import cv2
 
 import numpy as np
@@ -26,7 +27,9 @@ class LineDataset(Dataset):
         print("dataset:", dataset)
         self.rootdir = rootdir
         if dataset in ["shanghaiTech", "york"]:
-            filelist = glob.glob(f"{rootdir}/{split}/*_label.npz")
+            filelist = glob.glob(f"{rootdir}/{split}/*_line.npz")
+            if not filelist:
+                filelist = glob.glob(f"{rootdir}/{split}/*_label.npz")
             filelist.sort()
         else:
             raise ValueError("no such dataset")
@@ -41,7 +44,11 @@ class LineDataset(Dataset):
 
     def _get_im_name(self, idx):
         if self.dataset in ["shanghaiTech", "york"]:
-            iname = self.filelist[idx][:-10] + ".png"
+            f = self.filelist[idx]
+            if f.endswith("_line.npz"):
+                iname = f.replace("_line.npz", ".png")
+            else:
+                iname = f.replace("_label.npz", ".png")
         else:
             raise ValueError("no such name!")
         return iname
@@ -54,17 +61,36 @@ class LineDataset(Dataset):
         if M.stage1 == "fclip":
 
             # step 1 load npz
+            fpath = self.filelist[idx]
+            if fpath.endswith("_label.npz"):
+                line_path = fpath.replace("_label.npz", "_line.npz")
+                label_path = fpath
+            else:
+                line_path = fpath
+                label_path = fpath
+
             lcmap, lcoff, lleng, angle = WireframeHuangKun.fclip_parsing(
-                self.filelist[idx].replace("label", "line"),
+                line_path,
                 M.ang_type
             )
-            with np.load(self.filelist[idx]) as npz:
-                lpos = npz["lpos"][:, :, :2]
 
-                meta = {
-                    "lpre": torch.from_numpy(lpos[:, :, :2]),
-                    "lpre_label": torch.ones(len(lpos)),
-                }
+            lpos = None
+            with np.load(label_path) as npz:
+                if "lpos" in npz:
+                    lpos = npz["lpos"][:, :, :2]
+            if lpos is None:
+                alt_label = line_path.replace("_line.npz", "_label.npz")
+                if os.path.exists(alt_label):
+                    with np.load(alt_label) as npz:
+                        if "lpos" in npz:
+                            lpos = npz["lpos"][:, :, :2]
+            if lpos is None:
+                raise ValueError(f"Missing lpos in {label_path} (or {alt_label}).")
+
+            meta = {
+                "lpre": torch.from_numpy(lpos[:, :, :2]),
+                "lpre_label": torch.ones(len(lpos)),
+            }
 
             # step 2 crop augment
             if self.split == "train":
@@ -93,6 +119,5 @@ class LineDataset(Dataset):
         image = np.rollaxis(image, 2).copy()
 
         return torch.from_numpy(image).float(), meta, target
-
 
 
