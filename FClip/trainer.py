@@ -29,6 +29,7 @@ class Trainer(object):
         epoch=0,
         bml=1e1000,
         best_epoch=-1,
+        metrics_path=None,
     ):
 
         from FClip.visualize import VisualizeResults
@@ -63,6 +64,7 @@ class Trainer(object):
         self.metrics = np.zeros(0)
         self.visual = VisualizeResults()
         self.printer = ModelPrinter(out)
+        self.metrics_path = metrics_path
 
     def _loss(self, result):
         losses = result["losses"]
@@ -180,7 +182,7 @@ class Trainer(object):
             self.model.train()
 
     def _write_metrics(self):
-        metrics_path = osp.join(self.out, "metrics.json")
+        metrics_path = self.metrics_path or osp.join(self.out, "metrics.json")
         data = {
             "best_loss": float(self.best_mean_loss),
             "best_epoch": int(self.best_epoch),

@@ -18,6 +18,7 @@ Options:
    --eval_batch_size <n>           Override eval batch size.
    --lr <lr>                       Override learning rate.
    --max_epoch <n>                 Override max epochs.
+   --metrics_path <path>           Override metrics.json output path.
 """
 
 import os
@@ -216,6 +217,7 @@ def main():
         epoch=epoch,
         bml=best_mean_loss,
         best_epoch=best_epoch,
+        metrics_path=args["--metrics_path"],
     )
 
     try:

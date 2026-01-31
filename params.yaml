@@ -6,8 +6,9 @@ weld:
 train:
   datadir: IQIdata/processed
   logdir: logs/IQI
-  run_name: HR
+  run_name: HR_exp1
   batch_size: 16
   eval_batch_size: 2
   lr: 0.004
   max_epoch: 220
+  metrics_path: metrics/HR_exp1.json
