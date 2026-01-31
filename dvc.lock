@@ -24,3 +24,51 @@ stages:
       md5: 27d61236a4ac812dd73c0f30a7b50f6e.dir
       size: 376239247
       nfiles: 3928
+  train:
+    cmd: "python train.py -d 0 -i HR config/fclip_HR.yaml --datadir IQIdata/processed
+      --logdir logs/IQI --run_name HR_exp1 --batch_size 16 --eval_batch_size 2 --lr
+      0.004 --max_epoch 220 --metrics_path metrics/HR_exp1.json\n"
+    deps:
+    - path: FClip
+      hash: md5
+      md5: 564b1055f0bf865e399e2ffbd8693fa4.dir
+      size: 376559
+      nfiles: 35
+    - path: IQIdata/processed
+      hash: md5
+      md5: 27d61236a4ac812dd73c0f30a7b50f6e.dir
+      size: 376239247
+      nfiles: 3928
+    - path: config/fclip_HR.yaml
+      hash: md5
+      md5: 1a9ee8b7abbe0e5760b064e3d08df314
+      size: 398
+    - path: train.py
+      hash: md5
+      md5: 61d31df546e15c55572154519ac88297
+      size: 7229
+    outs:
+    - path: logs/IQI/HR_exp1/checkpoint_best.pth.tar
+      hash: md5
+      md5: 696c4fc4e2134bfa726c1fa6f7dd23d8
+      size: 458665359
+    - path: logs/IQI/HR_exp1/checkpoint_lastest.pth.tar
+      hash: md5
+      md5: 0e011c92097c814cc33fac8bd51c4e28
+      size: 458665359
+    - path: logs/IQI/HR_exp1/config.yaml
+      hash: md5
+      md5: 68e5f65a445e4706a94cdcc22db3f05b
+      size: 1150
+    - path: logs/IQI/HR_exp1/loss.csv
+      hash: md5
+      md5: 023aac5ec353f72d691ec7ccad792c86
+      size: 467
+    - path: logs/IQI/HR_exp1/train_loss.csv
+      hash: md5
+      md5: 0927d5b16811c899b22d4a8efcfb6a3f
+      size: 396
+    - path: metrics/HR_exp1.json
+      hash: md5
+      md5: 8ee33cb1f6b1301c9bce1d799e644700
+      size: 51
