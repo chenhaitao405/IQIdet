@@ -1,0 +1,2 @@
+# Ignore debug artifacts from processed dataset
+IQIdata/processed/debug/

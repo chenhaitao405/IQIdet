@@ -93,14 +93,13 @@ class LineDataset(Dataset):
             }
 
             # step 2 crop augment
-            if self.split == "train":
-                if M.crop:
-
-                    s = np.random.choice(np.arange(0.9, M.crop_factor, 0.1))
-                    image_t, lcmap, lcoff, lleng, angle, cropped_lines, cropped_region \
-                        = CropAugmentation.random_crop_augmentation(image_, lpos, s)
-                    image_ = image_t
-                    lpos = cropped_lines
+            if self.split == "train" and M.crop and lpos is not None and len(lpos) > 0:
+                s = np.random.choice(np.arange(0.9, M.crop_factor, 0.1))
+                image_t, lcmap, lcoff, lleng, angle, cropped_lines, cropped_region = (
+                    CropAugmentation.random_crop_augmentation(image_, lpos, s)
+                )
+                image_ = image_t
+                lpos = cropped_lines
 
             # step 3 resize
             if M.resolution < 128:
@@ -119,5 +118,4 @@ class LineDataset(Dataset):
         image = np.rollaxis(image, 2).copy()
 
         return torch.from_numpy(image).float(), meta, target
-
 

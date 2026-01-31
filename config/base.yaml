@@ -1,6 +1,6 @@
 io:
-  logdir: logs/
-  datadir: /datasets/PAR/CODE/F-Clip/data/wireframe  # /home/dxl/Data/wireframe     wireframe1_datarota_3w
+  logdir: logs/IQI
+  datadir: /datasets/PAR/CODE/F-Clip/data/IQI/processed    #/datasets/PAR/CODE/F-Clip/data/wireframe  # /datasets/PAR/CODE/F-Clip/data/IQI/processed     #
   num_workers: 4
   tensorboard_port: 0
   validation_interval: 60000

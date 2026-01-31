@@ -170,7 +170,9 @@ def focal_loss(logits, label, alpha):
     loss = label * (p[0] ** alpha) * logp[1] + \
            (1 - label) * (p[1] ** alpha) * logp[0]
     mask = label.sum(2).sum(1)
-    return -loss.sum(2).sum(1) / mask
+    # Avoid div-by-zero for samples with no positives
+    normalizer = torch.where(mask > 0, mask, torch.full_like(mask, h * w))
+    return -loss.sum(2).sum(1) / normalizer
 
 
 def sigmoid_focal_loss(logits, labels, alpha):

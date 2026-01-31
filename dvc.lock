@@ -1,0 +1,26 @@
+schema: '2.0'
+stages:
+  weld:
+    cmd: "python dataset/weld.py --label_dir IQIdata/ori/label --img_dir IQIdata/ori/img
+      --out_dir IQIdata/processed --val_ratio 0.1 --seed 0 --angle_thresh 50\n"
+    deps:
+    - path: IQIdata/ori/img
+      hash: md5
+      md5: ea3f1fd9146ac77104f6c546e77bc006.dir
+      size: 600913307
+      nfiles: 511
+    - path: IQIdata/ori/label
+      hash: md5
+      md5: dfc6a5526f02d9a857a765bb94f9935b.dir
+      size: 253857156
+      nfiles: 454
+    - path: dataset/weld.py
+      hash: md5
+      md5: 9bea8b231df682199caff38b4640ad59
+      size: 11257
+    outs:
+    - path: IQIdata/processed
+      hash: md5
+      md5: 27d61236a4ac812dd73c0f30a7b50f6e.dir
+      size: 376239247
+      nfiles: 3928

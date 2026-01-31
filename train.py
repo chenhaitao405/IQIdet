@@ -11,6 +11,14 @@ Options:
    -h --help                       Show this screen.
    -d --devices <devices>          Comma seperated GPU devices [default: 0]
    -i --identifier <identifier>    Folder identifier [default: default-lr]
+   --datadir <dir>                 Override dataset dir (for DVC).
+   --logdir <dir>                  Override logdir root.
+   --run_name <name>               Fixed output directory name under logdir.
+   --batch_size <n>                Override train batch size.
+   --eval_batch_size <n>           Override eval batch size.
+   --lr <lr>                       Override learning rate.
+   --max_epoch <n>                 Override max epochs.
+   --metrics_path <path>           Override metrics.json output path.
 """
 
 import os
@@ -36,10 +44,13 @@ from FClip.lr_schedulers import init_lr_scheduler
 from FClip.trainer import Trainer
 
 
-def get_outdir(identifier):
+def get_outdir(identifier, run_name=None):
     # load config
-    name = str(datetime.datetime.now().strftime("%y%m%d-%H%M%S"))
-    name += "-%s" % identifier
+    if run_name:
+        name = run_name
+    else:
+        name = str(datetime.datetime.now().strftime("%y%m%d-%H%M%S"))
+        name += "-%s" % identifier
     outdir = osp.join(osp.expanduser(C.io.logdir), name)
     if not osp.exists(outdir):
         os.makedirs(outdir)
@@ -93,6 +104,18 @@ def main():
     config_file = args["<yaml-config>"]
     C.update(C.from_yaml(filename="config/base.yaml"))
     C.update(C.from_yaml(filename=config_file))
+    if args["--datadir"]:
+        C.io.datadir = args["--datadir"]
+    if args["--logdir"]:
+        C.io.logdir = args["--logdir"]
+    if args["--batch_size"]:
+        C.model.batch_size = int(args["--batch_size"])
+    if args["--eval_batch_size"]:
+        C.model.eval_batch_size = int(args["--eval_batch_size"])
+    if args["--lr"]:
+        C.optim.lr = float(args["--lr"])
+    if args["--max_epoch"]:
+        C.optim.max_epoch = int(args["--max_epoch"])
     M.update(C.model)
     pprint.pprint(C, indent=4)
     resume_from = C.io.resume_from
@@ -144,7 +167,7 @@ def main():
     else:
         raise NotImplementedError
 
-    outdir = get_outdir(args["--identifier"])
+    outdir = get_outdir(args["--identifier"], run_name=args["--run_name"])
     print("outdir:", outdir)
     if M.backbone in ["hrnet"]:
         shutil.copy("config/w32_384x288_adam_lr1e-3.yaml", f"{outdir}/w32_384x288_adam_lr1e-3.yaml")
@@ -152,12 +175,14 @@ def main():
     iteration = 0
     epoch = 0
     best_mean_loss = 1e1000
+    best_epoch = -1
     if resume_from:
         ckpt_pth = osp.join(resume_from, "checkpoint_lastest.pth.tar")
         checkpoint = torch.load(ckpt_pth)
         iteration = checkpoint["iteration"]
         epoch = iteration // epoch_size
         best_mean_loss = checkpoint["best_mean_loss"]
+        best_epoch = checkpoint.get("best_epoch", -1)
         print(f"loading {epoch}-th ckpt: {ckpt_pth}")
 
         model.load_state_dict(checkpoint["model_state_dict"])
@@ -191,6 +216,8 @@ def main():
         iteration=iteration,
         epoch=epoch,
         bml=best_mean_loss,
+        best_epoch=best_epoch,
+        metrics_path=args["--metrics_path"],
     )
 
     try:

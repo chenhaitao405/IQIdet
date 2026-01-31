@@ -3,6 +3,7 @@ import time
 import shutil
 import os.path as osp
 from timeit import default_timer as timer
+import json
 
 import numpy as np
 import torch
@@ -15,7 +16,21 @@ from FClip.config import C
 
 
 class Trainer(object):
-    def __init__(self, device, model, optimizer, lr_scheduler, train_loader, val_loader, out, iteration=0, epoch=0, bml=1e1000):
+    def __init__(
+        self,
+        device,
+        model,
+        optimizer,
+        lr_scheduler,
+        train_loader,
+        val_loader,
+        out,
+        iteration=0,
+        epoch=0,
+        bml=1e1000,
+        best_epoch=-1,
+        metrics_path=None,
+    ):
 
         from FClip.visualize import VisualizeResults
         self.device = device
@@ -41,6 +56,7 @@ class Trainer(object):
         self.lr_decay_epoch = C.optim.lr_decay_epoch
         self.num_stacks = C.model.num_stacks
         self.mean_loss = self.best_mean_loss = bml
+        self.best_epoch = best_epoch
 
         self.loss_labels = None
         self.acc_label = None
@@ -48,6 +64,7 @@ class Trainer(object):
         self.metrics = np.zeros(0)
         self.visual = VisualizeResults()
         self.printer = ModelPrinter(out)
+        self.metrics_path = metrics_path
 
     def _loss(self, result):
         losses = result["losses"]
@@ -143,6 +160,7 @@ class Trainer(object):
                     "optim_state_dict": self.optim.state_dict(),
                     "model_state_dict": self.model.state_dict(),
                     "best_mean_loss": self.best_mean_loss,
+                    "best_epoch": self.best_epoch,
                     'lr_scheduler': self.lr_scheduler.state_dict(),
                 },
                 osp.join(self.out, "checkpoint_lastest.pth.tar"),
@@ -153,13 +171,24 @@ class Trainer(object):
             )
             if self.mean_loss < self.best_mean_loss:
                 self.best_mean_loss = self.mean_loss
+                self.best_epoch = self.epoch
                 shutil.copy(
                     osp.join(self.out, "checkpoint_lastest.pth.tar"),
                     osp.join(self.out, "checkpoint_best.pth.tar"),
                 )
+        self._write_metrics()
 
         if training:
             self.model.train()
+
+    def _write_metrics(self):
+        metrics_path = self.metrics_path or osp.join(self.out, "metrics.json")
+        data = {
+            "best_loss": float(self.best_mean_loss),
+            "best_epoch": int(self.best_epoch),
+        }
+        with open(metrics_path, "w") as f:
+            json.dump(data, f)
 
     def train_epoch(self):
         self.model.train()

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    
+    <title>DVC Plot</title>
+    
+
+    <script src="https://cdn.jsdelivr.net/npm/vega@5.20.2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-lite@5.2.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-embed@6.18.2"></script>
+    
+    <style>
+        table {
+            border-spacing: 15px;
+        }
+    </style>
+</head>
+<body>
+    
+    <div id = "logs_IQI_HR_exp1_loss_csv">
+        <script type = "text/javascript">
+            var spec = {};
+            vegaEmbed('#logs_IQI_HR_exp1_loss_csv', spec);
+        </script>
+    </div>
+    
+
+    <div id = "logs_IQI_HR_exp1_train_loss_csv">
+        <script type = "text/javascript">
+            var spec = {};
+            vegaEmbed('#logs_IQI_HR_exp1_train_loss_csv', spec);
+        </script>
+    </div>
+    
+</body>
+</html>
