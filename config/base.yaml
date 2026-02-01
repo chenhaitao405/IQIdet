@@ -8,9 +8,8 @@ io:
 
 model:
   image:
-      mean: [109.730, 103.832, 98.681]
-      stddev: [22.275, 22.124, 23.229]
-
+      mean: [125.678420]
+      stddev: [65.406591]
   batch_size: 16
   eval_batch_size: 2
 

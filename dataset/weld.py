@@ -130,7 +130,10 @@ def rotate_cw90(image, lines_xy):
 
 
 def draw_lines(image, lines_xy, color=(0, 0, 255)):
-    out = image.copy()
+    if image.ndim == 2:
+        out = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+    else:
+        out = image.copy()
     for (x1, y1), (x2, y2) in lines_xy:
         p1 = (int(round(x1)), int(round(y1)))
         p2 = (int(round(x2)), int(round(y2)))
@@ -163,7 +166,7 @@ def apply_clahe(image: np.ndarray, clip_limit: float = 2.0, tile_grid_size=(8, 8
     return clahe.apply(image)
 
 
-def enhance_windowing_bgr(image: np.ndarray) -> np.ndarray:
+def enhance_windowing_gray(image: np.ndarray) -> np.ndarray:
     if len(image.shape) == 3:
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     else:
@@ -172,7 +175,7 @@ def enhance_windowing_bgr(image: np.ndarray) -> np.ndarray:
     ww, wl = auto_window_level(img_float)
     enhanced = apply_window_level(img_float, ww, wl)
     enhanced = apply_clahe(enhanced)
-    return cv2.cvtColor(enhanced, cv2.COLOR_GRAY2BGR)
+    return enhanced
 
 
 def save_heatmap(prefix, image, lines):
@@ -364,7 +367,7 @@ def main():
             elif args.debug:
                 cv2.imwrite(str(debug_rot / f"{base_id}.png"), roi)
 
-            roi = enhance_windowing_bgr(roi)
+            roi = enhance_windowing_gray(roi)
             if args.debug:
                 dbg = draw_lines(roi, mapped_lines)
                 cv2.imwrite(str(debug_enh / f"{base_id}.png"), dbg)

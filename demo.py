@@ -215,13 +215,16 @@ class FClipDetect:
         self.image_stddev = M.image.stddev
 
     def detect(self, img):
+        if img.ndim == 3:
+            img = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
         H_img, W_img = img.shape[:2]
         inp = cv.resize(img, self.input_resolution)
-        inp = inp[:, :, ::-1]  # convert BGR to RGB
-        H, W, C = inp.shape
+        H, W = inp.shape
 
-        inp = (inp.astype(np.float32) - self.image_mean) / self.image_stddev
-        inp = torch.from_numpy(inp.transpose(2, 0, 1)).float().unsqueeze(0).to(device=self.device)
+        mean = float(np.array(self.image_mean).reshape(-1)[0])
+        std = float(np.array(self.image_stddev).reshape(-1)[0])
+        inp = (inp.astype(np.float32) - mean) / std
+        inp = torch.from_numpy(inp[None, ...]).float().unsqueeze(0).to(device=self.device)
         input_dict = {"image": inp}
         with torch.no_grad():
             outputs = self.model(input_dict, isTest=True)
@@ -282,7 +285,7 @@ if __name__ == '__main__':
     while True:
 
         start = time.time()
-        img, oriimg, status = vs.next_frame()  # gray
+        img, oriimg, status = vs.next_frame()  # gray, bgr
         print("\r", end="")
         print(f"Processing: {vs.i}", end="")
         if status is False:
@@ -290,7 +293,7 @@ if __name__ == '__main__':
 
         # Get points and descriptors.
         start1 = time.time()
-        lines = detector.detect(oriimg)
+        lines = detector.detect(img)
         end1 = time.time()
 
         out = oriimg

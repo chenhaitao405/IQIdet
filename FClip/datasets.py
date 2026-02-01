@@ -55,7 +55,20 @@ class LineDataset(Dataset):
 
     def __getitem__(self, idx):
         iname = self._get_im_name(idx)
-        image_ = io.imread(iname).astype(float)[:, :, :3]
+        image_ = io.imread(iname).astype(float)
+        if image_.ndim == 2:
+            image_ = image_[:, :, None]
+        elif image_.ndim == 3:
+            if image_.shape[2] > 1:
+                r = image_[:, :, 0]
+                g = image_[:, :, 1]
+                b = image_[:, :, 2]
+                gray = 0.299 * r + 0.587 * g + 0.114 * b
+                image_ = gray[:, :, None]
+            else:
+                image_ = image_[:, :, :1]
+        else:
+            raise ValueError(f"Unexpected image shape: {image_.shape}")
 
         target = {}
         if M.stage1 == "fclip":
@@ -118,4 +131,3 @@ class LineDataset(Dataset):
         image = np.rollaxis(image, 2).copy()
 
         return torch.from_numpy(image).float(), meta, target
-
