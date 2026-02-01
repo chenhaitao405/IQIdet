@@ -138,6 +138,43 @@ def draw_lines(image, lines_xy, color=(0, 0, 255)):
     return out
 
 
+def apply_window_level(image: np.ndarray, window_width: int, window_level: int) -> np.ndarray:
+    window_min = window_level - window_width / 2
+    window_max = window_level + window_width / 2
+    if window_max <= window_min:
+        window_max = window_min + 1
+    output = np.clip((image - window_min) / window_width * 255.0, 0, 255).astype(np.uint8)
+    return output
+
+
+def auto_window_level(image: np.ndarray):
+    percentiles = np.percentile(image, [2, 98])
+    img_min, img_max = percentiles[0], percentiles[1]
+    img_mean = np.mean(image)
+    img_std = np.std(image)
+    window_level = int(img_mean)
+    window_width = int(min(4 * img_std, img_max - img_min))
+    window_width = max(1, window_width)
+    return window_width, window_level
+
+
+def apply_clahe(image: np.ndarray, clip_limit: float = 2.0, tile_grid_size=(8, 8)):
+    clahe = cv2.createCLAHE(clipLimit=clip_limit, tileGridSize=tile_grid_size)
+    return clahe.apply(image)
+
+
+def enhance_windowing_bgr(image: np.ndarray) -> np.ndarray:
+    if len(image.shape) == 3:
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    else:
+        gray = image
+    img_float = gray.astype(np.float32, copy=False)
+    ww, wl = auto_window_level(img_float)
+    enhanced = apply_window_level(img_float, ww, wl)
+    enhanced = apply_clahe(enhanced)
+    return cv2.cvtColor(enhanced, cv2.COLOR_GRAY2BGR)
+
+
 def save_heatmap(prefix, image, lines):
     im_rescale = (512, 512)
     heatmap_scale = (128, 128)
@@ -238,16 +275,17 @@ def main():
     valid_dir = out_dir / "valid"
     debug_ori = out_dir / "debug" / "ori"
     debug_rot = out_dir / "debug" / "rotate"
+    debug_enh = out_dir / "debug" / "enhance"
 
     ensure_dir(train_dir)
     ensure_dir(valid_dir)
     if args.debug:
         ensure_dir(debug_ori)
         ensure_dir(debug_rot)
+        ensure_dir(debug_enh)
 
     json_files = sorted(label_dir.glob("*.json"))
     samples = []
-    total_polys = len(samples)
     processed_polys = 0
     train_samples = 0
     valid_samples = 0
@@ -261,6 +299,7 @@ def main():
 
     random.seed(args.seed)
     random.shuffle(samples)
+    total_polys = len(samples)
     val_count = int(len(samples) * args.val_ratio)
     val_set = set(samples[:val_count])
 
@@ -324,6 +363,11 @@ def main():
                     cv2.imwrite(str(debug_rot / f"{base_id}.png"), dbg)
             elif args.debug:
                 cv2.imwrite(str(debug_rot / f"{base_id}.png"), roi)
+
+            roi = enhance_windowing_bgr(roi)
+            if args.debug:
+                dbg = draw_lines(roi, mapped_lines)
+                cv2.imwrite(str(debug_enh / f"{base_id}.png"), dbg)
 
             augment_and_save(base_id, roi, mapped_lines, str(split_dir))
             processed_polys += 1
