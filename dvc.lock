@@ -16,13 +16,13 @@ stages:
       nfiles: 454
     - path: dataset/weld.py
       hash: md5
-      md5: 9bea8b231df682199caff38b4640ad59
-      size: 11257
+      md5: 12482e69587d77a5e197e08730f21bb2
+      size: 12945
     outs:
     - path: IQIdata/processed
       hash: md5
-      md5: 27d61236a4ac812dd73c0f30a7b50f6e.dir
-      size: 376239247
+      md5: 123916e68432e9ed5cd9d8adcccd7b14.dir
+      size: 249711154
       nfiles: 3928
   train:
     cmd: "python train.py -d 0 -i HR config/fclip_HR.yaml --datadir IQIdata/processed

@@ -6,7 +6,7 @@ weld:
 train:
   datadir: IQIdata/processed
   logdir: logs/IQI
-  run_name: HR_exp1
+  run_name: HR_exp_enhance_singlechannel
   batch_size: 16
   eval_batch_size: 2
   lr: 0.004

@@ -127,6 +127,10 @@ class LineDataset(Dataset):
         else:
             raise NotImplementedError
 
+        if image_.ndim == 2:
+            image_ = image_[:, :, None]
+        elif image_.ndim == 3 and image_.shape[2] != 1:
+            image_ = image_[:, :, :1]
         image = (image_ - M.image.mean) / M.image.stddev
         image = np.rollaxis(image, 2).copy()
 

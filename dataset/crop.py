@@ -22,6 +22,8 @@ class CropAugmentation():
         """resolution should be the size of the label in npz file,
         'NOT' the augmentation resolution of the input."""
         _pscale = 512 / resolution
+        if image.ndim == 2:
+            image = image[:, :, None]
 
         if 0.2 <= s < 0.5:
             warnings.warn("Maybe got a all zeros lcmap, crop a region of no line!")
@@ -43,6 +45,8 @@ class CropAugmentation():
             iscrop = True
             crop_image = image[int(y1 * _pscale):int(y2 * _pscale), int(x1 * _pscale):int(x2 * _pscale), :]
             image_ = cv2.resize(crop_image, (512, 512))
+            if image_.ndim == 2:
+                image_ = image_[:, :, None]
         elif s > 1.:
             # shrink
             s_ = 1. / s
@@ -51,8 +55,10 @@ class CropAugmentation():
             x2, y2 = j + tw, i + th
 
             image_ = np.zeros_like(image)
-            image_[int(y1 * _pscale):int(y2 * _pscale), int(x1 * _pscale):int(x2 * _pscale), :] = \
-                cv2.resize(image, (int(th * _pscale), int(tw * _pscale)))
+            resized = cv2.resize(image, (int(th * _pscale), int(tw * _pscale)))
+            if resized.ndim == 2:
+                resized = resized[:, :, None]
+            image_[int(y1 * _pscale):int(y2 * _pscale), int(x1 * _pscale):int(x2 * _pscale), :] = resized
 
             iscrop = False
             lines = lines * s_
