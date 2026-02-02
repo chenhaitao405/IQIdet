@@ -8,7 +8,7 @@ import torch
 
 from FClip.line_parsing import OneStageLineParsing
 from FClip.config import M
-from FClip.losses import ce_loss, sigmoid_l1_loss, focal_loss, l12loss
+from FClip.losses import ce_loss, sigmoid_l1_loss, focal_loss, l12loss, gaussian_soft_ce_loss
 from FClip.nms import structure_nms_torch
 
 
@@ -29,7 +29,8 @@ class FClip(nn.Module):
 
     def _pool_height(self, output):
         if self.M_dic.get("heatmap_1d", False):
-            return F.adaptive_avg_pool2d(output, (1, output.shape[-1]))
+            target_w = self.M_dic.get("resolution", output.shape[-1])
+            return F.adaptive_avg_pool2d(output, (1, target_w))
         return output
 
     def lcmap_head(self, output, target):
@@ -126,7 +127,11 @@ class FClip(nn.Module):
         pred = output[s: self.head_off[offidx]].reshape(self.M_dic['head'][name]['head_size'], batch, row, col)
         logits = pred.mean(dim=(2, 3)).permute(1, 0)
 
-        loss = F.cross_entropy(logits, target.long(), reduction="none")
+        sigma = self.M_dic['head'][name].get('sigma', None)
+        if sigma is not None:
+            loss = gaussian_soft_ce_loss(logits, target.long(), sigma=float(sigma))
+        else:
+            loss = F.cross_entropy(logits, target.long(), reduction="none")
         weight = self.M_dic['head'][name]['loss_weight']
         return logits, loss * weight
 

@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Train L-CNN
 Usage:
-    test.py [options] <yaml-config> <ckpt> <dataname> <datadir>
+    test.py [options] <model-config> <ckpt> <dataname> <datadir>
     test.py (-h | --help )
 
 Arguments:
-   <yaml-config>                   Path to the yaml hyper-parameter file
+   <model-config>                  Path to model yaml config
    <ckpt>                          Path to ckpt
    <dataname>                      Dataset name
    <datadir>                       Dataset dir
@@ -14,6 +14,7 @@ Options:
    -h --help                       Show this screen.
    -d --devices <devices>          Comma seperated GPU devices [default: 0]
    -i --identifier <identifier>    Folder identifier [default: default-lr]
+   --params <file>                 Params yaml file [default: params.yaml]
 """
 
 import os
@@ -32,6 +33,7 @@ import torch
 from docopt import docopt
 import FClip
 from FClip.config import C, M
+from FClip.config_loader import load_configs
 from FClip.datasets import collate
 from FClip.datasets import LineDataset as WireframeDataset
 
@@ -122,13 +124,12 @@ def build_model(cpu=False):
 
 def main():
     args = docopt(__doc__)
-    C.update(C.from_yaml(filename='config/base.yaml'))
-    config_file = args["<yaml-config>"]
-    C.update(C.from_yaml(filename=config_file))
-    M.update(C.model)
-    C.io.model_initialize_file = args["<ckpt>"]
+    config_file = args["<model-config>"]
+    params_file = args["--params"]
+    load_configs(model_yaml=config_file, params_yaml=params_file, ckpt=args["<ckpt>"])
     C.io.dataname = args["<dataname>"]
     C.io.datadir = args["<datadir>"]
+    M.update(C.model)
 
     pprint.pprint(C, indent=4)
     bs = 1

@@ -1,42 +1,40 @@
 stages:
-  weld:
+  preprocess:
     cmd: >
       python dataset/weld.py
-      --label_dir IQIdata/ori/label
-      --img_dir IQIdata/ori/img
-      --out_dir ${train.datadir}
-      --val_ratio ${weld.val_ratio}
-      --seed ${weld.seed}
-      --angle_thresh ${weld.angle_thresh}
+      --label_dir ${data.label_dir}
+      --img_dir ${data.img_dir}
+      --out_dir ${data.processed_dir}
+      --val_ratio ${preprocess.val_ratio}
+      --seed ${preprocess.seed}
+      --angle_thresh ${preprocess.angle_thresh}
+      --heatmap_resolution ${preprocess.heatmap_resolution}
+      --input_resolution_h ${preprocess.input_resolution_h}
+      --input_resolution_w ${preprocess.input_resolution_w}
     deps:
       - dataset/weld.py
-      - IQIdata/ori/label
-      - IQIdata/ori/img
+      - ${data.label_dir}
+      - ${data.img_dir}
     outs:
-      - ${train.datadir}
+      - ${data.processed_dir}
 
   train:
     cmd: >
-      python train.py -d 0 -i HR config/fclip_HR.yaml
-      --datadir ${train.datadir}
-      --logdir ${train.logdir}
-      --run_name ${train.run_name}
-      --batch_size ${train.batch_size}
-      --eval_batch_size ${train.eval_batch_size}
-      --lr ${train.lr}
-      --max_epoch ${train.max_epoch}
-      --metrics_path ${train.metrics_path}
+      python train.py -d 0 -i HR config/model.yaml
+      --params params.yaml
     deps:
       - train.py
       - FClip
-      - config/fclip_HR.yaml
-      - IQIdata/processed
+      - config/model.yaml
+      - params.yaml
+      - ${data.processed_dir}
     outs:
       - logs/IQI/${train.run_name}/checkpoint_best.pth.tar
       - logs/IQI/${train.run_name}/checkpoint_lastest.pth.tar
       - logs/IQI/${train.run_name}/config.yaml
     metrics:
-      - ${train.metrics_path}
+      - logs/IQI/${train.run_name}/metrics.json:
+          cache: false
     plots:
       - logs/IQI/${train.run_name}/loss.csv:
           x: progress
@@ -44,3 +42,6 @@ stages:
       - logs/IQI/${train.run_name}/train_loss.csv:
           x: progress
           y: sum
+      - logs/IQI/${train.run_name}/precision.csv:
+          x: progress
+          y: precision

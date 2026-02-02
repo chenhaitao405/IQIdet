@@ -194,6 +194,19 @@ class ModelPrinter():
         if isprint:
             self.pprint(prt_str, " " * 7)
 
+    def precision_head(self, csv_name="precision.csv"):
+        print()
+        print("| progress | precision |")
+        with open(f"{self.out}/{csv_name}", "a") as fout:
+            print("progress,precision", file=fout)
+
+    def precision_log(self, epoch, iteration, batch_size, precision, csv_name="precision.csv"):
+        csv_str = f"{epoch:03}/{iteration * batch_size:07},{precision:.6f}"
+        prt_str = f"{epoch:03}/{iteration * batch_size // 1000:04}k| precision {precision:.5f}"
+        with open(f"{self.out}/{csv_name}", "a") as fout:
+            print(csv_str, file=fout)
+        self.pprint(prt_str, " " * 7)
+
     @staticmethod
     def tprint(*args):
         """Temporarily prints things on the screen"""
@@ -205,7 +218,6 @@ class ModelPrinter():
         """Permanently prints things on the screen"""
         print("\r", end="")
         print(*args)
-
 
 
 

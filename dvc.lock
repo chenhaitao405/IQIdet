@@ -2,7 +2,7 @@ schema: '2.0'
 stages:
   weld:
     cmd: "python dataset/weld.py --label_dir IQIdata/ori/label --img_dir IQIdata/ori/img
-      --out_dir IQIdata/processed --val_ratio 0.1 --seed 0 --angle_thresh 50\n"
+      --out_dir IQIdata/processed_1D --val_ratio 0.1 --seed 0 --angle_thresh 50\n"
     deps:
     - path: IQIdata/ori/img
       hash: md5
@@ -16,61 +16,90 @@ stages:
       nfiles: 454
     - path: dataset/weld.py
       hash: md5
-      md5: 12482e69587d77a5e197e08730f21bb2
-      size: 12945
+      md5: ce841d4ee970ba3c18ccae77c719b8d8
+      size: 13801
     outs:
-    - path: IQIdata/processed
+    - path: IQIdata/processed_1D
       hash: md5
-      md5: 123916e68432e9ed5cd9d8adcccd7b14.dir
-      size: 249711154
+      md5: 8e2aa4791e2851489177394529824dca.dir
+      size: 75306313
       nfiles: 3928
   train:
-    cmd: "python train.py -d 0 -i HR config/fclip_HR.yaml --datadir IQIdata/processed
-      --logdir logs/IQI --run_name HR_exp_enhance_singlechannel_oriloss --batch_size
-      16 --eval_batch_size 2 --lr 0.004 --max_epoch 220 --metrics_path metrics/HR_exp1.json\n"
+    cmd: "python train.py -d 0 -i HR config/model.yaml --params params.yaml\n"
     deps:
     - path: FClip
       hash: md5
-      md5: c702647d7b3634cbc6a15e31294daea3.dir
-      size: 378074
-      nfiles: 35
-    - path: IQIdata/processed
+      md5: 7261f12ac1994f4463cc15052a801bba.dir
+      size: 434258
+      nfiles: 41
+    - path: IQIdata/processed_1D_32
       hash: md5
-      md5: 123916e68432e9ed5cd9d8adcccd7b14.dir
-      size: 249711154
+      md5: 11036d7257d0a601fb374b25c582e85c.dir
+      size: 23043436
       nfiles: 3928
-    - path: config/fclip_HR.yaml
+    - path: config/model.yaml
       hash: md5
-      md5: 1a9ee8b7abbe0e5760b064e3d08df314
-      size: 398
+      md5: cc0d929a7d4ca71770bc87a771cade37
+      size: 876
+    - path: params.yaml
+      hash: md5
+      md5: 010d30db43218494a447088369d8e68c
+      size: 876
     - path: train.py
       hash: md5
-      md5: 61d31df546e15c55572154519ac88297
-      size: 7229
+      md5: 85096735c61ffb4adcb6f32000fad887
+      size: 7643
     outs:
-    - path: 
-        logs/IQI/HR_exp_enhance_singlechannel_oriloss/checkpoint_best.pth.tar
+    - path: logs/IQI/bo_iqi_t0005/checkpoint_best.pth.tar
       hash: md5
-      md5: fe786946d3611121174aa15840ed2ed1
-      size: 458646927
-    - path: 
-        logs/IQI/HR_exp_enhance_singlechannel_oriloss/checkpoint_lastest.pth.tar
+      md5: ae9db3640bbfc1edfbb7e45951cd5c58
+      size: 458690983
+    - path: logs/IQI/bo_iqi_t0005/checkpoint_lastest.pth.tar
       hash: md5
-      md5: 1f8664d3b87690fc0f275556044ab006
-      size: 458646927
-    - path: logs/IQI/HR_exp_enhance_singlechannel_oriloss/config.yaml
+      md5: 3a002d8231333a8c0d0823c8a189ec4a
+      size: 458690983
+    - path: logs/IQI/bo_iqi_t0005/config.yaml
       hash: md5
-      md5: caf1070f18dacadbef10543f7202cb31
-      size: 1129
-    - path: logs/IQI/HR_exp_enhance_singlechannel_oriloss/loss.csv
+      md5: 0828210b39231cb9be213dab2b28004c
+      size: 1386
+    - path: logs/IQI/bo_iqi_t0005/loss.csv
       hash: md5
-      md5: 2d6b6ef3f023db26f5010c6570f871a6
-      size: 467
-    - path: logs/IQI/HR_exp_enhance_singlechannel_oriloss/train_loss.csv
+      md5: e320c2f55a422075622570a2da380943
+      size: 982
+    - path: logs/IQI/bo_iqi_t0005/metrics.json
       hash: md5
-      md5: 163b1147abb8d47223c1830d43f19c88
-      size: 396
-    - path: metrics/HR_exp1.json
+      md5: 1bd93e7e0e4b8e5ccfa8465abb4650cc
+      size: 89
+    - path: logs/IQI/bo_iqi_t0005/precision.csv
       hash: md5
-      md5: 0fbde53237dbd9ff3ca575f62c81a1fa
-      size: 51
+      md5: 69474447791076e3ee20a2dfe82115c7
+      size: 271
+    - path: logs/IQI/bo_iqi_t0005/train_loss.csv
+      hash: md5
+      md5: b6df20821966564903eb3419df0368ab
+      size: 900
+  preprocess:
+    cmd: "python dataset/weld.py --label_dir IQIdata/ori/label --img_dir IQIdata/ori/img
+      --out_dir IQIdata/processed_1D_32 --val_ratio 0.1 --seed 0 --angle_thresh 50
+      --heatmap_resolution 16 --input_resolution_h 256 --input_resolution_w 256\n"
+    deps:
+    - path: IQIdata/ori/img
+      hash: md5
+      md5: ea3f1fd9146ac77104f6c546e77bc006.dir
+      size: 600913307
+      nfiles: 511
+    - path: IQIdata/ori/label
+      hash: md5
+      md5: dfc6a5526f02d9a857a765bb94f9935b.dir
+      size: 253857156
+      nfiles: 454
+    - path: dataset/weld.py
+      hash: md5
+      md5: bd6641914b19c8508f73a465b0bc146c
+      size: 14424
+    outs:
+    - path: IQIdata/processed_1D_32
+      hash: md5
+      md5: edba4e11e9250bd9cad0e86f5a3a8b0f.dir
+      size: 75285012
+      nfiles: 3928

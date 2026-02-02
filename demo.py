@@ -55,7 +55,17 @@ os.environ['KMP_DUPLICATE_LIB_OK']='True'
 
 threshold = 0.4
 
-from FClip.line_parsing import OneStageLineParsing
+from FClip.infer_utils import (
+    load_config_from_yaml,
+    build_infer_model,
+    preprocess_gray_image,
+    infer_heatmaps,
+    get_count_pred,
+    parse_lines_1d,
+    scale_lines,
+    draw_lines,
+    draw_count,
+)
 
 
 myjet = np.array([[0., 0., 0.5],
@@ -182,37 +192,20 @@ class VideoStreamer(object):
 
 class FClipDetect:
     def __init__(self, modeluse, ckpt=None):
-        from test import build_model, C, M
-
-        if modeluse == 'HG1_D3':
-            config_file = 'config/fclip_HG1_D3.yaml'
-        elif modeluse == 'HG1':
-            config_file = 'config/fclip_HG1.yaml'
-        elif modeluse == 'HG2':
-            config_file = 'config/fclip_HG2.yaml'
-        elif modeluse == 'HG2_LB':
-            config_file = 'config/fclip_HG2_LB.yaml'
-        elif modeluse == 'HR':
-            config_file = 'config/fclip_HR.yaml'
+        from FClip.config import M
+        if modeluse.endswith(".yaml") and os.path.exists(modeluse):
+            config_file = modeluse
         else:
-            raise ValueError("")
-
-        C.update(C.from_yaml(filename='config/base.yaml'))
-        C.update(C.from_yaml(filename=config_file))
-        M.update(C.model)
-        C.io.model_initialize_file = ckpt
+            config_file = "config/model.yaml"
+        load_config_from_yaml(config_file, params_yaml="params.yaml", ckpt=ckpt)
 
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        iscpu = False if torch.cuda.is_available() else True
         print('Using device: ', self.device)
 
-        self.model = build_model(cpu=iscpu)
-        # Demo runs with batch size 1; DataParallel can send empty inputs to extra GPUs.
-        if isinstance(self.model, torch.nn.DataParallel):
-            self.model = self.model.module
-        self.model.to(self.device)
-        self.model.eval()
-        self.input_resolution = (M.resolution * 4, M.resolution * 4)
+        self.model = build_infer_model(self.device)
+        input_h = getattr(M, "input_resolution_h", M.resolution * 4)
+        input_w = getattr(M, "input_resolution_w", M.resolution * 4)
+        self.input_resolution = (input_w, input_h)
         self.resolution = M.resolution
         self.nlines = M.nlines
         self.ang_type = M.ang_type
@@ -220,47 +213,31 @@ class FClipDetect:
         self.image_stddev = M.image.stddev
 
     def detect(self, img):
-        if img.ndim == 3:
-            img = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
-        H_img, W_img = img.shape[:2]
-        inp = cv.resize(img, self.input_resolution)
-        H, W = inp.shape
-
         mean = float(np.array(self.image_mean).reshape(-1)[0])
         std = float(np.array(self.image_stddev).reshape(-1)[0])
-        inp = (inp.astype(np.float32) - mean) / std
-        inp = torch.from_numpy(inp[None, ...]).float().unsqueeze(0).to(device=self.device)
-        input_dict = {"image": inp}
-        with torch.no_grad():
-            outputs = self.model(input_dict, isTest=True)
-            heat = outputs["heatmaps"]
-            lcmap = heat["lcmap"][0]
-            lcoff = heat["lcoff"][0]
-            angle = heat["angle"][0]
-            count_pred = None
-            if "count" in heat:
-                count_pred = int(heat["count"][0].argmax().item())
-            lines, score = OneStageLineParsing.fclip_1d_torch(
-                lcmap=lcmap,
-                lcoff=lcoff,
-                angle=angle,
-                delta=threshold,
-                nlines=self.nlines,
-                ang_type=self.ang_type,
-                kernel=3,
-                resolution=self.resolution,
-                count=count_pred,
-            )
+        H_img, W_img = img.shape[:2]
+        inp = preprocess_gray_image(img, self.input_resolution, mean, std, self.device)
+        heat = infer_heatmaps(self.model, inp)
+        count_pred = get_count_pred(heat)
+        count_val = int(count_pred[0].item()) if count_pred is not None else None
 
-        if score.numel() > 0:
-            lines = lines[score > 0]
-        if lines.numel() > 0:
-            lines[:, :, 0] = lines[:, :, 0] * H_img / self.resolution
-            lines[:, :, 1] = lines[:, :, 1] * W_img / self.resolution
-        if torch.cuda.is_available():
-            return lines.cpu().numpy()
-        else:
-            return lines.numpy()
+        lcmap = heat["lcmap"][0]
+        lcoff = heat["lcoff"][0]
+        angle = heat["angle"][0]
+        lines, score = parse_lines_1d(
+            lcmap=lcmap,
+            lcoff=lcoff,
+            angle=angle,
+            threshold=threshold,
+            nlines=self.nlines,
+            resolution=self.resolution,
+            ang_type=self.ang_type,
+            count_pred=count_val,
+        )
+        lines = scale_lines(lines, self.resolution, (H_img, W_img))
+
+        lines_np = lines.cpu().numpy() if torch.cuda.is_available() else lines.numpy()
+        return lines_np, count_val
 
 
 if __name__ == '__main__':
@@ -316,16 +293,12 @@ if __name__ == '__main__':
 
         # Get points and descriptors.
         start1 = time.time()
-        lines = detector.detect(img)
+        lines, count_pred = detector.detect(img)
         end1 = time.time()
 
         out = oriimg
-        for i in range(lines.shape[0]):
-            # print(lines[i])
-            start_coor = (int(lines[i][0][1]), int(lines[i][0][0]))
-            end_coor = (int(lines[i][1][1]), int(lines[i][1][0]))
-            cv.line(out, start_coor, end_coor, (0, 0, 255), 2, lineType=16)  # red
-            # cv.line(out, lines[i, 0, ::-1], lines[i, 1, ::-1], (110, 215, 245), 2, lineType=16)
+        out = draw_lines(out, lines)
+        out = draw_count(out, count_pred)
 
         cv.imwrite(f"{opt.output_dir}/{vs.i:04}.png", out)
 

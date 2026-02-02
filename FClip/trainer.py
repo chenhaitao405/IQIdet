@@ -28,6 +28,7 @@ class Trainer(object):
         iteration=0,
         epoch=0,
         bml=1e1000,
+        best_precision=0.0,
         best_epoch=-1,
         metrics_path=None,
     ):
@@ -56,6 +57,7 @@ class Trainer(object):
         self.lr_decay_epoch = C.optim.lr_decay_epoch
         self.num_stacks = C.model.num_stacks
         self.mean_loss = self.best_mean_loss = bml
+        self.best_precision = best_precision
         self.best_epoch = best_epoch
 
         self.loss_labels = None
@@ -65,6 +67,7 @@ class Trainer(object):
         self.visual = VisualizeResults()
         self.printer = ModelPrinter(out)
         self.metrics_path = metrics_path
+        self.precision_head_written = False
 
     def _loss(self, result):
         losses = result["losses"]
@@ -103,20 +106,16 @@ class Trainer(object):
 
         return total_loss
 
-    def validate(self, isviz=True, isnpz=True, isckpt=True):
+    def validate(self, isckpt=True):
         self.printer.tprint("Running validation...", " " * 55)
         training = self.model.training
         self.model.eval()
 
-        if isviz:
-            viz = osp.join(self.out, "viz", f"{self.iteration * self.batch_size:09d}")
-            osp.exists(viz) or os.makedirs(viz)
-        if isnpz:
-            npz = osp.join(self.out, "npz", f"{self.iteration * self.batch_size:09d}")
-            osp.exists(npz) or os.makedirs(npz)
-
         total_loss = 0
         self.metrics[...] = 0
+        correct = 0
+        total = 0
+
         with torch.no_grad():
             for batch_idx, (image, meta, target) in enumerate(self.val_loader):
                 input_dict = {
@@ -125,32 +124,28 @@ class Trainer(object):
                     "target": recursive_to(target, self.device),
                     "do_evaluation": True,
                 }
-
                 result = self.model(input_dict)
                 total_loss += self._loss(result)
 
-                H = result["heatmaps"]
-                for i in range(image.shape[0]):
-                    index = batch_idx * self.eval_batch_size + i
-                    if isnpz:
-                        npz_dict = {}
-                        for k, v in H.items():
-                            if v is not None:
-                                npz_dict[k] = v[i].cpu().numpy()
-                        np.savez(
-                            f"{npz}/{index:06}.npz",
-                            **npz_dict,
-                        )
+                if "heatmaps" in result and "count" in result["heatmaps"]:
+                    pred = result["heatmaps"]["count"].argmax(1)
+                    gt = target["count"].to(pred.device)
+                    correct += (pred == gt).sum().item()
+                    total += gt.numel()
 
-                    if index >= C.io.visual_num:
-                        continue
-                    if isviz:
-                        fn = self.val_loader.dataset._get_im_name(index)
-                        self.visual.plot_samples(fn, i, H, target, meta, f"{viz}/{index:06}")
-                self.printer.tprint(f"Validation [{batch_idx:5d}/{len(self.val_loader):5d}]", " " * 25)
+                self.printer.tprint(
+                    f"Validation [{batch_idx:5d}/{len(self.val_loader):5d}]",
+                    " " * 25
+                )
 
-        self.printer.valid_log(len(self.val_loader), self.epoch, self.iteration, self.batch_size, self.metrics[0])
+        precision = correct / max(total, 1)
         self.mean_loss = total_loss / len(self.val_loader)
+        self.printer.valid_log(len(self.val_loader), self.epoch, self.iteration, self.batch_size, self.metrics[0])
+
+        if not self.precision_head_written:
+            self.printer.precision_head()
+            self.precision_head_written = True
+        self.printer.precision_log(self.epoch, self.iteration, self.batch_size, precision)
 
         if isckpt:
             torch.save(
@@ -160,17 +155,16 @@ class Trainer(object):
                     "optim_state_dict": self.optim.state_dict(),
                     "model_state_dict": self.model.state_dict(),
                     "best_mean_loss": self.best_mean_loss,
+                    "best_precision": self.best_precision,
                     "best_epoch": self.best_epoch,
                     'lr_scheduler': self.lr_scheduler.state_dict(),
                 },
                 osp.join(self.out, "checkpoint_lastest.pth.tar"),
             )
-            shutil.copy(
-                osp.join(self.out, "checkpoint_lastest.pth.tar"),
-                osp.join(npz, "checkpoint.pth.tar"),
-            )
             if self.mean_loss < self.best_mean_loss:
                 self.best_mean_loss = self.mean_loss
+            if precision > self.best_precision:
+                self.best_precision = precision
                 self.best_epoch = self.epoch
                 shutil.copy(
                     osp.join(self.out, "checkpoint_lastest.pth.tar"),
@@ -186,6 +180,7 @@ class Trainer(object):
         data = {
             "best_loss": float(self.best_mean_loss),
             "best_epoch": int(self.best_epoch),
+            "best_precision": float(self.best_precision),
         }
         with open(metrics_path, "w") as f:
             json.dump(data, f)

@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-Compute grayscale mean/std over train+valid images and update config/base.yaml.
+Compute grayscale mean/std over train+valid images and update config/model.yaml.
 
 Usage:
   python scripts/compute_mean_std.py \
     --data_dir /datasets/PAR/CODE/F-Clip/IQIdata/processed \
-    --config config/base.yaml
+    --config config/model.yaml
 """
 
 import argparse
@@ -20,7 +20,7 @@ import numpy as np
 def parse_args():
     parser = argparse.ArgumentParser(description="Compute mean/std for grayscale images.")
     parser.add_argument("--data_dir", required=True, help="Processed dataset root containing train/valid.")
-    parser.add_argument("--config", default="config/base.yaml", help="Base config to update.")
+    parser.add_argument("--config", default="config/model.yaml", help="Model config to update.")
     return parser.parse_args()
 
 

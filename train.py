@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
 """Train L-CNN
 Usage:
-    train.py [options] <yaml-config>
+    train.py [options] <model-config>
     train.py (-h | --help )
 
 Arguments:
-   <yaml-config>                   Path to the yaml hyper-parameter file
+   <model-config>                  Path to model yaml config
 
 Options:
    -h --help                       Show this screen.
    -d --devices <devices>          Comma seperated GPU devices [default: 0]
    -i --identifier <identifier>    Folder identifier [default: default-lr]
-   --datadir <dir>                 Override dataset dir (for DVC).
+   --params <file>                 Params yaml file [default: params.yaml]
+   --datadir <dir>                 Override dataset dir.
    --logdir <dir>                  Override logdir root.
    --run_name <name>               Fixed output directory name under logdir.
    --batch_size <n>                Override train batch size.
@@ -35,6 +36,7 @@ from docopt import docopt
 
 import FClip
 from FClip.config import C, M
+from FClip.config_loader import load_configs
 from FClip.datasets import collate
 from FClip.datasets import LineDataset as WireframeDataset
 
@@ -101,13 +103,15 @@ def build_model():
 
 def main():
     args = docopt(__doc__)
-    config_file = args["<yaml-config>"]
-    C.update(C.from_yaml(filename="config/base.yaml"))
-    C.update(C.from_yaml(filename=config_file))
+    config_file = args["<model-config>"]
+    params_file = args["--params"]
+    load_configs(model_yaml=config_file, params_yaml=params_file)
     if args["--datadir"]:
         C.io.datadir = args["--datadir"]
     if args["--logdir"]:
         C.io.logdir = args["--logdir"]
+    if args["--run_name"]:
+        C.io.run_name = args["--run_name"]
     if args["--batch_size"]:
         C.model.batch_size = int(args["--batch_size"])
     if args["--eval_batch_size"]:
@@ -167,7 +171,8 @@ def main():
     else:
         raise NotImplementedError
 
-    outdir = get_outdir(args["--identifier"], run_name=args["--run_name"])
+    run_name = args["--run_name"] or getattr(C.io, "run_name", None)
+    outdir = get_outdir(args["--identifier"], run_name=run_name)
     print("outdir:", outdir)
     if M.backbone in ["hrnet"]:
         shutil.copy("config/w32_384x288_adam_lr1e-3.yaml", f"{outdir}/w32_384x288_adam_lr1e-3.yaml")
@@ -176,6 +181,7 @@ def main():
     epoch = 0
     best_mean_loss = 1e1000
     best_epoch = -1
+    best_precision = 0.0
     if resume_from:
         ckpt_pth = osp.join(resume_from, "checkpoint_lastest.pth.tar")
         checkpoint = torch.load(ckpt_pth)
@@ -183,6 +189,7 @@ def main():
         epoch = iteration // epoch_size
         best_mean_loss = checkpoint["best_mean_loss"]
         best_epoch = checkpoint.get("best_epoch", -1)
+        best_precision = checkpoint.get("best_precision", 0.0)
         print(f"loading {epoch}-th ckpt: {ckpt_pth}")
 
         model.load_state_dict(checkpoint["model_state_dict"])
@@ -205,20 +212,21 @@ def main():
             max_epoch=C.optim.max_epoch
         )
 
-    trainer = Trainer(
-        device=device,
-        model=model,
-        optimizer=optim,
-        lr_scheduler=lr_scheduler,
-        train_loader=train_loader,
-        val_loader=val_loader,
-        out=outdir,
-        iteration=iteration,
-        epoch=epoch,
-        bml=best_mean_loss,
-        best_epoch=best_epoch,
-        metrics_path=args["--metrics_path"],
-    )
+        trainer = Trainer(
+            device=device,
+            model=model,
+            optimizer=optim,
+            lr_scheduler=lr_scheduler,
+            train_loader=train_loader,
+            val_loader=val_loader,
+            out=outdir,
+            iteration=iteration,
+            epoch=epoch,
+            bml=best_mean_loss,
+            best_precision=best_precision,
+            best_epoch=best_epoch,
+            metrics_path=args["--metrics_path"],
+        )
 
     try:
         trainer.train()

@@ -15,6 +15,9 @@ Usage:
     --val_ratio 0.1 \
     --seed 0 \
     --angle_thresh 50 \
+    --heatmap_resolution 64 \
+    --input_resolution_h 256 \
+    --input_resolution_w 256 \
     --debug
 """
 
@@ -37,6 +40,9 @@ def parse_args():
     parser.add_argument("--val_ratio", type=float, default=0.1, help="Validation split ratio.")
     parser.add_argument("--seed", type=int, default=0, help="Random seed for split.")
     parser.add_argument("--angle_thresh", type=float, default=50.0, help="Rotate if angle > threshold.")
+    parser.add_argument("--heatmap_resolution", type=int, default=64, help="Heatmap width (1 x W).")
+    parser.add_argument("--input_resolution_h", type=int, default=256, help="Input resolution height.")
+    parser.add_argument("--input_resolution_w", type=int, default=256, help="Input resolution width.")
     parser.add_argument("--debug", action="store_true", help="Save debug visualizations.")
     return parser.parse_args()
 
@@ -178,9 +184,7 @@ def enhance_windowing_gray(image: np.ndarray) -> np.ndarray:
     return enhanced
 
 
-def save_heatmap(prefix, image, lines):
-    im_rescale = (256, 256)
-    heatmap_w = 64
+def save_heatmap(prefix, image, lines, im_rescale, heatmap_w):
     heatmap_scale = (1, heatmap_w)
 
     lcmap = np.zeros(heatmap_scale, dtype=np.float32)
@@ -268,9 +272,9 @@ def save_heatmap(prefix, image, lines):
     cv2.imwrite(f"{prefix}.png", image)
 
 
-def augment_and_save(base_prefix, image, lines, out_split):
+def augment_and_save(base_prefix, image, lines, out_split, im_rescale, heatmap_w):
     # original
-    save_heatmap(f"{out_split}/{base_prefix}_0", image, lines)
+    save_heatmap(f"{out_split}/{base_prefix}_0", image, lines, im_rescale, heatmap_w)
 
     if lines is None:
         lines = np.zeros((0, 2, 2), dtype=np.float32)
@@ -282,14 +286,14 @@ def augment_and_save(base_prefix, image, lines, out_split):
     if len(lines1) > 0:
         lines1[:, :, 0] = w - lines1[:, :, 0]
     im1 = image[:, ::-1]
-    save_heatmap(f"{out_split}/{base_prefix}_1", im1, lines1)
+    save_heatmap(f"{out_split}/{base_prefix}_1", im1, lines1, im_rescale, heatmap_w)
 
     # vflip
     lines2 = lines.copy()
     if len(lines2) > 0:
         lines2[:, :, 1] = h - lines2[:, :, 1]
     im2 = image[::-1, :]
-    save_heatmap(f"{out_split}/{base_prefix}_2", im2, lines2)
+    save_heatmap(f"{out_split}/{base_prefix}_2", im2, lines2, im_rescale, heatmap_w)
 
     # hv flip
     lines3 = lines.copy()
@@ -297,7 +301,7 @@ def augment_and_save(base_prefix, image, lines, out_split):
         lines3[:, :, 0] = w - lines3[:, :, 0]
         lines3[:, :, 1] = h - lines3[:, :, 1]
     im3 = image[::-1, ::-1]
-    save_heatmap(f"{out_split}/{base_prefix}_3", im3, lines3)
+    save_heatmap(f"{out_split}/{base_prefix}_3", im3, lines3, im_rescale, heatmap_w)
 
 
 def main():
@@ -324,6 +328,9 @@ def main():
     processed_polys = 0
     train_samples = 0
     valid_samples = 0
+
+    im_rescale = (args.input_resolution_w, args.input_resolution_h)
+    heatmap_w = args.heatmap_resolution
 
     for jp in json_files:
         with open(jp, "r", encoding="utf-8") as f:
@@ -404,7 +411,7 @@ def main():
                 dbg = draw_lines(roi, mapped_lines)
                 cv2.imwrite(str(debug_enh / f"{base_id}.png"), dbg)
 
-            augment_and_save(base_id, roi, mapped_lines, str(split_dir))
+            augment_and_save(base_id, roi, mapped_lines, str(split_dir), im_rescale, heatmap_w)
             processed_polys += 1
             if split_dir == train_dir:
                 train_samples += 4

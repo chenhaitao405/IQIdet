@@ -26,7 +26,7 @@ class LineDataset(Dataset):
     def __init__(self, rootdir, split, dataset="shanghaiTech"):
         print("dataset:", dataset)
         self.rootdir = rootdir
-        if dataset in ["shanghaiTech", "york"]:
+        if dataset in ["shanghaiTech", "york", "IQI"]:
             filelist = glob.glob(f"{rootdir}/{split}/*_line.npz")
             if not filelist:
                 filelist = glob.glob(f"{rootdir}/{split}/*_label.npz")
@@ -43,7 +43,7 @@ class LineDataset(Dataset):
         return len(self.filelist)
 
     def _get_im_name(self, idx):
-        if self.dataset in ["shanghaiTech", "york"]:
+        if self.dataset in ["shanghaiTech", "york", "IQI"]:
             f = self.filelist[idx]
             if f.endswith("_line.npz"):
                 iname = f.replace("_line.npz", ".png")
@@ -122,7 +122,9 @@ class LineDataset(Dataset):
             # step 3 resize
             if M.resolution < 128:
                 if is_1d:
-                    target_size = (M.resolution * 4, M.resolution * 4)
+                    input_h = getattr(M, "input_resolution_h", M.resolution * 4)
+                    input_w = getattr(M, "input_resolution_w", M.resolution * 4)
+                    target_size = (input_w, input_h)
                     if image_.shape[0] != target_size[1] or image_.shape[1] != target_size[0]:
                         image_ = cv2.resize(image_, target_size)
                         if image_.ndim == 2:

@@ -194,6 +194,26 @@ def sigmoid_focal_loss(logits, labels, alpha):
     return -loss.sum(4).sum(3).sum(1).sum(0) / mask
 
 
+def gaussian_soft_ce_loss(logits, target, sigma=1.0):
+    """
+    Soft-label cross entropy with Gaussian target distribution.
+    logits: (bs, C)
+    target: (bs,)
+    """
+    if sigma <= 0:
+        raise ValueError("sigma must be > 0")
+    bs, num_cls = logits.shape
+    device = logits.device
+    classes = torch.arange(num_cls, device=device).float()
+    target = target.float().unsqueeze(1)
+    diff = classes.unsqueeze(0) - target
+    weights = torch.exp(-0.5 * (diff / sigma) ** 2)
+    weights = weights / weights.sum(1, keepdim=True).clamp(min=1e-12)
+    logp = F.log_softmax(logits, dim=1)
+    loss = -(weights * logp).sum(1)
+    return loss
+
+
 def nms_ce_loss(logits, positive, loss_weight):
     nlogp = -F.log_softmax(logits, dim=0)
     loss_m = positive * nlogp[1] + (1 - positive) * nlogp[0]
