@@ -26,18 +26,18 @@ stages:
       nfiles: 3928
   train:
     cmd: "python train.py -d 0 -i HR config/fclip_HR.yaml --datadir IQIdata/processed
-      --logdir logs/IQI --run_name HR_exp1 --batch_size 16 --eval_batch_size 2 --lr
-      0.004 --max_epoch 220 --metrics_path metrics/HR_exp1.json\n"
+      --logdir logs/IQI --run_name HR_exp_enhance_singlechannel_oriloss --batch_size
+      16 --eval_batch_size 2 --lr 0.004 --max_epoch 220 --metrics_path metrics/HR_exp1.json\n"
     deps:
     - path: FClip
       hash: md5
-      md5: 564b1055f0bf865e399e2ffbd8693fa4.dir
-      size: 376559
+      md5: c702647d7b3634cbc6a15e31294daea3.dir
+      size: 378074
       nfiles: 35
     - path: IQIdata/processed
       hash: md5
-      md5: 27d61236a4ac812dd73c0f30a7b50f6e.dir
-      size: 376239247
+      md5: 123916e68432e9ed5cd9d8adcccd7b14.dir
+      size: 249711154
       nfiles: 3928
     - path: config/fclip_HR.yaml
       hash: md5
@@ -48,27 +48,29 @@ stages:
       md5: 61d31df546e15c55572154519ac88297
       size: 7229
     outs:
-    - path: logs/IQI/HR_exp1/checkpoint_best.pth.tar
+    - path: 
+        logs/IQI/HR_exp_enhance_singlechannel_oriloss/checkpoint_best.pth.tar
       hash: md5
-      md5: 696c4fc4e2134bfa726c1fa6f7dd23d8
-      size: 458665359
-    - path: logs/IQI/HR_exp1/checkpoint_lastest.pth.tar
+      md5: fe786946d3611121174aa15840ed2ed1
+      size: 458646927
+    - path: 
+        logs/IQI/HR_exp_enhance_singlechannel_oriloss/checkpoint_lastest.pth.tar
       hash: md5
-      md5: 0e011c92097c814cc33fac8bd51c4e28
-      size: 458665359
-    - path: logs/IQI/HR_exp1/config.yaml
+      md5: 1f8664d3b87690fc0f275556044ab006
+      size: 458646927
+    - path: logs/IQI/HR_exp_enhance_singlechannel_oriloss/config.yaml
       hash: md5
-      md5: 68e5f65a445e4706a94cdcc22db3f05b
-      size: 1150
-    - path: logs/IQI/HR_exp1/loss.csv
+      md5: caf1070f18dacadbef10543f7202cb31
+      size: 1129
+    - path: logs/IQI/HR_exp_enhance_singlechannel_oriloss/loss.csv
       hash: md5
-      md5: 023aac5ec353f72d691ec7ccad792c86
+      md5: 2d6b6ef3f023db26f5010c6570f871a6
       size: 467
-    - path: logs/IQI/HR_exp1/train_loss.csv
+    - path: logs/IQI/HR_exp_enhance_singlechannel_oriloss/train_loss.csv
       hash: md5
-      md5: 0927d5b16811c899b22d4a8efcfb6a3f
+      md5: 163b1147abb8d47223c1830d43f19c88
       size: 396
     - path: metrics/HR_exp1.json
       hash: md5
-      md5: 8ee33cb1f6b1301c9bce1d799e644700
+      md5: 0fbde53237dbd9ff3ca575f62c81a1fa
       size: 51

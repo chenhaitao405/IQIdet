@@ -13,8 +13,7 @@ def get_global():
     _scale = C.model.resolution / 128
     _len_scale = 64 * _scale
     _ang_scale = 180
-    _pscale = 512 / C.model.resolution
-    return _scale, _len_scale, _ang_scale, _pscale
+    return _scale, _len_scale, _ang_scale
 
 
 class VisualizeResults(object):
@@ -90,18 +89,33 @@ class VisualizeResults(object):
         # self.draw_lmap(result, target, i, prefix)
 
     def draw_fclip(self, i, result, image, meta, prefix):
-        _scale, _len_scale, _ang_scale, _pscale = get_global()
+        _scale, _len_scale, _ang_scale = get_global()
+        _pscale = image.shape[0] / C.model.resolution
 
         if "lleng" in result.keys():
             lcmap, lcoff, lleng, angle = result["lcmap"][i], result["lcoff"][i], result["lleng"][i], result["angle"][i]
+            count_pred = None
+            if "count" in result:
+                count_pred = int(result["count"][i].argmax().item())
+            if lcmap.ndim == 2 and lcmap.shape[0] == 1:
+                lines, scores = OneStageLineParsing.fclip_1d_torch(
+                    lcmap, lcoff, angle,
+                    delta=C.model.delta, nlines=C.model.nlines, ang_type=C.model.ang_type,
+                    resolution=C.model.resolution, count=count_pred
+                )
+            else:
+                lines, scores = OneStageLineParsing.fclip_torch(
+                    lcmap, lcoff, lleng, angle,
+                    delta=C.model.delta, nlines=300, ang_type=C.model.ang_type, resolution=C.model.resolution
+                )
 
-            lines, scores = OneStageLineParsing.fclip_torch(
-                lcmap, lcoff, lleng, angle,
-                delta=C.model.delta, nlines=300, ang_type=C.model.ang_type, resolution=C.model.resolution
-            )
-
-        scale = 1.0 / scores[0]
-        scores = scores * scale
+        if scores.numel() > 0:
+            keep = scores > 0
+            lines = lines[keep]
+            scores = scores[keep]
+        if scores.numel() > 0 and scores[0] != 0:
+            scale = 1.0 / scores[0]
+            scores = scores * scale
 
         lpre, lpre_label = meta[i]["lpre"], meta[i]["lpre_label"]
         lpos = lpre[lpre_label == 1]
@@ -128,7 +142,3 @@ class VisualizeResults(object):
             if isjunc:
                 plt.scatter(v0[1], v0[0], c="blue", s=16, zorder=100)
                 plt.scatter(v1[1], v1[0], c="blue", s=16, zorder=100)
-
-
-
-

@@ -179,16 +179,18 @@ def enhance_windowing_gray(image: np.ndarray) -> np.ndarray:
 
 
 def save_heatmap(prefix, image, lines):
-    im_rescale = (512, 512)
-    heatmap_scale = (128, 128)
+    im_rescale = (256, 256)
+    heatmap_w = 64
+    heatmap_scale = (1, heatmap_w)
 
     lcmap = np.zeros(heatmap_scale, dtype=np.float32)
-    lcoff = np.zeros((2,) + heatmap_scale, dtype=np.float32)
+    lcoff = np.zeros((1,) + heatmap_scale, dtype=np.float32)
     lleng = np.zeros(heatmap_scale, dtype=np.float32)
     angle = np.zeros(heatmap_scale, dtype=np.float32)
 
     if lines is None or len(lines) == 0:
         lpos = np.zeros((0, 2, 2), dtype=np.float32)
+        count = 0
         image = cv2.resize(image, im_rescale)
         np.savez_compressed(
             f"{prefix}_line.npz",
@@ -197,32 +199,61 @@ def save_heatmap(prefix, image, lines):
             lleng=lleng,
             angle=angle,
             lpos=lpos,
+            count=count,
         )
         cv2.imwrite(f"{prefix}.png", image)
         return
 
     lines = np.array(lines, dtype=np.float32)
 
-    fy, fx = heatmap_scale[1] / image.shape[0], heatmap_scale[0] / image.shape[1]
-    lines[:, :, 0] = np.clip(lines[:, :, 0] * fx, 0, heatmap_scale[0] - 1e-4)
-    lines[:, :, 1] = np.clip(lines[:, :, 1] * fy, 0, heatmap_scale[1] - 1e-4)
-    lines = lines[:, :, ::-1]  # (r, c)
-    lpos = lines.astype(np.float32, copy=True)
+    fy_img = im_rescale[1] / image.shape[0]
+    fx_img = im_rescale[0] / image.shape[1]
+    lines_img = lines.copy()
+    lines_img[:, :, 0] *= fx_img
+    lines_img[:, :, 1] *= fy_img
 
-    for v0, v1 in lines:
+    scale_heat = heatmap_w / im_rescale[0]
+    lines_heat = lines_img * scale_heat
+    lines_heat[:, :, 0] = np.clip(lines_heat[:, :, 0], 0, heatmap_w - 1e-4)
+    lines_heat[:, :, 1] = np.clip(lines_heat[:, :, 1], 0, heatmap_w - 1e-4)
+    lines_rc = lines_heat[:, :, ::-1]  # (r, c)
+    lpos_all = lines_rc.astype(np.float32, copy=True)
+
+    best = {}
+    for idx, (v0, v1) in enumerate(lines_rc):
         v = (v0 + v1) / 2
-        vint = tuple(map(int, v))
-        lcmap[vint] = 1
-        lcoff[:, vint[0], vint[1]] = v - vint - 0.5
-        lleng[vint] = np.sqrt(np.sum((v0 - v1) ** 2)) / 2
+        c = v[1]
+        col = int(c)
+        if col < 0 or col >= heatmap_w:
+            continue
+        x_off = c - col - 0.5
+        abs_off = abs(x_off)
+        prev = best.get(col)
+        if prev is not None and abs_off >= prev["abs_off"]:
+            continue
+
+        lcmap[0, col] = 1
+        lcoff[0, 0, col] = x_off
+        lleng[0, col] = np.sqrt(np.sum((v0 - v1) ** 2)) / 2
 
         vv = v0 if v0[0] <= v[0] else v1
-        if np.sqrt(np.sum((vv - v) ** 2)) <= 1e-4:
-            continue
-        angle[vint] = np.sum((vv - v) * np.array([0.0, 1.0])) / np.sqrt(np.sum((vv - v) ** 2))
+        if np.sqrt(np.sum((vv - v) ** 2)) > 1e-4:
+            angle[0, col] = np.sum((vv - v) * np.array([0.0, 1.0])) / np.sqrt(np.sum((vv - v) ** 2))
+        else:
+            angle[0, col] = 0.0
 
-    lleng = np.clip(lleng, 0, 64 - 1e-4) / 64
-    angle = lcmap * np.arccos(np.clip(angle, -1 + 1e-4, 1 - 1e-4)) / np.pi
+        best[col] = {"abs_off": abs_off, "idx": idx}
+
+    len_scale = heatmap_w / 2
+    lleng = np.clip(lleng, 0, len_scale - 1e-4) / len_scale
+    angle = lcmap * np.clip(angle, -1 + 1e-4, 1 - 1e-4)
+
+    if best:
+        keep_idx = [best[col]["idx"] for col in sorted(best.keys())]
+        lpos = lpos_all[keep_idx]
+    else:
+        lpos = np.zeros((0, 2, 2), dtype=np.float32)
+    count = int(lcmap.sum())
 
     image = cv2.resize(image, im_rescale)
     np.savez_compressed(
@@ -232,6 +263,7 @@ def save_heatmap(prefix, image, lines):
         lleng=lleng,
         angle=angle,
         lpos=lpos,
+        count=count,
     )
     cv2.imwrite(f"{prefix}.png", image)
 

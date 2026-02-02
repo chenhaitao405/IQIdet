@@ -16,31 +16,36 @@ model:
   # backbone multi-task parameters
   ang_type: radian
   lformat: la    # la means length angle, dxdy means
-  head_net: [raw, raw, raw, raw]  # see MultitaskHead for details  raw, mask, raw_upsampler, line
+  head_net: [raw, raw, raw, raw, raw]  # see MultitaskHead for details  raw, mask, raw_upsampler, line
   head:
-    order: [lcmap, lcoff, lleng, angle]  # [lcmap, lcoff, lleng, angle]
+    order: [lcmap, lcoff, lleng, angle, count]  # [lcmap, lcoff, lleng, angle, count]
     lcmap:
       head_size: 2
       loss: Focal_loss  # Focal_loss  CE
       focal_alpha: 5.0
       loss_weight: 3.
     lcoff:
-      head_size: 2
+      head_size: 1
       loss: sigmoid_L1
       loss_weight: 0.25
     lleng:
       head_size: 1
       loss: sigmoid_L1  # sigmoid_L1, L1, lt
-      loss_weight: 1.
+      loss_weight: 0.
     angle:
       head_size: 1
       loss: sigmoid_L1
+      loss_weight: 1.
+    count:
+      head_size: 8
+      loss: CE
       loss_weight: 1.
 
   # data augment: expand
   crop: True
   crop_factor: 1.2
-  resolution: 128
+  resolution: 64
+  heatmap_1d: True
 
   stage1: fclip
   delta: 0.8

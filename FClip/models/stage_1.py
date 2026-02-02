@@ -27,6 +27,11 @@ class FClip(nn.Module):
 
         self.head_off = np.cumsum([sum(h) for h in head_size])
 
+    def _pool_height(self, output):
+        if self.M_dic.get("heatmap_1d", False):
+            return F.adaptive_avg_pool2d(output, (1, output.shape[-1]))
+        return output
+
     def lcmap_head(self, output, target):
         name = "lcmap"
 
@@ -60,7 +65,7 @@ class FClip(nn.Module):
 
         loss = sum(
             sigmoid_l1_loss(pred[j], target[j], offset=-0.5, mask=mask)
-            for j in range(2)
+            for j in range(pred.shape[0])
         )
 
         weight = self.M_dic['head'][name]['loss_weight']
@@ -109,6 +114,21 @@ class FClip(nn.Module):
 
         weight = self.M_dic['head'][name]['loss_weight']
         return pred, loss * weight
+
+    def count_head(self, output, target):
+        name = "count"
+
+        _, batch, row, col = output.shape
+        order = self.M_dic['head']['order']
+        offidx = order.index(name)
+        s = 0 if offidx == 0 else self.head_off[offidx - 1]
+
+        pred = output[s: self.head_off[offidx]].reshape(self.M_dic['head'][name]['head_size'], batch, row, col)
+        logits = pred.mean(dim=(2, 3)).permute(1, 0)
+
+        loss = F.cross_entropy(logits, target.long(), reduction="none")
+        weight = self.M_dic['head'][name]['loss_weight']
+        return logits, loss * weight
 
     def jmap_head(self, output, target, n_jtyp):
         name = "jmap"
@@ -194,28 +214,50 @@ class FClip(nn.Module):
         extra_info['time_stack1'] = backbone_time['time_stack1']
         extra_info['time_backbone'] = time.time() - extra_info['time_backbone']
 
-        output = outputs[0]
+        output = self._pool_height(outputs[0])
 
         heatmap = {}
         heatmap["lcmap"] = output[:, 0:                self.head_off[0]].softmax(1)[:, 1]
         heatmap["lcoff"] = output[:, self.head_off[0]: self.head_off[1]].sigmoid() - 0.5
         heatmap["lleng"] = output[:, self.head_off[1]: self.head_off[2]].sigmoid()
         heatmap["angle"] = output[:, self.head_off[2]: self.head_off[3]].sigmoid()
+        if "count" in self.M_dic.get("head", {}):
+            order = self.M_dic['head']['order']
+            offidx = order.index("count")
+            s = 0 if offidx == 0 else self.head_off[offidx - 1]
+            e = self.head_off[offidx]
+            heatmap["count"] = output[:, s:e].mean(dim=(2, 3)).softmax(1)
 
         parsing = True
         if parsing:
             lines, scores = [], []
             for k in range(output.shape[0]):
-                line, score = OneStageLineParsing.fclip_torch(
-                    lcmap=heatmap["lcmap"][k],
-                    lcoff=heatmap["lcoff"][k],
-                    lleng=heatmap["lleng"][k],
-                    angle=heatmap["angle"][k],
-                    delta=M.delta,
-                    resolution=M.resolution
-                )
-                if M.s_nms > 0:
-                    line, score = structure_nms_torch(line, score, M.s_nms)
+                count_pred = None
+                if "count" in heatmap:
+                    count_pred = int(heatmap["count"][k].argmax().item())
+                if self.M_dic.get("heatmap_1d", False):
+                    line, score = OneStageLineParsing.fclip_1d_torch(
+                        lcmap=heatmap["lcmap"][k],
+                        lcoff=heatmap["lcoff"][k],
+                        angle=heatmap["angle"][k],
+                        delta=M.delta,
+                        nlines=M.nlines,
+                        ang_type=M.ang_type,
+                        kernel=3,
+                        resolution=M.resolution,
+                        count=count_pred,
+                    )
+                else:
+                    line, score = OneStageLineParsing.fclip_torch(
+                        lcmap=heatmap["lcmap"][k],
+                        lcoff=heatmap["lcoff"][k],
+                        lleng=heatmap["lleng"][k],
+                        angle=heatmap["angle"][k],
+                        delta=M.delta,
+                        resolution=M.resolution
+                    )
+                    if M.s_nms > 0:
+                        line, score = structure_nms_torch(line, score, M.s_nms)
                 lines.append(line[None])
                 scores.append(score[None])
 
@@ -228,6 +270,7 @@ class FClip(nn.Module):
         image = input_dict["image"]
         outputs, feature, backbone_time = self.backbone(image)
         result = {"feature": feature}
+        outputs = [self._pool_height(out) for out in outputs]
         batch, channel, row, col = outputs[0].shape
         T = input_dict["target"].copy()
         n_jtyp = 1
@@ -251,6 +294,9 @@ class FClip(nn.Module):
             angle, L["angle"] = self.angle_head(output, T["angle"], mask=T["lcmap"])
             heatmap["lleng"] = lleng
             heatmap["angle"] = angle
+            if "count" in self.M_dic.get("head", {}):
+                count_logits, L["count"] = self.count_head(output, T["count"])
+                heatmap["count"] = count_logits.softmax(1)
 
             losses.append(L)
             accuracy.append(Acc)
@@ -262,5 +308,3 @@ class FClip(nn.Module):
         result["accuracy"] = accuracy
 
         return result
-
-

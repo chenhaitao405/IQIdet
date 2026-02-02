@@ -55,6 +55,8 @@ os.environ['KMP_DUPLICATE_LIB_OK']='True'
 
 threshold = 0.4
 
+from FClip.line_parsing import OneStageLineParsing
+
 
 myjet = np.array([[0., 0., 0.5],
                   [0., 0., 0.99910873],
@@ -211,6 +213,9 @@ class FClipDetect:
         self.model.to(self.device)
         self.model.eval()
         self.input_resolution = (M.resolution * 4, M.resolution * 4)
+        self.resolution = M.resolution
+        self.nlines = M.nlines
+        self.ang_type = M.ang_type
         self.image_mean = M.image.mean
         self.image_stddev = M.image.stddev
 
@@ -228,12 +233,30 @@ class FClipDetect:
         input_dict = {"image": inp}
         with torch.no_grad():
             outputs = self.model(input_dict, isTest=True)
-            lines = outputs["heatmaps"]["lines"][0] * 4
-            score = outputs["heatmaps"]["score"][0]
-            lines = lines[score > threshold]
+            heat = outputs["heatmaps"]
+            lcmap = heat["lcmap"][0]
+            lcoff = heat["lcoff"][0]
+            angle = heat["angle"][0]
+            count_pred = None
+            if "count" in heat:
+                count_pred = int(heat["count"][0].argmax().item())
+            lines, score = OneStageLineParsing.fclip_1d_torch(
+                lcmap=lcmap,
+                lcoff=lcoff,
+                angle=angle,
+                delta=threshold,
+                nlines=self.nlines,
+                ang_type=self.ang_type,
+                kernel=3,
+                resolution=self.resolution,
+                count=count_pred,
+            )
 
-        lines[:, :, 0] = lines[:, :, 0] * H_img / H
-        lines[:, :, 1] = lines[:, :, 1] * W_img / W
+        if score.numel() > 0:
+            lines = lines[score > 0]
+        if lines.numel() > 0:
+            lines[:, :, 0] = lines[:, :, 0] * H_img / self.resolution
+            lines[:, :, 1] = lines[:, :, 1] * W_img / self.resolution
         if torch.cuda.is_available():
             return lines.cpu().numpy()
         else:
