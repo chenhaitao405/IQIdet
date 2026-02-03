@@ -16,7 +16,8 @@ stages:
       - ${data.label_dir}
       - ${data.img_dir}
     outs:
-      - ${data.processed_dir}
+      - ${data.processed_dir}:
+          cache: false
 
   train:
     cmd: >
@@ -30,18 +31,7 @@ stages:
       - ${data.processed_dir}
     outs:
       - logs/IQI/${train.run_name}/checkpoint_best.pth.tar
-      - logs/IQI/${train.run_name}/checkpoint_lastest.pth.tar
       - logs/IQI/${train.run_name}/config.yaml
     metrics:
-      - logs/IQI/${train.run_name}/metrics.json:
-          cache: false
-    plots:
-      - logs/IQI/${train.run_name}/loss.csv:
-          x: progress
-          y: sum
-      - logs/IQI/${train.run_name}/train_loss.csv:
-          x: progress
-          y: sum
-      - logs/IQI/${train.run_name}/precision.csv:
-          x: progress
-          y: precision
+      - logs/IQI/${train.run_name}/metrics.json
+

@@ -68,6 +68,9 @@ class Trainer(object):
         self.printer = ModelPrinter(out)
         self.metrics_path = metrics_path
         self.precision_head_written = False
+        self.early_stop = getattr(C.io, "early_stop", None)
+        self.no_improve = 0
+        self.should_stop = False
 
     def _loss(self, result):
         losses = result["losses"]
@@ -163,12 +166,37 @@ class Trainer(object):
             )
             if self.mean_loss < self.best_mean_loss:
                 self.best_mean_loss = self.mean_loss
-            if precision > self.best_precision:
+            improved = precision > self.best_precision
+            if improved:
                 self.best_precision = precision
                 self.best_epoch = self.epoch
                 shutil.copy(
                     osp.join(self.out, "checkpoint_lastest.pth.tar"),
                     osp.join(self.out, "checkpoint_best.pth.tar"),
+                )
+        else:
+            improved = precision > self.best_precision
+
+        if self.early_stop is not None:
+            try:
+                patience = int(self.early_stop)
+            except Exception:
+                patience = None
+            if patience is not None and patience > 0:
+                if improved:
+                    self.no_improve = 0
+                else:
+                    self.no_improve += 1
+                    if self.no_improve >= patience:
+                        self.should_stop = True
+                        self.printer.tprint(
+                            f"Early stopping: no count precision improvement for {patience} validations.",
+                            " " * 10,
+                        )
+                remaining = max(patience - self.no_improve, 0)
+                self.printer.pprint(
+                    f"early_stop: no_improve={self.no_improve}/{patience}, remaining={remaining}",
+                    " " * 7,
                 )
         self._write_metrics()
 
@@ -230,6 +258,8 @@ class Trainer(object):
                     self.printer.valid_log(1, self.epoch, self.iteration, self.batch_size, self.avg_metrics[0],
                                            csv_name="train_loss.csv", isprint=False)
                     self.validate()
+                    if self.should_stop:
+                        return
                     time = timer()
 
             self.iteration += 1
@@ -240,4 +270,6 @@ class Trainer(object):
         start_epoch = self.iteration // epoch_size
         for self.epoch in range(start_epoch, self.max_epoch):
             self.train_epoch()
+            if self.should_stop:
+                break
             self.lr_scheduler.step()
