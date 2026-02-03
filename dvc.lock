@@ -25,7 +25,8 @@ stages:
       size: 75306313
       nfiles: 3928
   train:
-    cmd: "python train.py -d 0 -i HR config/model.yaml --params params.yaml\n"
+    cmd: "python train.py -d 0 -i HR config/model.yaml --params params.yaml --metrics_path
+      metrics/metrics.json\n"
     deps:
     - path: FClip
       hash: md5
@@ -43,22 +44,22 @@ stages:
       size: 876
     - path: params.yaml
       hash: md5
-      md5: 5d460b0eda2deaf480e65940a14917e6
-      size: 784
+      md5: 73e6e728a224d1ce7981d1d8fe3d3a6c
+      size: 788
     - path: train.py
       hash: md5
-      md5: 85096735c61ffb4adcb6f32000fad887
-      size: 7643
+      md5: 6f14bc2538af64da13049b6a7e19f16c
+      size: 7845
     outs:
-    - path: logs/IQI/bo_iqi_res_t0022/checkpoint_best.pth.tar
+    - path: logs/IQI/bo_iqi_res_v2_t0003/checkpoint_best.pth.tar
       hash: md5
-      md5: a81310d32d86fdcf7e2f3512e3fb1886
-      size: 458690983
-    - path: logs/IQI/bo_iqi_res_t0022/config.yaml
+      md5: 85c11968ba899ecb74a81f59e9120ba6
+      size: 458690713
+    - path: logs/IQI/bo_iqi_res_v2_t0003/config.yaml
       hash: md5
-      md5: 11e95268c0391a788b91a3863814b55a
-      size: 1298
-    - path: logs/IQI/bo_iqi_res_t0022/metrics.json
+      md5: 218b10aebf2a8c6c10464d26fbc30960
+      size: 1305
+    - path: metrics/metrics.json
       hash: md5
       md5: d342a1521ee7335f7d33469cb6d6a727
       size: 87

@@ -16,7 +16,7 @@ preprocess:
 
 train:
   logdir: logs/IQI
-  run_name: bo_iqi_res_v2_t0002
+  run_name: bo_iqi_res_v2_t0003
   batch_size: 64
   eval_batch_size: 64
   lr: 0.004
