@@ -5,7 +5,7 @@ data:
   dataname: IQI
 
 preprocess:
-  heatmap_resolution: 32
+  heatmap_resolution: 64
   input_resolution_h: 256
   input_resolution_w: 256
   val_ratio: 0.1
@@ -16,7 +16,7 @@ preprocess:
 
 train:
   logdir: logs/IQI
-  run_name: bo_iqi_res_v2_t0003
+  run_name: iqi3_iqi_bo_t0012
   batch_size: 64
   eval_batch_size: 64
   lr: 0.004
@@ -31,12 +31,12 @@ train:
   s_nms: 2
 
 loss:
-  lcmap_weight: 4.0
+  lcmap_weight: 1.5
   lcoff_weight: 0.25
   lleng_weight: 0.0
   angle_weight: 1.0
-  count_weight: 1.0
-  count_sigma: 1.0
+  count_weight: 2.35
+  count_sigma: 0.8
 
 optim:
   name: Adam
