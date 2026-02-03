@@ -65,7 +65,7 @@ stages:
   preprocess:
     cmd: "python dataset/weld.py --label_dir IQIdata/ori/label --img_dir IQIdata/ori/img
       --out_dir IQIdata/processed --val_ratio 0.1 --seed 0 --angle_thresh 50 --heatmap_resolution
-      128 --input_resolution_h 512 --input_resolution_w 512\n"
+      32 --input_resolution_h 256 --input_resolution_w 256\n"
     deps:
     - path: IQIdata/ori/img
       hash: md5
@@ -84,6 +84,6 @@ stages:
     outs:
     - path: IQIdata/processed
       hash: md5
-      md5: b5ed173b6d0ad00cdc9d3053ec9804b0.dir
-      size: 249111339
+      md5: 5d569e0cb1c2566e36db846d9ec2be4d.dir
+      size: 75297587
       nfiles: 3928
