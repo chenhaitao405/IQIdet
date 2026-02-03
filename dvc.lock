@@ -29,13 +29,13 @@ stages:
     deps:
     - path: FClip
       hash: md5
-      md5: 7261f12ac1994f4463cc15052a801bba.dir
-      size: 434258
+      md5: ee2f973c9404662fb10b750036a2b90c.dir
+      size: 436900
       nfiles: 41
-    - path: IQIdata/processed_1D_32
+    - path: IQIdata/processed
       hash: md5
-      md5: 11036d7257d0a601fb374b25c582e85c.dir
-      size: 23043436
+      md5: 4051b8abe9b94a0a9b75e0e7e239f664.dir
+      size: 75327560
       nfiles: 3928
     - path: config/model.yaml
       hash: md5
@@ -43,45 +43,29 @@ stages:
       size: 876
     - path: params.yaml
       hash: md5
-      md5: 010d30db43218494a447088369d8e68c
-      size: 876
+      md5: ce6b2260f975514dc31a81175110ecec
+      size: 778
     - path: train.py
       hash: md5
       md5: 85096735c61ffb4adcb6f32000fad887
       size: 7643
     outs:
-    - path: logs/IQI/bo_iqi_t0005/checkpoint_best.pth.tar
+    - path: logs/IQI/1Dheatmap/checkpoint_best.pth.tar
       hash: md5
-      md5: ae9db3640bbfc1edfbb7e45951cd5c58
-      size: 458690983
-    - path: logs/IQI/bo_iqi_t0005/checkpoint_lastest.pth.tar
+      md5: 85c11968ba899ecb74a81f59e9120ba6
+      size: 458690713
+    - path: logs/IQI/1Dheatmap/config.yaml
       hash: md5
-      md5: 3a002d8231333a8c0d0823c8a189ec4a
-      size: 458690983
-    - path: logs/IQI/bo_iqi_t0005/config.yaml
+      md5: e9419bf81a4fea3351aa210025ad7329
+      size: 1285
+    - path: logs/IQI/1Dheatmap/metrics.json
       hash: md5
-      md5: 0828210b39231cb9be213dab2b28004c
-      size: 1386
-    - path: logs/IQI/bo_iqi_t0005/loss.csv
-      hash: md5
-      md5: e320c2f55a422075622570a2da380943
-      size: 982
-    - path: logs/IQI/bo_iqi_t0005/metrics.json
-      hash: md5
-      md5: 1bd93e7e0e4b8e5ccfa8465abb4650cc
-      size: 89
-    - path: logs/IQI/bo_iqi_t0005/precision.csv
-      hash: md5
-      md5: 69474447791076e3ee20a2dfe82115c7
-      size: 271
-    - path: logs/IQI/bo_iqi_t0005/train_loss.csv
-      hash: md5
-      md5: b6df20821966564903eb3419df0368ab
-      size: 900
+      md5: a61669dd4e61c229c1336e7439fabce0
+      size: 87
   preprocess:
     cmd: "python dataset/weld.py --label_dir IQIdata/ori/label --img_dir IQIdata/ori/img
-      --out_dir IQIdata/processed_1D_32 --val_ratio 0.1 --seed 0 --angle_thresh 50
-      --heatmap_resolution 16 --input_resolution_h 256 --input_resolution_w 256\n"
+      --out_dir IQIdata/processed --val_ratio 0.1 --seed 0 --angle_thresh 50 --heatmap_resolution
+      128 --input_resolution_h 256 --input_resolution_w 256\n"
     deps:
     - path: IQIdata/ori/img
       hash: md5
@@ -98,8 +82,8 @@ stages:
       md5: bd6641914b19c8508f73a465b0bc146c
       size: 14424
     outs:
-    - path: IQIdata/processed_1D_32
+    - path: IQIdata/processed
       hash: md5
-      md5: edba4e11e9250bd9cad0e86f5a3a8b0f.dir
-      size: 75285012
+      md5: 4051b8abe9b94a0a9b75e0e7e239f664.dir
+      size: 75327560
       nfiles: 3928

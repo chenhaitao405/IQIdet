@@ -1,11 +1,11 @@
 data:
   label_dir: IQIdata/ori/label
   img_dir: IQIdata/ori/img
-  processed_dir: IQIdata/processed_1D_32
+  processed_dir: IQIdata/processed
   dataname: IQI
 
 preprocess:
-  heatmap_resolution: 32
+  heatmap_resolution: 128
   input_resolution_h: 256
   input_resolution_w: 256
   val_ratio: 0.1
@@ -16,13 +16,14 @@ preprocess:
 
 train:
   logdir: logs/IQI
-  run_name: HR_1D_softlabel_v2
+  run_name: 1Dheatmap
   batch_size: 64
-  eval_batch_size: 2
+  eval_batch_size: 64
   lr: 0.004
-  max_epoch: 300
+  max_epoch: 400
   num_workers: 8
-  validation_interval: 20000
+  validation_interval: 6400
+  early_stop: 1
   visual_num: 2
   stage1: fclip
   delta: 0.8
@@ -30,7 +31,7 @@ train:
   s_nms: 2
 
 loss:
-  lcmap_weight: 3.0
+  lcmap_weight: 4.0
   lcoff_weight: 0.25
   lleng_weight: 0.0
   angle_weight: 1.0

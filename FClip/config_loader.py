@@ -50,6 +50,8 @@ def load_configs(model_yaml="config/model.yaml", params_yaml="params.yaml", ckpt
         C.io.visual_num = train.visual_num
     if "run_name" in train:
         C.io.run_name = train.run_name
+    if "early_stop" in train:
+        C.io.early_stop = train.early_stop
 
     # model params
     if "batch_size" in train:

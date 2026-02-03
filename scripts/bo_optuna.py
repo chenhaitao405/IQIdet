@@ -41,10 +41,15 @@ def load_yaml(path):
         return yaml_loader.load(f)
 
 
-def ensure_pair(value, name):
-    if not isinstance(value, (list, tuple)) or len(value) != 2:
-        raise ValueError(f"{name} must be a pair like [H, W], got: {value}")
-    return int(value[0]), int(value[1])
+def _decode_pair(value, name):
+    if isinstance(value, str):
+        if "x" not in value:
+            raise ValueError(f"{name} string must be like '256x256', got: {value}")
+        h, w = value.lower().split("x", 1)
+        return int(float(h)), int(float(w))
+    if isinstance(value, (list, tuple)) and len(value) == 2:
+        return int(value[0]), int(value[1])
+    raise ValueError(f"{name} must be a pair like [H, W] or 'HxW', got: {value}")
 
 
 def _as_float(value, name, field):
@@ -61,10 +66,14 @@ def _as_float(value, name, field):
 def _normalize_categorical(values):
     normalized = []
     for v in values:
-        if isinstance(v, list):
-            normalized.append(tuple(v))
-        else:
-            normalized.append(v)
+        if isinstance(v, (list, tuple)) and len(v) == 2:
+            try:
+                h, w = int(v[0]), int(v[1])
+                normalized.append(f"{h}x{w}")
+                continue
+            except Exception:
+                pass
+        normalized.append(v)
     return normalized
 
 
@@ -102,7 +111,7 @@ def build_dvc_cmd(params, run_name, processed_dir_template=None):
         _set("preprocess.heatmap_resolution", params["heatmap_resolution"])
 
     if "input_resolution" in params:
-        h, w = ensure_pair(params["input_resolution"], "input_resolution")
+        h, w = _decode_pair(params["input_resolution"], "input_resolution")
         _set("preprocess.input_resolution_h", h)
         _set("preprocess.input_resolution_w", w)
 
@@ -121,7 +130,7 @@ def build_dvc_cmd(params, run_name, processed_dir_template=None):
             _set(f"loss.{key}", params[key])
 
     if processed_dir_template:
-        h, w = ensure_pair(params["input_resolution"], "input_resolution")
+        h, w = _decode_pair(params["input_resolution"], "input_resolution")
         processed_dir = processed_dir_template.format(
             heatmap_resolution=params["heatmap_resolution"],
             input_resolution=f"{h}x{w}",
@@ -157,6 +166,14 @@ def main():
     space = bo_cfg.get("bo", {})
     if not space:
         raise ValueError(f"No 'bo' section found in {args.bo_config}")
+    allowed = {"heatmap_resolution", "input_resolution"}
+    ignored = [k for k in space.keys() if k not in allowed]
+    if ignored:
+        print(f"Ignore BO keys (not in {sorted(allowed)}): {ignored}")
+    space = {k: v for k, v in space.items() if k in allowed}
+    missing = [k for k in allowed if k not in space]
+    if missing:
+        raise ValueError(f"Missing required BO keys in {args.bo_config}: {missing}")
 
     params_cfg = load_yaml(args.params) or {}
     logdir = params_cfg.get("train", {}).get("logdir", "logs")
