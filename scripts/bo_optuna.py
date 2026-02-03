@@ -181,7 +181,20 @@ def main():
     os.makedirs(args.out_dir, exist_ok=True)
     result_path = os.path.join(args.out_dir, f"{args.study_name}.jsonl")
 
-    sampler = optuna.samplers.TPESampler(seed=args.seed)
+    grid_space = {}
+    for name, spec in space.items():
+        if spec.get("type") != "categorical":
+            raise ValueError(f"GridSampler requires categorical values for {name}.")
+        grid_space[name] = _normalize_categorical(spec["values"])
+
+    grid_size = 1
+    for values in grid_space.values():
+        grid_size *= max(len(values), 1)
+    if args.n_trials > grid_size:
+        print(f"n_trials ({args.n_trials}) > grid size ({grid_size}), set to {grid_size}.")
+        args.n_trials = grid_size
+
+    sampler = optuna.samplers.GridSampler(grid_space)
     storage = args.storage.strip()
     if not storage:
         db_path = os.path.join(args.out_dir, f"{args.study_name}.db")
@@ -211,7 +224,7 @@ def main():
         duration = time.time() - start
 
         precision = None
-        metrics_path = os.path.join(logdir, run_name, "metrics.json")
+        metrics_path = os.path.join("metrics", "metrics.json")
         if ret.returncode == 0 and os.path.exists(metrics_path):
             with open(metrics_path, "r", encoding="utf-8") as f:
                 metrics = json.load(f)

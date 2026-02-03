@@ -29,13 +29,13 @@ stages:
     deps:
     - path: FClip
       hash: md5
-      md5: ee2f973c9404662fb10b750036a2b90c.dir
+      md5: 43f493233d3e69065d8191f4b2bf7c95.dir
       size: 436900
       nfiles: 41
     - path: IQIdata/processed
       hash: md5
-      md5: 4051b8abe9b94a0a9b75e0e7e239f664.dir
-      size: 75327560
+      md5: 11036d7257d0a601fb374b25c582e85c.dir
+      size: 23043436
       nfiles: 3928
     - path: config/model.yaml
       hash: md5
@@ -43,29 +43,29 @@ stages:
       size: 876
     - path: params.yaml
       hash: md5
-      md5: ce6b2260f975514dc31a81175110ecec
-      size: 778
+      md5: 5d460b0eda2deaf480e65940a14917e6
+      size: 784
     - path: train.py
       hash: md5
       md5: 85096735c61ffb4adcb6f32000fad887
       size: 7643
     outs:
-    - path: logs/IQI/1Dheatmap/checkpoint_best.pth.tar
+    - path: logs/IQI/bo_iqi_res_t0022/checkpoint_best.pth.tar
       hash: md5
-      md5: 85c11968ba899ecb74a81f59e9120ba6
-      size: 458690713
-    - path: logs/IQI/1Dheatmap/config.yaml
+      md5: a81310d32d86fdcf7e2f3512e3fb1886
+      size: 458690983
+    - path: logs/IQI/bo_iqi_res_t0022/config.yaml
       hash: md5
-      md5: e9419bf81a4fea3351aa210025ad7329
-      size: 1285
-    - path: logs/IQI/1Dheatmap/metrics.json
+      md5: 11e95268c0391a788b91a3863814b55a
+      size: 1298
+    - path: logs/IQI/bo_iqi_res_t0022/metrics.json
       hash: md5
-      md5: a61669dd4e61c229c1336e7439fabce0
+      md5: d342a1521ee7335f7d33469cb6d6a727
       size: 87
   preprocess:
     cmd: "python dataset/weld.py --label_dir IQIdata/ori/label --img_dir IQIdata/ori/img
       --out_dir IQIdata/processed --val_ratio 0.1 --seed 0 --angle_thresh 50 --heatmap_resolution
-      128 --input_resolution_h 256 --input_resolution_w 256\n"
+      64 --input_resolution_h 128 --input_resolution_w 128\n"
     deps:
     - path: IQIdata/ori/img
       hash: md5
@@ -84,6 +84,6 @@ stages:
     outs:
     - path: IQIdata/processed
       hash: md5
-      md5: 4051b8abe9b94a0a9b75e0e7e239f664.dir
-      size: 75327560
+      md5: 11036d7257d0a601fb374b25c582e85c.dir
+      size: 23043436
       nfiles: 3928

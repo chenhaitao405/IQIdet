@@ -19,7 +19,7 @@ Options:
    --eval_batch_size <n>           Override eval batch size.
    --lr <lr>                       Override learning rate.
    --max_epoch <n>                 Override max epochs.
-   --metrics_path <path>           Override metrics.json output path.
+   --metrics_path <path>           Override metrics.json output path. [default: metrics/metrics.json]
 """
 
 import os
@@ -120,6 +120,10 @@ def main():
         C.optim.lr = float(args["--lr"])
     if args["--max_epoch"]:
         C.optim.max_epoch = int(args["--max_epoch"])
+    metrics_path = args["--metrics_path"] or "metrics/metrics.json"
+    metrics_dir = osp.dirname(metrics_path)
+    if metrics_dir:
+        os.makedirs(metrics_dir, exist_ok=True)
     M.update(C.model)
     pprint.pprint(C, indent=4)
     resume_from = C.io.resume_from
@@ -225,7 +229,7 @@ def main():
             bml=best_mean_loss,
             best_precision=best_precision,
             best_epoch=best_epoch,
-            metrics_path=args["--metrics_path"],
+            metrics_path=metrics_path,
         )
 
     try:
