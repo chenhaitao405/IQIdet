@@ -5,9 +5,9 @@ data:
   dataname: IQI
 
 preprocess:
-  heatmap_resolution: 64
-  input_resolution_h: 128
-  input_resolution_w: 128
+  heatmap_resolution: 32
+  input_resolution_h: 256
+  input_resolution_w: 256
   val_ratio: 0.1
   seed: 0
   angle_thresh: 50
@@ -16,7 +16,7 @@ preprocess:
 
 train:
   logdir: logs/IQI
-  run_name: bo_iqi_res_v2_t0000
+  run_name: bo_iqi_res_v2_t0002
   batch_size: 64
   eval_batch_size: 64
   lr: 0.004
