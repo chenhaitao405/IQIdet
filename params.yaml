@@ -16,7 +16,7 @@ preprocess:
 
 train:
   logdir: logs/IQI
-  run_name: iqi3_iqi_bo_t0012
+  run_name: HR_1D_softlabel
   batch_size: 64
   eval_batch_size: 64
   lr: 0.004
@@ -31,12 +31,12 @@ train:
   s_nms: 2
 
 loss:
-  lcmap_weight: 1.5
+  lcmap_weight: 3
   lcoff_weight: 0.25
   lleng_weight: 0.0
   angle_weight: 1.0
-  count_weight: 2.35
-  count_sigma: 0.8
+  count_weight: 1
+  count_sigma: 1
 
 optim:
   name: Adam
