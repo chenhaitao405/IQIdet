@@ -11,3 +11,4 @@ metrics
 IQIdata/processed_1Dmetrics/metrics.json
 IQIdata/gauge_obb
 *.pt
+/outputs
