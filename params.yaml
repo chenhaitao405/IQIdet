@@ -16,7 +16,7 @@ preprocess:
 
 train:
   logdir: logs/IQI
-  run_name: HR_1D_softlabel
+  run_name: HR_1D_0204
   batch_size: 64
   eval_batch_size: 64
   lr: 0.004
