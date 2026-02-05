@@ -521,14 +521,14 @@ def tprint(*args):
 
 def get_hr_config():
     cfg = Box()
-    if M.width == 32:
-        hr_yaml = "config/w32_384x288_adam_lr1e-3.yaml"
-        if not os.path.isfile(hr_yaml):
-            raise ValueError("change the hr_yaml to your own path.")
-    # elif M.width == 48:
-    #     hr_yaml = "/home/dxl/Code/faster-lcnn-master/config/w48_384x288_adam_lr1e-3.yaml"
-    else:
-        raise ValueError("no")
+    hr_yaml = getattr(M, "hrnet_config", None)
+    if not hr_yaml:
+        if M.width == 32:
+            hr_yaml = "config/hrnet_w32.yaml"
+        else:
+            raise ValueError("Unsupported hrnet width; set model.hrnet_config.")
+    if not os.path.isfile(hr_yaml):
+        raise ValueError(f"hrnet config not found: {hr_yaml}")
 
     cfg.update(cfg.from_yaml(filename=hr_yaml))
 

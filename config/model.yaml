@@ -11,6 +11,7 @@ model:
   backbone: hrnet   # hrnet,  hrn·et_line
   num_stacks: 1
   width: 32  # 32
+  hrnet_config: config/hrnet_w32.yaml
 
   head_net: [raw, raw, raw, raw, raw]  # see MultitaskHead for details  raw, mask, raw_upsampler, line
   head:               #loss权重放在params.yaml中

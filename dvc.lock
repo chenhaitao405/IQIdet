@@ -84,3 +84,88 @@ stages:
       md5: fa2904cc91a1ff6aec111f55685abd6c.dir
       size: 85441850
       nfiles: 4368
+  preprocess_fclip:
+    cmd: "python dataset/weld.py --label_dir IQIdata/ori/label --img_dir IQIdata/ori/img
+      --out_dir IQIdata/processed --val_ratio 0.1 --seed 0 --angle_thresh 50 --heatmap_resolution
+      64 --input_resolution_h 256 --input_resolution_w 256\n"
+    deps:
+    - path: IQIdata/ori/img
+      hash: md5
+      md5: ea3f1fd9146ac77104f6c546e77bc006.dir
+      size: 600913307
+      nfiles: 511
+    - path: IQIdata/ori/label
+      hash: md5
+      md5: 6a55f5b7b7a6162e750fd5abb9d92dc4.dir
+      size: 281880216
+      nfiles: 505
+    - path: dataset/weld.py
+      hash: md5
+      md5: bd6641914b19c8508f73a465b0bc146c
+      size: 14424
+    outs:
+    - path: IQIdata/processed
+      hash: md5
+      md5: fa2904cc91a1ff6aec111f55685abd6c.dir
+      size: 85441850
+      nfiles: 4368
+  gauge_preprocess:
+    cmd: "python gauge/data/convert_to_yolo_obb.py --label_dir IQIdata/ori/label --img_dir
+      IQIdata/ori/img --out_dir IQIdata/gauge_obb --val_ratio 0.1 --seed 0 --class_name
+      IQI --label_filter=\n"
+    deps:
+    - path: IQIdata/ori/img
+      hash: md5
+      md5: ea3f1fd9146ac77104f6c546e77bc006.dir
+      size: 600913307
+      nfiles: 511
+    - path: IQIdata/ori/label
+      hash: md5
+      md5: 6a55f5b7b7a6162e750fd5abb9d92dc4.dir
+      size: 281880216
+      nfiles: 505
+    - path: gauge/data/convert_to_yolo_obb.py
+      hash: md5
+      md5: e611bf21a5c4d74c4f003e83d6a5133a
+      size: 5064
+    outs:
+    - path: IQIdata/gauge_obb
+      hash: md5
+      md5: d0af839fac813799b43b3d89045aff0b.dir
+      size: 596196588
+      nfiles: 1011
+  train_fclip:
+    cmd: "python -m FClip.train -d 0 -i HR config/model.yaml --params params.yaml
+      --metrics_path metrics/metrics.json\n"
+    deps:
+    - path: FClip
+      hash: md5
+      md5: fc121221ea25bf22c8be9199d6f1e3a0.dir
+      size: 437793
+      nfiles: 42
+    - path: IQIdata/processed
+      hash: md5
+      md5: fa2904cc91a1ff6aec111f55685abd6c.dir
+      size: 85441850
+      nfiles: 4368
+    - path: config/model.yaml
+      hash: md5
+      md5: f58df7dd1c017e0e01c83c1a302ea8c3
+      size: 914
+    - path: params.yaml
+      hash: md5
+      md5: c10d44de4d84f5319f2b84b55bf23ec4
+      size: 842
+    outs:
+    - path: logs/IQI/HR_1D_0204_test2/checkpoint_best.pth.tar
+      hash: md5
+      md5: cd32ab47306daf15f7cb2f480c7dba69
+      size: 458690983
+    - path: logs/IQI/HR_1D_0204_test2/config.yaml
+      hash: md5
+      md5: a9cc53e8307643a4426e0b3eb8c0ee53
+      size: 1330
+    - path: metrics/metrics.json
+      hash: md5
+      md5: ae4c033ea714780e936d8435e23d6624
+      size: 89

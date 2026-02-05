@@ -153,11 +153,14 @@ def read_metric(metrics_path: Path, metric_key: str) -> float:
 
 def build_dvc_command(
     dvc_bin: str,
+    stage: str,
     exp_name: str,
     overrides: dict,
     use_exp_name: bool,
 ) -> list[str]:
     cmd = [dvc_bin, "exp", "run"]
+    if stage:
+        cmd.append(stage)
     if use_exp_name:
         cmd.extend(["--name", exp_name])
     for key, value in overrides.items():
@@ -181,6 +184,7 @@ def main() -> int:
     parser.add_argument("--dvc-bin", default="dvc")
     parser.add_argument("--name-experiments", action="store_true", help="Pass --name to dvc exp run")
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--stage", default="train_fclip", help="DVC stage to run")
     args = parser.parse_args()
 
     if args.resume and not args.storage:
@@ -225,7 +229,7 @@ def main() -> int:
         trial.set_user_attr("run_name", run_name)
         trial.set_user_attr("exp_name", exp_name)
 
-        cmd = build_dvc_command(args.dvc_bin, exp_name, dvc_overrides, args.name_experiments)
+        cmd = build_dvc_command(args.dvc_bin, args.stage, exp_name, dvc_overrides, args.name_experiments)
         print("Running:", " ".join(cmd), flush=True)
         try:
             subprocess.run(cmd, check=True)

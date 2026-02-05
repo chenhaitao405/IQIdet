@@ -163,7 +163,9 @@ def main():
     outdir = get_outdir(args["--identifier"], run_name=run_name)
     print("outdir:", outdir)
     if M.backbone in ["hrnet"]:
-        shutil.copy("config/w32_384x288_adam_lr1e-3.yaml", f"{outdir}/w32_384x288_adam_lr1e-3.yaml")
+        hr_cfg = getattr(M, "hrnet_config", "")
+        if hr_cfg and osp.isfile(hr_cfg):
+            shutil.copy(hr_cfg, osp.join(outdir, osp.basename(hr_cfg)))
 
     iteration = 0
     epoch = 0

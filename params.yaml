@@ -16,8 +16,8 @@ preprocess:
 
 train:
   logdir: logs/IQI
-  run_name: HR_1D_0204_test
-  batch_size: 32
+  run_name: HR_1D_0204_test2
+  batch_size: 64
   eval_batch_size: 64
   lr: 0.004
   max_epoch: 400
@@ -46,3 +46,35 @@ optim:
   lr_decay_epoch:
   - 240
   - 280
+gauge_preprocess:
+  out_dir: IQIdata/gauge_obb
+  val_ratio: 0.1
+  seed: 0
+  class_name: IQI
+  label_filter: ''
+
+gauge_train:
+  model: yolo26n-obb.pt
+  data: IQIdata/gauge_obb/data.yaml
+  run_name: test1
+  project: logs/gauge
+  imgsz: 640
+  batch: 16
+  epochs: 200
+  resume:
+  device: 0
+  workers: 8
+  seed: 0
+  patience: 50
+  optimizer: SGD
+  lr0: 0.01
+  lrf: 0.01
+  momentum: 0.937
+  weight_decay: 0.0005
+  amp: true
+  cache: false
+  val: true
+  save_period: -1
+  augment: gauge/config/augment.yaml
+  metrics_path: metrics/gauge_metrics.json
+  extra_args: {}
