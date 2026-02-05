@@ -35,33 +35,33 @@ stages:
       nfiles: 41
     - path: IQIdata/processed
       hash: md5
-      md5: 8e2aa4791e2851489177394529824dca.dir
-      size: 75306313
-      nfiles: 3928
+      md5: fa2904cc91a1ff6aec111f55685abd6c.dir
+      size: 85441850
+      nfiles: 4368
     - path: config/model.yaml
       hash: md5
       md5: cc0d929a7d4ca71770bc87a771cade37
       size: 876
     - path: params.yaml
       hash: md5
-      md5: ac96b9c8b836d07f08210b2c59745139
-      size: 777
+      md5: 914e34f3e3ed245220707fe31d88ac21
+      size: 772
     - path: train.py
       hash: md5
       md5: 6f14bc2538af64da13049b6a7e19f16c
       size: 7845
     outs:
-    - path: logs/IQI/HR_1D_softlabel/checkpoint_best.pth.tar
+    - path: logs/IQI/HR_1D_0204/checkpoint_best.pth.tar
       hash: md5
-      md5: 81ab9e581f27e6d1fd2c5fbfb6dbf7c5
+      md5: cd32ab47306daf15f7cb2f480c7dba69
       size: 458690983
-    - path: logs/IQI/HR_1D_softlabel/config.yaml
+    - path: logs/IQI/HR_1D_0204/config.yaml
       hash: md5
-      md5: 91b70f3dc3a522b02c5debaadb9d1ad1
-      size: 1290
+      md5: ac913b1ce876815b88a68a6bd4dc7a68
+      size: 1280
     - path: metrics/metrics.json
       hash: md5
-      md5: 07e36417395fb60853dd4cb4e4e64a0e
+      md5: ae4c033ea714780e936d8435e23d6624
       size: 89
   preprocess:
     cmd: "python dataset/weld.py --label_dir IQIdata/ori/label --img_dir IQIdata/ori/img
