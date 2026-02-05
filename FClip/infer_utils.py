@@ -4,7 +4,7 @@ import torch
 
 from FClip.config import C, M
 from FClip.config_loader import load_configs
-from FClip.models import MultitaskHead, hg, hgl, hr
+from FClip.models import MultitaskHead, hr
 from FClip.models.stage_1 import FClip
 from FClip.line_parsing import OneStageLineParsing
 
@@ -15,29 +15,13 @@ def load_config_from_yaml(config_file, params_yaml="params.yaml", ckpt=None):
 
 
 def build_infer_model(device):
-    if M.backbone == "stacked_hourglass":
-        model = hg(
-            depth=M.depth,
-            head=lambda c_in, c_out: MultitaskHead(c_in, c_out),
-            num_stacks=M.num_stacks,
-            num_blocks=M.num_blocks,
-            num_classes=sum(sum(MultitaskHead._get_head_size(), [])),
-        )
-    elif M.backbone == "hourglass_lines":
-        model = hgl(
-            depth=M.depth,
-            head=lambda c_in, c_out: MultitaskHead(c_in, c_out),
-            num_stacks=M.num_stacks,
-            num_blocks=M.num_blocks,
-            num_classes=sum(sum(MultitaskHead._get_head_size(), [])),
-        )
-    elif M.backbone == "hrnet":
+    if M.backbone == "hrnet":
         model = hr(
             head=lambda c_in, c_out: MultitaskHead(c_in, c_out),
             num_classes=sum(sum(MultitaskHead._get_head_size(), [])),
         )
     else:
-        raise NotImplementedError
+        raise NotImplementedError("Only hrnet backbone is supported in this refactor.")
 
     model = FClip(model)
     model.to(device)

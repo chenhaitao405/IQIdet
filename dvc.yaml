@@ -21,11 +21,10 @@ stages:
 
   train:
     cmd: >
-      python train.py -d 0 -i HR config/model.yaml
+      python -m FClip.train -d 0 -i HR config/model.yaml
       --params params.yaml
       --metrics_path metrics/metrics.json
     deps:
-      - train.py
       - FClip
       - config/model.yaml
       - params.yaml

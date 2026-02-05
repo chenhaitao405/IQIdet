@@ -16,8 +16,8 @@ preprocess:
 
 train:
   logdir: logs/IQI
-  run_name: HR_1D_0204
-  batch_size: 64
+  run_name: HR_1D_0204_test
+  batch_size: 32
   eval_batch_size: 64
   lr: 0.004
   max_epoch: 400

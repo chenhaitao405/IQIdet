@@ -1,7 +1,5 @@
 # flake8: noqa
-from .hourglass_pose import hg
 from .pose_hrnet import get_pose_net as hr
-from .hourglass_line import hg as hgl
 from FClip.config import M
 import torch.nn as nn
 import torch
@@ -127,4 +125,3 @@ class MultitaskHead(nn.Module):
 
     def forward(self, x):
         return torch.cat([head(x) for head in self.heads], dim=1)
-

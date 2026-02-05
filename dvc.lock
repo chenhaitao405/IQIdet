@@ -25,14 +25,14 @@ stages:
       size: 75306313
       nfiles: 3928
   train:
-    cmd: "python train.py -d 0 -i HR config/model.yaml --params params.yaml --metrics_path
-      metrics/metrics.json\n"
+    cmd: "python -m FClip.train -d 0 -i HR config/model.yaml --params params.yaml
+      --metrics_path metrics/metrics.json\n"
     deps:
     - path: FClip
       hash: md5
-      md5: 43f493233d3e69065d8191f4b2bf7c95.dir
-      size: 436900
-      nfiles: 41
+      md5: ef75006f36b8ad563a741220dee8f194.dir
+      size: 437433
+      nfiles: 42
     - path: IQIdata/processed
       hash: md5
       md5: fa2904cc91a1ff6aec111f55685abd6c.dir
@@ -44,25 +44,21 @@ stages:
       size: 876
     - path: params.yaml
       hash: md5
-      md5: 914e34f3e3ed245220707fe31d88ac21
-      size: 772
-    - path: train.py
-      hash: md5
-      md5: 6f14bc2538af64da13049b6a7e19f16c
-      size: 7845
+      md5: 616a7707a7a57b0ad47974beb4443504
+      size: 777
     outs:
-    - path: logs/IQI/HR_1D_0204/checkpoint_best.pth.tar
+    - path: logs/IQI/HR_1D_0204_test/checkpoint_best.pth.tar
       hash: md5
-      md5: cd32ab47306daf15f7cb2f480c7dba69
-      size: 458690983
-    - path: logs/IQI/HR_1D_0204/config.yaml
+      md5: df6342942a880dcf04a05f52f5f766c4
+      size: 458690713
+    - path: logs/IQI/HR_1D_0204_test/config.yaml
       hash: md5
-      md5: ac913b1ce876815b88a68a6bd4dc7a68
-      size: 1280
+      md5: 1a6c39e4a039c31363ede542db5bb9a1
+      size: 1290
     - path: metrics/metrics.json
       hash: md5
-      md5: ae4c033ea714780e936d8435e23d6624
-      size: 89
+      md5: 871cc672d0450776b54cb91b03bfa01f
+      size: 87
   preprocess:
     cmd: "python dataset/weld.py --label_dir IQIdata/ori/label --img_dir IQIdata/ori/img
       --out_dir IQIdata/processed --val_ratio 0.1 --seed 0 --angle_thresh 50 --heatmap_resolution
