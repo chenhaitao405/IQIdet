@@ -131,18 +131,18 @@ stages:
     outs:
     - path: IQIdata/gauge_obb
       hash: md5
-      md5: d0af839fac813799b43b3d89045aff0b.dir
-      size: 596196588
-      nfiles: 1011
+      md5: c134ab930e10e98a91efcbedc32631e9.dir
+      size: 596336134
+      nfiles: 1013
   train_fclip:
     cmd: "python -m FClip.train -d 0 -i HR config/model.yaml --params params.yaml
       --metrics_path metrics/metrics.json\n"
     deps:
     - path: FClip
       hash: md5
-      md5: fc121221ea25bf22c8be9199d6f1e3a0.dir
-      size: 437793
-      nfiles: 42
+      md5: ca79d63c00ead2bb026e09fc4c6bf207.dir
+      size: 434396
+      nfiles: 41
     - path: IQIdata/processed
       hash: md5
       md5: fa2904cc91a1ff6aec111f55685abd6c.dir
@@ -154,8 +154,8 @@ stages:
       size: 914
     - path: params.yaml
       hash: md5
-      md5: c10d44de4d84f5319f2b84b55bf23ec4
-      size: 842
+      md5: bfcbb1acd4a06f8c1b11bb077f8dc387
+      size: 1338
     outs:
     - path: logs/IQI/HR_1D_0204_test2/checkpoint_best.pth.tar
       hash: md5
@@ -169,3 +169,42 @@ stages:
       hash: md5
       md5: ae4c033ea714780e936d8435e23d6624
       size: 89
+  train_gauge:
+    cmd: "python gauge/train.py --params params.yaml --augment gauge/config/augment.yaml
+      --metrics-path metrics/gauge_metrics.json\n"
+    deps:
+    - path: IQIdata/gauge_obb
+      hash: md5
+      md5: c134ab930e10e98a91efcbedc32631e9.dir
+      size: 596336134
+      nfiles: 1013
+    - path: IQIdata/gauge_obb/data.yaml
+      hash: md5
+      md5: 44010cd1d3195a66733d8b5136f15f5e
+      size: 76
+    - path: gauge/config/augment.yaml
+      hash: md5
+      md5: 18073c9d3f1b03aad57f70cdac6aed42
+      size: 165
+    - path: gauge/train.py
+      hash: md5
+      md5: 3e339bd29aa872fa0354541158b48e07
+      size: 5048
+    - path: params.yaml
+      hash: md5
+      md5: bfcbb1acd4a06f8c1b11bb077f8dc387
+      size: 1338
+    - path: yolo26n-obb.pt
+      hash: md5
+      md5: be4d297dc7a09f0b481816c92b2f6b72
+      size: 5907357
+    outs:
+    - path: logs/gauge/test1
+      hash: md5
+      md5: 9f4b714e4b6f95cfd9da60bf340b1314.dir
+      size: 23468161
+      nfiles: 8
+    - path: metrics/gauge_metrics.json
+      hash: md5
+      md5: cda340825d10de874e36e11caeec050c
+      size: 553

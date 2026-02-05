@@ -12,7 +12,7 @@ from FClip.infer_utils import (
 )
 
 
-def evaluate_count_precision(
+def evaluate_count_statistics(
     model,
     val_loader,
     device,
@@ -24,6 +24,7 @@ def evaluate_count_precision(
     model.eval()
     correct = 0
     total = 0
+    errors = []
 
     if vis:
         if vis_dir is None or image_getter is None:
@@ -45,7 +46,9 @@ def evaluate_count_precision(
                 raise ValueError("Model outputs missing count head.")
             gt = target["count"].to(pred.device)
 
-            correct += (pred == gt).sum().item()
+            diff = (pred - gt).abs()
+            errors.extend(diff.detach().cpu().tolist())
+            correct += (diff == 0).sum().item()
             total += gt.numel()
 
             if vis:
@@ -80,4 +83,25 @@ def evaluate_count_precision(
                     cv.imwrite(os.path.join(out_dir, f"{index:06}.png"), img)
 
     precision = correct / max(total, 1)
+    return precision, errors
+
+
+def evaluate_count_precision(
+    model,
+    val_loader,
+    device,
+    threshold=0.4,
+    vis=False,
+    vis_dir=None,
+    image_getter=None,
+):
+    precision, _errors = evaluate_count_statistics(
+        model=model,
+        val_loader=val_loader,
+        device=device,
+        threshold=threshold,
+        vis=vis,
+        vis_dir=vis_dir,
+        image_getter=image_getter,
+    )
     return precision
