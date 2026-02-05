@@ -140,8 +140,8 @@ stages:
     deps:
     - path: FClip
       hash: md5
-      md5: ca79d63c00ead2bb026e09fc4c6bf207.dir
-      size: 434396
+      md5: 67c94a62d2ffca92bf6ac944ce017ff6.dir
+      size: 435605
       nfiles: 41
     - path: IQIdata/processed
       hash: md5
@@ -154,8 +154,8 @@ stages:
       size: 914
     - path: params.yaml
       hash: md5
-      md5: bfcbb1acd4a06f8c1b11bb077f8dc387
-      size: 1338
+      md5: 7674c86d00d09bab46ce2f80842ad0de
+      size: 1339
     outs:
     - path: logs/IQI/HR_1D_0204_test2/checkpoint_best.pth.tar
       hash: md5
@@ -192,17 +192,17 @@ stages:
       size: 5048
     - path: params.yaml
       hash: md5
-      md5: bfcbb1acd4a06f8c1b11bb077f8dc387
-      size: 1338
+      md5: 7674c86d00d09bab46ce2f80842ad0de
+      size: 1339
     - path: yolo26n-obb.pt
       hash: md5
       md5: be4d297dc7a09f0b481816c92b2f6b72
       size: 5907357
     outs:
-    - path: logs/gauge/test1
+    - path: logs/gauge/gauge3
       hash: md5
-      md5: 9f4b714e4b6f95cfd9da60bf340b1314.dir
-      size: 23468161
+      md5: ce1feb0a0cc22bf4c73e92d3cc4ee556.dir
+      size: 23445079
       nfiles: 8
     - path: metrics/gauge_metrics.json
       hash: md5
