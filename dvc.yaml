@@ -37,7 +37,7 @@ stages:
 
   gauge_preprocess:
     cmd: >
-      python gauge/data/convert_to_yolo_obb.py
+      python gauge/convert_to_yolo_obb.py
       --label_dir ${data.label_dir}
       --img_dir ${data.img_dir}
       --out_dir ${gauge_preprocess.out_dir}
@@ -46,7 +46,7 @@ stages:
       --class_name ${gauge_preprocess.class_name}
       --label_filter=${gauge_preprocess.label_filter}
     deps:
-      - gauge/data/convert_to_yolo_obb.py
+      - gauge/convert_to_yolo_obb.py
       - ${data.label_dir}
       - ${data.img_dir}
     outs:
@@ -69,4 +69,5 @@ stages:
     outs:
       - logs/gauge/${gauge_train.run_name}
     metrics:
+
       - ${gauge_train.metrics_path}
