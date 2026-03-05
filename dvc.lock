@@ -140,9 +140,9 @@ stages:
     deps:
     - path: FClip
       hash: md5
-      md5: fc121221ea25bf22c8be9199d6f1e3a0.dir
-      size: 437793
-      nfiles: 42
+      md5: 1df46f8a8ed7be2fdfabc6dea3eb4402.dir
+      size: 294311
+      nfiles: 41
     - path: IQIdata/processed
       hash: md5
       md5: b6e6600d6af2160a594d3348d54197e8.dir
@@ -154,8 +154,8 @@ stages:
       size: 914
     - path: params.yaml
       hash: md5
-      md5: c10d44de4d84f5319f2b84b55bf23ec4
-      size: 842
+      md5: 937dffc42ee7d261f0675597e1d27e73
+      size: 1339
     outs:
     - path: logs/IQI/HR_1D_0204_test2/checkpoint_best.pth.tar
       hash: md5
