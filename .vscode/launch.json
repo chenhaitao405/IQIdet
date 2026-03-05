@@ -1,0 +1,23 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "single_valid: HR_1D_0204_test2",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/single_valid.py",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "args": [
+        "--devices",
+        "0",
+        "--params",
+        "params.yaml",
+        "--output_dir",
+        "logs/valid/HR_1D_0204_test2",
+        "config/model.yaml",
+        "logs/IQI/HR_1D_0204_test2/checkpoint_best.pth.tar"
+      ]
+    }
+  ]
+}
