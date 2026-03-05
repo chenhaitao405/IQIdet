@@ -56,7 +56,7 @@ gauge_preprocess:
 gauge_train:
   model: yolo26n-obb.pt
   data: IQIdata/gauge_obb/data.yaml
-  run_name: gauge3
+  run_name: gauge2
   project: logs/gauge
   imgsz: 640
   batch: 16
