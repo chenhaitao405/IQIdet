@@ -201,9 +201,9 @@ stages:
     outs:
     - path: logs/gauge/gauge3
       hash: md5
-      md5: ce1feb0a0cc22bf4c73e92d3cc4ee556.dir
-      size: 23445079
-      nfiles: 8
+      md5: 2cadde448819bfdaa8f7535292c422ae.dir
+      size: 22445985
+      nfiles: 4
     - path: metrics/gauge_metrics.json
       hash: md5
       md5: cda340825d10de874e36e11caeec050c
