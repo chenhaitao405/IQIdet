@@ -2,20 +2,48 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "run_inference_pipeline: processed valid",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/run_inference_pipeline.py",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "env": {
+        "QT_QPA_PLATFORM": "offscreen",
+        "MPLBACKEND": "Agg"
+      },
+      "args": [
+        "--image-dir",
+        "IQIdata/ori/img",
+        "--fclip-ckpt",
+        "local/fclip67.pth.tar",
+        "--gauge-weights",
+        "logs/gauge/gauge2/weights/best.pt",
+        "--output-dir",
+        "outputs/gauge_infer_valid",
+        "--vis"
+      ]
+    },
+    {
       "name": "single_valid: HR_1D_0204_test2",
       "type": "debugpy",
       "request": "launch",
       "program": "${workspaceFolder}/single_valid.py",
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
+      "env": {
+        "QT_QPA_PLATFORM": "offscreen",
+        "MPLBACKEND": "Agg"
+      },
       "args": [
         "--devices",
         "0",
-
         "--output_dir",
         "logs/valid/HR_1D_0204_test2",
-        "config/model.yaml",
-        "local/checkpoint_best.pth.tar"
+        "local/config.yaml",
+        "local/fclip67.pth.tar",
+        "--vis",
+        "--fig"
       ]
     }
   ]

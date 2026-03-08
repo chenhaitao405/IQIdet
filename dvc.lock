@@ -110,7 +110,7 @@ stages:
       size: 85441850
       nfiles: 4368
   gauge_preprocess:
-    cmd: "python gauge/data/convert_to_yolo_obb.py --label_dir IQIdata/ori/label --img_dir
+    cmd: "python gauge/convert_to_yolo_obb.py --label_dir IQIdata/ori/label --img_dir
       IQIdata/ori/img --out_dir IQIdata/gauge_obb --val_ratio 0.1 --seed 0 --class_name
       IQI --label_filter=\n"
     deps:
@@ -124,16 +124,16 @@ stages:
       md5: 6a55f5b7b7a6162e750fd5abb9d92dc4.dir
       size: 281880216
       nfiles: 505
-    - path: gauge/data/convert_to_yolo_obb.py
+    - path: gauge/convert_to_yolo_obb.py
       hash: md5
       md5: e611bf21a5c4d74c4f003e83d6a5133a
       size: 5064
     outs:
     - path: IQIdata/gauge_obb
       hash: md5
-      md5: c134ab930e10e98a91efcbedc32631e9.dir
-      size: 596336134
-      nfiles: 1013
+      md5: d0af839fac813799b43b3d89045aff0b.dir
+      size: 596196588
+      nfiles: 1011
   train_fclip:
     cmd: "python -m FClip.train -d 0 -i HR config/model.yaml --params params.yaml
       --metrics_path metrics/metrics.json\n"
@@ -154,20 +154,20 @@ stages:
       size: 914
     - path: params.yaml
       hash: md5
-      md5: 937dffc42ee7d261f0675597e1d27e73
-      size: 1339
+      md5: 7401c392b5bd2724833478ff61ce67f1
+      size: 1340
     outs:
     - path: logs/IQI/HR_1D_0204_test2/checkpoint_best.pth.tar
       hash: md5
-      md5: a78bf5f73cb1199c012cea0616df64c1
+      md5: f400326556a169450fd3867ea495d279
       size: 458690492
     - path: logs/IQI/HR_1D_0204_test2/config.yaml
       hash: md5
-      md5: a9cc53e8307643a4426e0b3eb8c0ee53
-      size: 1330
+      md5: b96f88daaeb64231be41f5a8f0e40d6d
+      size: 1331
     - path: metrics/metrics.json
       hash: md5
-      md5: 0f346522ce61adb1f3886ea797d39091
+      md5: 6e0a4d462059afad2cdc3e50205325fe
       size: 89
   train_gauge:
     cmd: "python gauge/train.py --params params.yaml --augment gauge/config/augment.yaml

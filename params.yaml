@@ -23,7 +23,7 @@ train:
   max_epoch: 400
   num_workers: 8
   validation_interval: 6400
-  early_stop: 8
+  early_stop: 16
   visual_num: 2
   stage1: fclip
   delta: 0.8
@@ -58,8 +58,8 @@ gauge_train:
   data: IQIdata/gauge_obb/data.yaml
   run_name: gauge2
   project: logs/gauge
-  imgsz: 640
-  batch: 16
+  imgsz: 1024
+  batch: 64
   epochs: 200
   resume:
   device: 0

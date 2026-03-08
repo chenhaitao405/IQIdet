@@ -1,0 +1,31 @@
+{
+    "train": {
+        "box_loss": 0.52841,
+        "cls_loss": 0.30429,
+        "dfl_loss": 0.02699,
+        "angle_loss": 0.0023
+    },
+    "metrics": {
+        "precision(B)": 1.0,
+        "recall(B)": 0.98056,
+        "mAP50(B)": 0.99466,
+        "mAP50-95(B)": 0.88083
+    },
+    "val": {
+        "box_loss": 0.58497,
+        "cls_loss": 0.18719,
+        "dfl_loss": 0.02417,
+        "angle_loss": 0.00245
+    },
+    "lr": {
+        "pg0": 0.0028225,
+        "pg1": 0.0028225,
+        "pg2": 0.0028225
+    },
+    "model": {
+        "parameters": 2647524,
+        "GFLOPs": 6.267,
+        "speed_PyTorch(ms)": 1.922
+    },
+    "step": 145
+}

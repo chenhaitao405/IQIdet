@@ -12,12 +12,12 @@ stages:
       --input_resolution_h ${preprocess.input_resolution_h}
       --input_resolution_w ${preprocess.input_resolution_w}
     deps:
-      - dataset/weld.py
-      - ${data.label_dir}
-      - ${data.img_dir}
+    - dataset/weld.py
+    - ${data.label_dir}
+    - ${data.img_dir}
     outs:
-      - ${data.processed_dir}:
-          cache: false
+    - ${data.processed_dir}:
+        cache: false
 
   train_fclip:
     cmd: >
@@ -25,15 +25,15 @@ stages:
       --params params.yaml
       --metrics_path metrics/metrics.json
     deps:
-      - FClip
-      - config/model.yaml
-      - params.yaml
-      - ${data.processed_dir}
+    - FClip
+    - config/model.yaml
+    - params.yaml
+    - ${data.processed_dir}
     outs:
-      - logs/IQI/${train.run_name}/checkpoint_best.pth.tar
-      - logs/IQI/${train.run_name}/config.yaml
+    - logs/IQI/${train.run_name}/checkpoint_best.pth.tar
+    - logs/IQI/${train.run_name}/config.yaml
     metrics:
-      - metrics/metrics.json
+    - metrics/metrics.json
 
   gauge_preprocess:
     cmd: >
@@ -46,12 +46,12 @@ stages:
       --class_name ${gauge_preprocess.class_name}
       --label_filter=${gauge_preprocess.label_filter}
     deps:
-      - gauge/convert_to_yolo_obb.py
-      - ${data.label_dir}
-      - ${data.img_dir}
+    - gauge/convert_to_yolo_obb.py
+    - ${data.label_dir}
+    - ${data.img_dir}
     outs:
-      - ${gauge_preprocess.out_dir}:
-          cache: false
+    - ${gauge_preprocess.out_dir}:
+        cache: false
 
   train_gauge:
     cmd: >
@@ -60,14 +60,22 @@ stages:
       --augment ${gauge_train.augment}
       --metrics-path ${gauge_train.metrics_path}
     deps:
-      - gauge/train.py
-      - ${gauge_train.data}
-      - ${gauge_train.model}
-      - ${gauge_train.augment}
-      - params.yaml
-      - ${gauge_preprocess.out_dir}
+    - gauge/train.py
+    - ${gauge_train.data}
+    - ${gauge_train.model}
+    - ${gauge_train.augment}
+    - params.yaml
+    - ${gauge_preprocess.out_dir}
     outs:
-      - logs/gauge/${gauge_train.run_name}
+    - logs/gauge/${gauge_train.run_name}
     metrics:
 
-      - ${gauge_train.metrics_path}
+    - ${gauge_train.metrics_path}
+params:
+- dvclive/params.yaml
+metrics:
+- dvclive/metrics.json
+plots:
+- dvclive/plots/metrics:
+    x: step
+- dvclive/plots/images
