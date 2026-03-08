@@ -13,3 +13,4 @@ IQIdata/gauge_obb
 *.pt
 /outputs
 /local
+/runs

@@ -11,6 +11,7 @@ docopt
 tqdm
 ultralytics
 optuna
+paddleocr
 
 # DVC is used by this repo's pipeline/experiments commands.
 dvc
