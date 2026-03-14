@@ -50,6 +50,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--vis", action="store_true", help="Save visualizations to output_dir/vis.")
 
     parser.add_argument("--gauge-weights", required=True, help="OBB gauge detector weights.")
+    parser.add_argument(
+        "--fclip-ckpt",
+        help="Optional FClip checkpoint. Accepted for compatibility but ignored in OCR-only stage.",
+    )
+    parser.add_argument(
+        "--fclip-device",
+        default=None,
+        help="Optional FClip device. Accepted for compatibility but ignored in OCR-only stage.",
+    )
     parser.add_argument("--gauge-conf", type=float, default=0.25, help="OBB confidence threshold.")
     parser.add_argument("--gauge-iou", type=float, default=0.45, help="OBB IoU threshold.")
     parser.add_argument("--gauge-imgsz", type=int, default=640, help="OBB inference image size.")
@@ -70,8 +79,17 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--no-rotate", action="store_true", help="Disable width>height -> CCW90 rotation.")
 
-    parser.add_argument("--ocr-device", choices=["cpu", "gpu"], default="cpu", help="PaddleOCR device.")
+    parser.add_argument("--ocr-device", choices=["cpu", "gpu"], default="gpu", help="PaddleOCR device.")
     parser.add_argument("--ocr-lang", default="en", help="PaddleOCR language.")
+    parser.add_argument(
+        "--ocr-rec-model-name",
+        default="en_PP-OCRv5_mobile_rec",
+        help="PaddleOCR text recognition model name.",
+    )
+    parser.add_argument(
+        "--ocr-rec-model-dir",
+        help="Optional local PaddleOCR text recognition model directory.",
+    )
     parser.add_argument("--ocr-min-score", type=float, default=0.0, help="Min OCR confidence score.")
     parser.add_argument("--ocr-topk", type=int, default=200, help="Top-K terms kept in OCR statistics.")
     return parser.parse_args()
@@ -151,6 +169,51 @@ def build_roi_vis_image(image: np.ndarray, roi_info: Dict[str, Any]) -> np.ndarr
     return vis
 
 
+def _get_rel_path(image_path: Path, image_root: Optional[Path]) -> Path:
+    if image_root is None:
+        return Path(image_path.name)
+    try:
+        return image_path.relative_to(image_root)
+    except ValueError:
+        return Path(image_path.name)
+
+
+def _normalize_ocr_status(status: Optional[str]) -> str:
+    value = str(status or "unknown")
+    if value in {"ok", "no_jb", "skipped_no_roi"}:
+        return value
+    return "other"
+
+
+def _build_status_sample_dir(
+    vis_dir: Path,
+    image_path: Path,
+    image_root: Optional[Path],
+    ocr_status: Optional[str],
+) -> Path:
+    rel_path = _get_rel_path(image_path, image_root)
+    status_name = _normalize_ocr_status(ocr_status)
+    return vis_dir / "ocr_status" / status_name / rel_path.with_suffix("")
+
+
+def _save_no_roi_vis_image(
+    output_dir: Path,
+    vis_dir: Path,
+    image_path: Path,
+    image_root: Optional[Path],
+    image: np.ndarray,
+    ocr_status: str = "skipped_no_roi",
+) -> Dict[str, str]:
+    sample_dir = _build_status_sample_dir(vis_dir, image_path, image_root, ocr_status)
+    ensure_dir(sample_dir)
+    src_vis_path = sample_dir / "input.png"
+    cv2.imwrite(str(src_vis_path), image)
+    return {
+        "vis_path": str(src_vis_path.relative_to(output_dir)),
+        "status_vis_path": str(src_vis_path.relative_to(output_dir)),
+    }
+
+
 def _save_vis_images(
     output_dir: Path,
     vis_dir: Path,
@@ -162,15 +225,12 @@ def _save_vis_images(
     roi_info: Dict[str, Any],
     ocr_result: Dict[str, Any],
 ) -> Dict[str, str]:
-    if image_root is None:
-        rel_path = Path(image_path.name)
-    else:
-        try:
-            rel_path = image_path.relative_to(image_root)
-        except ValueError:
-            rel_path = Path(image_path.name)
-
-    sample_dir = vis_dir / rel_path.with_suffix("")
+    sample_dir = _build_status_sample_dir(
+        vis_dir=vis_dir,
+        image_path=image_path,
+        image_root=image_root,
+        ocr_status=ocr_result.get("status"),
+    )
     ensure_dir(sample_dir)
 
     roi_vis = build_roi_vis_image(image, roi_info)
@@ -188,6 +248,7 @@ def _save_vis_images(
         "roi_vis_path": str(roi_vis_path.relative_to(output_dir)),
         "ocr_input_path": str(ocr_input_path.relative_to(output_dir)),
         "ocr_vis_path": str(ocr_vis_path.relative_to(output_dir)),
+        "status_vis_dir": str(sample_dir.relative_to(output_dir)),
     }
 
 
@@ -195,6 +256,12 @@ def main() -> None:
     args = parse_args()
     output_dir = Path(args.output_dir)
     ensure_dir(output_dir)
+
+    if args.fclip_ckpt:
+        print(
+            "[Info] 当前脚本为 OCR-only 阶段，已接收但忽略 --fclip-ckpt；"
+            "FClip 丝识别尚未在此脚本中启用。"
+        )
 
     vis_dir = output_dir / "vis"
     if args.vis:
@@ -204,7 +271,12 @@ def main() -> None:
     image_list = Path(args.image_list) if args.image_list else None
     image_paths = collect_images(image_dir, image_list, args.max_images)
 
-    ocr_engine = create_paddle_ocr(lang=args.ocr_lang, device=args.ocr_device)
+    ocr_engine = create_paddle_ocr(
+        lang=args.ocr_lang,
+        device=args.ocr_device,
+        rec_model_name=args.ocr_rec_model_name,
+        rec_model_dir=args.ocr_rec_model_dir,
+    )
     from ultralytics import YOLO
 
     gauge_model = YOLO(args.gauge_weights)
@@ -235,6 +307,17 @@ def main() -> None:
             if not yolo_result:
                 record["status"] = "no_roi"
                 record["ocr"] = {"status": "skipped_no_roi", "texts": [], "scores": [], "items": [], "num_items": 0}
+                if args.vis:
+                    record.update(
+                        _save_no_roi_vis_image(
+                            output_dir=output_dir,
+                            vis_dir=vis_dir,
+                            image_path=image_path,
+                            image_root=image_root,
+                            image=image,
+                            ocr_status="skipped_no_roi",
+                        )
+                    )
                 results.append(record)
                 continue
 
@@ -242,6 +325,17 @@ def main() -> None:
             if roi_info is None:
                 record["status"] = "no_roi"
                 record["ocr"] = {"status": "skipped_no_roi", "texts": [], "scores": [], "items": [], "num_items": 0}
+                if args.vis:
+                    record.update(
+                        _save_no_roi_vis_image(
+                            output_dir=output_dir,
+                            vis_dir=vis_dir,
+                            image_path=image_path,
+                            image_root=image_root,
+                            image=image,
+                            ocr_status="skipped_no_roi",
+                        )
+                    )
                 results.append(record)
                 continue
 
@@ -316,6 +410,8 @@ def main() -> None:
         "image_root": str(image_root) if image_root is not None else None,
         "supported_exts": list(SUPPORTED_IMAGE_EXTS),
         "gauge_weights": args.gauge_weights,
+        "fclip_ckpt": args.fclip_ckpt,
+        "fclip_device": args.fclip_device,
         "gauge_conf": args.gauge_conf,
         "gauge_iou": args.gauge_iou,
         "gauge_imgsz": args.gauge_imgsz,
@@ -325,6 +421,8 @@ def main() -> None:
         "rotation_rule": "ccw90_if_width_gt_height" if not args.no_rotate else "disabled",
         "ocr_device": args.ocr_device,
         "ocr_lang": args.ocr_lang,
+        "ocr_rec_model_name": args.ocr_rec_model_name,
+        "ocr_rec_model_dir": args.ocr_rec_model_dir,
         "ocr_min_score": args.ocr_min_score,
         "note": "OCR debug stage only; FClip stage is intentionally skipped.",
     }

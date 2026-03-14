@@ -12,14 +12,20 @@ import cv2
 import numpy as np
 
 
-def create_paddle_ocr(lang: str = "en", device: str = "cpu"):
-    """Create PaddleOCR engine close to WeldOCR/OCR_main.py usage."""
+def create_paddle_ocr(
+    lang: str = "en",
+    device: str = "gpu",
+    rec_model_name: str = "en_PP-OCRv5_mobile_rec",
+    rec_model_dir: Optional[str] = None,
+):
+    """Create PaddleOCR engine and pin the recognition model when possible."""
     device = str(device).lower()
     if device not in {"cpu", "gpu"}:
         device = "cpu"
     if device == "cpu":
         # Force Paddle to avoid GPU path in mixed torch+paddle runtime.
         os.environ["CUDA_VISIBLE_DEVICES"] = ""
+    os.environ.setdefault("PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK", "True")
 
     # Explicitly bind paddle runtime device to avoid torch+paddle GPU cudnn conflicts.
     try:
@@ -31,8 +37,7 @@ def create_paddle_ocr(lang: str = "en", device: str = "cpu"):
 
     from paddleocr import PaddleOCR
 
-    # Match WeldOCR/OCR_main.py first.
-    base_kwargs = {
+    common_kwargs = {
         "use_doc_orientation_classify": False,
         "use_doc_unwarping": False,
         "use_textline_orientation": True,
@@ -44,31 +49,53 @@ def create_paddle_ocr(lang: str = "en", device: str = "cpu"):
     except Exception:
         accepted = set()
 
-    if "lang" in accepted:
-        base_kwargs["lang"] = lang
-    if "device" in accepted:
-        base_kwargs["device"] = device
+    def accepts(name: str) -> bool:
+        return not accepted or name in accepted
 
-    # Keep lang optional as a best-effort extension.
-    try:
-        return PaddleOCR(**base_kwargs)
-    except Exception:
-        pass
+    if accepts("lang"):
+        common_kwargs["lang"] = lang
+    if accepts("device"):
+        common_kwargs["device"] = device
 
-    try:
-        fallback_kwargs = {
+    candidate_kwargs: List[Dict[str, Any]] = []
+
+    primary_kwargs = dict(common_kwargs)
+    if rec_model_name and accepts("text_recognition_model_name"):
+        primary_kwargs["text_recognition_model_name"] = rec_model_name
+    if rec_model_dir:
+        if accepts("text_recognition_model_dir"):
+            primary_kwargs["text_recognition_model_dir"] = rec_model_dir
+        elif accepts("rec_model_dir"):
+            primary_kwargs["rec_model_dir"] = rec_model_dir
+    candidate_kwargs.append(primary_kwargs)
+
+    if rec_model_dir and "text_recognition_model_name" in primary_kwargs:
+        dir_only_kwargs = dict(primary_kwargs)
+        dir_only_kwargs.pop("text_recognition_model_name", None)
+        candidate_kwargs.append(dir_only_kwargs)
+
+    candidate_kwargs.append(dict(common_kwargs))
+    candidate_kwargs.append(
+        {
             "use_doc_orientation_classify": False,
             "use_doc_unwarping": False,
             "use_textline_orientation": True,
         }
-        if "device" in accepted:
-            fallback_kwargs["device"] = device
-        if "lang" in accepted:
-            fallback_kwargs["lang"] = lang
-        return PaddleOCR(**fallback_kwargs)
-    except Exception:
-        # Last fallback: minimal default constructor.
-        return PaddleOCR()
+    )
+    candidate_kwargs.append({})
+
+    seen = set()
+    for kwargs in candidate_kwargs:
+        key = tuple(sorted(kwargs.items()))
+        if key in seen:
+            continue
+        seen.add(key)
+        try:
+            return PaddleOCR(**kwargs)
+        except Exception:
+            continue
+
+    return PaddleOCR()
 
 
 def _run_ocr_predict(ocr_engine, image: Any) -> Any:
@@ -136,12 +163,75 @@ def _parse_ocr_output(raw_output: Any, min_score: float = 0.0) -> Dict[str, Any]
     }
 
 
+def _normalize_text(text: str) -> str:
+    return "".join(ch for ch in str(text).upper() if ch.isalnum())
+
+
+def _contains_jb(text: str) -> bool:
+    return "J" in _normalize_text(text)
+
+
+def _filter_items_with_jb(items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    return [item for item in items if _contains_jb(item.get("text", ""))]
+
+
+def _mirror_items_back(items: List[Dict[str, Any]], width: int) -> List[Dict[str, Any]]:
+    mapped: List[Dict[str, Any]] = []
+    for item in items:
+        out = dict(item)
+        box = item.get("box")
+        if box is None:
+            mapped.append(out)
+            continue
+        try:
+            pts = np.array(box, dtype=np.float32).reshape(-1, 2)
+            pts[:, 0] = (width - 1) - pts[:, 0]
+            out["box"] = pts.tolist()
+        except Exception:
+            pass
+        mapped.append(out)
+    return mapped
+
+
 def infer_roi_ocr(ocr_engine, roi_image: Any, min_score: float = 0.0) -> Dict[str, Any]:
-    """Run OCR on one ROI image and return normalized result dict."""
+    """Run OCR on original + mirrored ROI, output only J-containing results."""
     try:
         ocr_input = _ensure_bgr(roi_image)
         raw_output = _run_ocr_predict(ocr_engine, ocr_input)
-        return _parse_ocr_output(raw_output, min_score=min_score)
+        original = _parse_ocr_output(raw_output, min_score=min_score)
+        original_jb = _filter_items_with_jb(original.get("items", []))
+
+        mirrored_img = cv2.flip(ocr_input, 1)
+        raw_output_m = _run_ocr_predict(ocr_engine, mirrored_img)
+        mirrored = _parse_ocr_output(raw_output_m, min_score=min_score)
+        mirrored_jb = _filter_items_with_jb(mirrored.get("items", []))
+
+        selected_variant = "none"
+        selected_items: List[Dict[str, Any]] = []
+        if original_jb:
+            selected_variant = "original"
+            selected_items = original_jb
+        elif mirrored_jb:
+            selected_variant = "mirror"
+            width = int(ocr_input.shape[1]) if hasattr(ocr_input, "shape") else 0
+            if width > 0:
+                selected_items = _mirror_items_back(mirrored_jb, width)
+            else:
+                selected_items = mirrored_jb
+
+        texts = [str(item.get("text", "")) for item in selected_items]
+        scores = [item.get("score") for item in selected_items]
+        status = "ok" if selected_items else "no_jb"
+        return {
+            "status": status,
+            "texts": texts,
+            "scores": scores,
+            "items": selected_items,
+            "num_items": len(selected_items),
+            "selected_variant": selected_variant,
+            "all_texts_original": original.get("texts", []),
+            "all_texts_mirror": mirrored.get("texts", []),
+        }
     except Exception as exc:
         return {
             "status": "error",
@@ -151,10 +241,6 @@ def infer_roi_ocr(ocr_engine, roi_image: Any, min_score: float = 0.0) -> Dict[st
             "items": [],
             "num_items": 0,
         }
-
-
-def _normalize_text(text: str) -> str:
-    return "".join(ch for ch in str(text).upper() if ch.isalnum())
 
 
 def build_ocr_statistics(results: List[Dict[str, Any]], topk: int = 200) -> Dict[str, Any]:

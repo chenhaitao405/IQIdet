@@ -20,8 +20,10 @@
         "--gauge-weights",
         "logs/gauge/gauge2/weights/best.pt",
         "--output-dir",
-        "outputs/gauge_infer_valid",
-        "--vis"
+        "outputs/gauge_ocr",
+        "--vis",
+        "--ocr-rec-model-name",
+        "en_PP-OCRv5_mobile_rec"
       ]
     },
     {
