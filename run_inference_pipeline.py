@@ -20,13 +20,13 @@ from gauge.ocr_stage import (
     draw_ocr_on_roi,
     infer_roi_ocr,
 )
+from gauge.roi_stage import build_roi_vis_image, extract_best_obb
 from gauge.pipeline_utils import (
     SUPPORTED_IMAGE_EXTS,
     collect_images,
     crop_rotated_polygon,
     enhance_windowing_gray,
     ensure_dir,
-    format_polygon,
     load_image,
     rotate_if_wide,
     to_gray,
@@ -111,62 +111,6 @@ def _to_jsonable(value: Any) -> Any:
     if isinstance(value, tuple):
         return [_to_jsonable(v) for v in value]
     return value
-
-
-def extract_best_obb(result, select: str, class_filter: Optional[int]) -> Optional[Dict[str, Any]]:
-    obb = getattr(result, "obb", None)
-    if obb is None:
-        return None
-
-    polys = getattr(obb, "xyxyxyxy", None)
-    if polys is None:
-        return None
-    polys = polys.detach().cpu().numpy()
-    if polys.ndim == 2 and polys.shape[1] == 8:
-        polys = polys.reshape(-1, 4, 2)
-
-    confs = getattr(obb, "conf", None)
-    confs_np = confs.detach().cpu().numpy() if confs is not None else None
-    classes = getattr(obb, "cls", None)
-    classes_np = classes.detach().cpu().numpy().astype(int) if classes is not None else None
-
-    candidates: List[Tuple[int, float]] = []
-    for idx, poly in enumerate(polys):
-        if class_filter is not None and classes_np is not None and classes_np[idx] != class_filter:
-            continue
-        area = float(cv2.contourArea(poly.astype(np.float32)))
-        candidates.append((idx, area))
-
-    if not candidates:
-        return None
-
-    if select == "conf" and confs_np is not None:
-        idx = int(max(candidates, key=lambda item: confs_np[item[0]])[0])
-    else:
-        idx = int(max(candidates, key=lambda item: item[1])[0])
-
-    poly = polys[idx].astype(float)
-    conf = float(confs_np[idx]) if confs_np is not None else None
-    cls_id = int(classes_np[idx]) if classes_np is not None else None
-    x_min = float(np.min(poly[:, 0]))
-    y_min = float(np.min(poly[:, 1]))
-    x_max = float(np.max(poly[:, 0]))
-    y_max = float(np.max(poly[:, 1]))
-    return {
-        "polygon": format_polygon(poly),
-        "bbox": [x_min, y_min, x_max, y_max],
-        "conf": conf,
-        "class_id": cls_id,
-    }
-
-
-def build_roi_vis_image(image: np.ndarray, roi_info: Dict[str, Any]) -> np.ndarray:
-    vis = image.copy()
-    polygon = np.array(roi_info.get("polygon", []), dtype=np.float32)
-    if polygon.ndim == 2 and polygon.shape[1] == 2 and polygon.shape[0] >= 3:
-        pts = polygon.reshape(-1, 1, 2).astype(np.int32)
-        cv2.polylines(vis, [pts], isClosed=True, color=(0, 255, 0), thickness=2)
-    return vis
 
 
 def _get_rel_path(image_path: Path, image_root: Optional[Path]) -> Path:

@@ -14,13 +14,13 @@
       },
       "args": [
         "--image-dir",
-        "IQIdata/ori/img",
+        "local/OCRtestimg",
         "--fclip-ckpt",
         "local/fclip67.pth.tar",
         "--gauge-weights",
         "logs/gauge/gauge2/weights/best.pt",
         "--output-dir",
-        "outputs/gauge_ocr",
+        "outputs/gauge_ocr2",
         "--vis",
         "--ocr-rec-model-name",
         "en_PP-OCRv5_mobile_rec"
