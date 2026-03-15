@@ -78,6 +78,10 @@ def parse_args() -> argparse.Namespace:
         help="Image enhancement mode before OCR.",
     )
     parser.add_argument("--no-rotate", action="store_true", help="Disable width>height -> CCW90 rotation.")
+    parser.add_argument("--enable-correction", action="store_true", help="Enable weld orientation correction before ROI detection.")
+    parser.add_argument("--correction-model", help="Orientation correction model weights (.pth). Required when --enable-correction is set.")
+    parser.add_argument("--correction-device", help="Orientation correction device, e.g. cuda:0/cpu.")
+    parser.add_argument("--correction-verbose", action="store_true", help="Print per-image orientation correction diagnostics.")
 
     parser.add_argument("--ocr-device", choices=["cpu", "gpu"], default="gpu", help="PaddleOCR device.")
     parser.add_argument("--ocr-lang", default="en", help="PaddleOCR language.")
@@ -221,6 +225,19 @@ def main() -> None:
         rec_model_name=args.ocr_rec_model_name,
         rec_model_dir=args.ocr_rec_model_dir,
     )
+
+    corrector = None
+    if args.enable_correction:
+        if not args.correction_model:
+            raise ValueError("--correction-model is required when --enable-correction is set.")
+        from gauge.weld_correction import WeldOrientationCorrector
+
+        corrector = WeldOrientationCorrector(
+            model_path=args.correction_model,
+            model_type="resnet50",
+            device=args.correction_device,
+        )
+
     from ultralytics import YOLO
 
     gauge_model = YOLO(args.gauge_weights)
@@ -239,6 +256,19 @@ def main() -> None:
             h, w = image.shape[:2]
             record["width"] = w
             record["height"] = h
+            correction_info = {
+                "label": 0,
+                "confidence": None,
+                "status": "disabled",
+                "corrected": False,
+                "actions": None,
+            }
+            if corrector is not None:
+                image, correction_info = corrector.correct_image(image, verbose=args.correction_verbose)
+                corrected_h, corrected_w = image.shape[:2]
+                record["width"] = corrected_w
+                record["height"] = corrected_h
+            record["correction"] = correction_info
 
             yolo_result = gauge_model.predict(
                 source=image,
@@ -363,6 +393,9 @@ def main() -> None:
         "gauge_class": args.gauge_class,
         "enhance_mode": args.enhance_mode,
         "rotation_rule": "ccw90_if_width_gt_height" if not args.no_rotate else "disabled",
+        "enable_correction": args.enable_correction,
+        "correction_model": args.correction_model,
+        "correction_device": args.correction_device,
         "ocr_device": args.ocr_device,
         "ocr_lang": args.ocr_lang,
         "ocr_rec_model_name": args.ocr_rec_model_name,

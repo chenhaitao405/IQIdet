@@ -1,21 +1,21 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ENV_ROOT="/home/cht/miniconda3/envs/weld-gpu"
+ENV_ROOT="${PPOCRLABEL_ENV_ROOT:-/home/cht/miniconda3/envs/paddlelabel}"
 
 "${ENV_ROOT}/bin/python" - <<'PY'
 import os
 import sys
 from pathlib import Path
 
-env_root = Path("/home/cht/miniconda3/envs/weld-gpu")
+env_root = Path(sys.executable).resolve().parents[1]
 model_root = Path("/home/cht/.paddlex/official_models")
 
 # Import cv2 first so we can override the plugin path it injects on Linux.
 import cv2  # noqa: F401
 
 pyqt_plugins = env_root / "lib/python3.10/site-packages/PyQt5/Qt5/plugins"
-os.environ["QT_QPA_PLATFORM_PLUGIN_PATH"] = str(pyqt_plugins)
+os.environ["QT_QPA_PLATFORM_PLUGIN_PATH"] = str(pyqt_plugins / "platforms")
 os.environ["QT_PLUGIN_PATH"] = str(pyqt_plugins)
 os.environ.pop("QT_QPA_FONTDIR", None)
 os.environ["PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK"] = "True"

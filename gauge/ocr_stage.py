@@ -175,49 +175,16 @@ def _filter_items_with_jb(items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     return [item for item in items if _contains_jb(item.get("text", ""))]
 
 
-def _mirror_items_back(items: List[Dict[str, Any]], width: int) -> List[Dict[str, Any]]:
-    mapped: List[Dict[str, Any]] = []
-    for item in items:
-        out = dict(item)
-        box = item.get("box")
-        if box is None:
-            mapped.append(out)
-            continue
-        try:
-            pts = np.array(box, dtype=np.float32).reshape(-1, 2)
-            pts[:, 0] = (width - 1) - pts[:, 0]
-            out["box"] = pts.tolist()
-        except Exception:
-            pass
-        mapped.append(out)
-    return mapped
-
-
 def infer_roi_ocr(ocr_engine, roi_image: Any, min_score: float = 0.0) -> Dict[str, Any]:
-    """Run OCR on original + mirrored ROI, output only J-containing results."""
+    """Run OCR on the ROI and keep only J-containing results."""
     try:
         ocr_input = _ensure_bgr(roi_image)
         raw_output = _run_ocr_predict(ocr_engine, ocr_input)
         original = _parse_ocr_output(raw_output, min_score=min_score)
         original_jb = _filter_items_with_jb(original.get("items", []))
 
-        mirrored_img = cv2.flip(ocr_input, 1)
-        raw_output_m = _run_ocr_predict(ocr_engine, mirrored_img)
-        mirrored = _parse_ocr_output(raw_output_m, min_score=min_score)
-        mirrored_jb = _filter_items_with_jb(mirrored.get("items", []))
-
-        selected_variant = "none"
-        selected_items: List[Dict[str, Any]] = []
-        if original_jb:
-            selected_variant = "original"
-            selected_items = original_jb
-        elif mirrored_jb:
-            selected_variant = "mirror"
-            width = int(ocr_input.shape[1]) if hasattr(ocr_input, "shape") else 0
-            if width > 0:
-                selected_items = _mirror_items_back(mirrored_jb, width)
-            else:
-                selected_items = mirrored_jb
+        selected_variant = "original" if original_jb else "none"
+        selected_items: List[Dict[str, Any]] = original_jb
 
         texts = [str(item.get("text", "")) for item in selected_items]
         scores = [item.get("score") for item in selected_items]
@@ -230,7 +197,7 @@ def infer_roi_ocr(ocr_engine, roi_image: Any, min_score: float = 0.0) -> Dict[st
             "num_items": len(selected_items),
             "selected_variant": selected_variant,
             "all_texts_original": original.get("texts", []),
-            "all_texts_mirror": mirrored.get("texts", []),
+            "all_texts_mirror": [],
         }
     except Exception as exc:
         return {

@@ -14,16 +14,21 @@
       },
       "args": [
         "--image-dir",
-        "local/OCRtestimg",
+        "IQIdata/ori/img",
         "--fclip-ckpt",
         "local/fclip67.pth.tar",
         "--gauge-weights",
         "logs/gauge/gauge2/weights/best.pt",
         "--output-dir",
-        "outputs/gauge_ocr2",
+        "outputs/gauge_ocr_retrain_nocorrection",
         "--vis",
-        "--ocr-rec-model-name",
-        "en_PP-OCRv5_mobile_rec"
+        // "--ocr-rec-model-name",
+        // "en_PP-OCRv5_mobile_rec",
+        "--ocr-rec-model-dir",
+        "/home/cht/code/IQIdet/OCRtrain/runs/iqi_en_PP-OCRv5_mobile_rec/inference",
+        // "--enable-correction",
+        // "--correction-model",
+        // "local/weld_orientation_model.pth"
       ]
     },
     {
@@ -46,6 +51,39 @@
         "local/fclip67.pth.tar",
         "--vis",
         "--fig"
+      ]
+    },
+    {
+      "name": "export_text_crops: train max20 correction",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/OCRtrain/scripts/export_text_crops.py",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "env": {
+        "QT_QPA_PLATFORM": "offscreen",
+        "MPLBACKEND": "Agg"
+      },
+      "args": [
+        "--dataset-root",
+        "local/OCRdatasets/iqi_rec_v2",
+        "--subset",
+        "train",
+        "--gauge-weights",
+        "logs/gauge/gauge2/weights/best.pt",
+        "--enable-correction",
+        "--correction-model",
+        "local/weld_orientation_model.pth",
+        "--text-det-device",
+        "gpu",
+        "--text-det-model-name",
+        "PP-OCRv5_server_det",
+        "--enhance-mode",
+        "windowing",
+        "--max-images",
+        "20",
+        "--sample-ratio",
+        "0.3"
       ]
     }
   ]
