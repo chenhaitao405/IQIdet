@@ -54,7 +54,7 @@
       ]
     },
     {
-      "name": "export_text_crops: train max20 correction",
+      "name": "export_text_crops: direct text_det max20",
       "type": "debugpy",
       "request": "launch",
       "program": "${workspaceFolder}/OCRtrain/scripts/export_text_crops.py",
@@ -66,14 +66,11 @@
       },
       "args": [
         "--dataset-root",
-        "local/OCRdatasets/iqi_rec_v2",
-        "--subset",
-        "train",
-        "--gauge-weights",
-        "logs/gauge/gauge2/weights/best.pt",
-        "--enable-correction",
-        "--correction-model",
-        "local/weld_orientation_model.pth",
+        "local/OCRdatasets/iqi_rec_textdet_v1",
+        "--image-root",
+        "IQIdata/ori",
+        "--image-root",
+        "datasets/images",
         "--text-det-device",
         "gpu",
         "--text-det-model-name",
