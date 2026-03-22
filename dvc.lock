@@ -1,0 +1,214 @@
+schema: '2.0'
+stages:
+  weld:
+    cmd: "python dataset/weld.py --label_dir IQIdata/ori/label --img_dir IQIdata/ori/img
+      --out_dir IQIdata/processed_1D --val_ratio 0.1 --seed 0 --angle_thresh 50\n"
+    deps:
+    - path: IQIdata/ori/img
+      hash: md5
+      md5: ea3f1fd9146ac77104f6c546e77bc006.dir
+      size: 600913307
+      nfiles: 511
+    - path: IQIdata/ori/label
+      hash: md5
+      md5: dfc6a5526f02d9a857a765bb94f9935b.dir
+      size: 253857156
+      nfiles: 454
+    - path: dataset/weld.py
+      hash: md5
+      md5: ce841d4ee970ba3c18ccae77c719b8d8
+      size: 13801
+    outs:
+    - path: IQIdata/processed_1D
+      hash: md5
+      md5: 8e2aa4791e2851489177394529824dca.dir
+      size: 75306313
+      nfiles: 3928
+  train:
+    cmd: "python -m FClip.train -d 0 -i HR config/model.yaml --params params.yaml
+      --metrics_path metrics/metrics.json\n"
+    deps:
+    - path: FClip
+      hash: md5
+      md5: ef75006f36b8ad563a741220dee8f194.dir
+      size: 437433
+      nfiles: 42
+    - path: IQIdata/processed
+      hash: md5
+      md5: fa2904cc91a1ff6aec111f55685abd6c.dir
+      size: 85441850
+      nfiles: 4368
+    - path: config/model.yaml
+      hash: md5
+      md5: cc0d929a7d4ca71770bc87a771cade37
+      size: 876
+    - path: params.yaml
+      hash: md5
+      md5: 616a7707a7a57b0ad47974beb4443504
+      size: 777
+    outs:
+    - path: logs/IQI/HR_1D_0204_test/checkpoint_best.pth.tar
+      hash: md5
+      md5: df6342942a880dcf04a05f52f5f766c4
+      size: 458690713
+    - path: logs/IQI/HR_1D_0204_test/config.yaml
+      hash: md5
+      md5: 1a6c39e4a039c31363ede542db5bb9a1
+      size: 1290
+    - path: metrics/metrics.json
+      hash: md5
+      md5: 871cc672d0450776b54cb91b03bfa01f
+      size: 87
+  preprocess:
+    cmd: "python dataset/weld.py --label_dir IQIdata/ori/label --img_dir IQIdata/ori/img
+      --out_dir IQIdata/processed --val_ratio 0.1 --seed 0 --angle_thresh 50 --heatmap_resolution
+      64 --input_resolution_h 256 --input_resolution_w 256\n"
+    deps:
+    - path: IQIdata/ori/img
+      hash: md5
+      md5: ea3f1fd9146ac77104f6c546e77bc006.dir
+      size: 600913307
+      nfiles: 511
+    - path: IQIdata/ori/label
+      hash: md5
+      md5: 6a55f5b7b7a6162e750fd5abb9d92dc4.dir
+      size: 281880216
+      nfiles: 505
+    - path: dataset/weld.py
+      hash: md5
+      md5: bd6641914b19c8508f73a465b0bc146c
+      size: 14424
+    outs:
+    - path: IQIdata/processed
+      hash: md5
+      md5: fa2904cc91a1ff6aec111f55685abd6c.dir
+      size: 85441850
+      nfiles: 4368
+  preprocess_fclip:
+    cmd: "python dataset/weld.py --label_dir IQIdata/ori/label --img_dir IQIdata/ori/img
+      --out_dir IQIdata/processed --val_ratio 0.1 --seed 0 --angle_thresh 50 --heatmap_resolution
+      64 --input_resolution_h 256 --input_resolution_w 256\n"
+    deps:
+    - path: IQIdata/ori/img
+      hash: md5
+      md5: ea3f1fd9146ac77104f6c546e77bc006.dir
+      size: 600913307
+      nfiles: 511
+    - path: IQIdata/ori/label
+      hash: md5
+      md5: 6a55f5b7b7a6162e750fd5abb9d92dc4.dir
+      size: 281880216
+      nfiles: 505
+    - path: dataset/weld.py
+      hash: md5
+      md5: bd6641914b19c8508f73a465b0bc146c
+      size: 14424
+    outs:
+    - path: IQIdata/processed
+      hash: md5
+      md5: b6e6600d6af2160a594d3348d54197e8.dir
+      size: 85441850
+      nfiles: 4368
+  gauge_preprocess:
+    cmd: "python gauge/convert_to_yolo_obb.py --label_dir IQIdata/ori/label --img_dir
+      IQIdata/ori/img --out_dir IQIdata/gauge_obb --val_ratio 0.1 --seed 0 --class_name
+      IQI --label_filter=\n"
+    deps:
+    - path: IQIdata/ori/img
+      hash: md5
+      md5: 3e6980b09b7e37d39d5f51550aade399.dir
+      size: 600913307
+      nfiles: 514
+    - path: IQIdata/ori/label
+      hash: md5
+      md5: 6a55f5b7b7a6162e750fd5abb9d92dc4.dir
+      size: 281880216
+      nfiles: 505
+    - path: gauge/convert_to_yolo_obb.py
+      hash: md5
+      md5: e611bf21a5c4d74c4f003e83d6a5133a
+      size: 5064
+    outs:
+    - path: IQIdata/gauge_obb
+      hash: md5
+      md5: f73627e5eada53df3ee8304f3b5b9410.dir
+      size: 596196588
+      nfiles: 1011
+  train_fclip:
+    cmd: "python -m FClip.train -d 0 -i HR config/model.yaml --params params.yaml
+      --metrics_path metrics/metrics.json\n"
+    deps:
+    - path: FClip
+      hash: md5
+      md5: 1df46f8a8ed7be2fdfabc6dea3eb4402.dir
+      size: 294311
+      nfiles: 41
+    - path: IQIdata/processed
+      hash: md5
+      md5: b6e6600d6af2160a594d3348d54197e8.dir
+      size: 85441850
+      nfiles: 4368
+    - path: config/model.yaml
+      hash: md5
+      md5: f58df7dd1c017e0e01c83c1a302ea8c3
+      size: 914
+    - path: params.yaml
+      hash: md5
+      md5: 7401c392b5bd2724833478ff61ce67f1
+      size: 1340
+    outs:
+    - path: logs/IQI/HR_1D_0204_test2/checkpoint_best.pth.tar
+      hash: md5
+      md5: f400326556a169450fd3867ea495d279
+      size: 458690492
+    - path: logs/IQI/HR_1D_0204_test2/config.yaml
+      hash: md5
+      md5: b96f88daaeb64231be41f5a8f0e40d6d
+      size: 1331
+    - path: metrics/metrics.json
+      hash: md5
+      md5: 6e0a4d462059afad2cdc3e50205325fe
+      size: 89
+  train_gauge:
+    cmd: "python gauge/train.py --params params.yaml --augment gauge/config/augment.yaml
+      --metrics-path metrics/gauge_metrics.json\n"
+    deps:
+    - path: IQIdata/gauge_obb
+      hash: md5
+      md5: 73e882f457de801b6d658c3f89bb0569.dir
+      size: 596334114
+      nfiles: 1013
+    - path: IQIdata/gauge_obb/data.yaml
+      hash: md5
+      md5: 44010cd1d3195a66733d8b5136f15f5e
+      size: 76
+    - path: gauge/config/augment.yaml
+      hash: md5
+      md5: fde2a8083b408b24868ea4fd5e123a8e
+      size: 359
+    - path: gauge/custom_augment.py
+      hash: md5
+      md5: 4d285dd7c65c5c4eb97d0314ea1c84c1
+      size: 4211
+    - path: gauge/train.py
+      hash: md5
+      md5: de28055f66ba2b44db9a60c5e8238a66
+      size: 5381
+    - path: params.yaml
+      hash: md5
+      md5: cf27149dacef5085108d0dba495041f6
+      size: 1349
+    - path: yolo26n-obb.pt
+      hash: md5
+      md5: be4d297dc7a09f0b481816c92b2f6b72
+      size: 5907357
+    outs:
+    - path: logs/gauge/guage_rotation
+      hash: md5
+      md5: 5d54daef58bc75d58c1b76b23ab1ef0a.dir
+      size: 16549771
+      nfiles: 22
+    - path: metrics/gauge_metrics.json
+      hash: md5
+      md5: a7317e39315a9c777bf95c9d3bfc5132
+      size: 562
