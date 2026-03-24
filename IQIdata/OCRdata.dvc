@@ -1,6 +1,6 @@
 outs:
-- md5: 3618085711cbc89f5c26ac874ee7c7d7.dir
-  size: 65520529
-  nfiles: 1142
+- md5: d4684d10cc2f8391405fbef5382bcafe.dir
+  size: 235872575
+  nfiles: 4404
   hash: md5
   path: OCRdata

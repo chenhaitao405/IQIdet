@@ -131,7 +131,7 @@
       },
       "args": [
         "--image-dir",
-        "IQIdata/ori/img",
+        "local/OCRdatasets/cjtest",
         "--gauge-weights",
         "models/guagerotation.pt",
         "--fclip-ckpt",
@@ -139,7 +139,7 @@
         "--fclip-config",
         "models/fclip_config.yaml",
         "--output-json",
-        "outputs/iqi_grade_infer/iqi_grade_results.json",
+        "outputs/iqi_grade_infer_cj/iqi_grade_results.json",
         "--ocr-det-model-name",
         "PP-OCRv5_server_det",
         "--ocr-det-limit-side-len",
@@ -156,7 +156,7 @@
         "--ocr-number-range",
         "6,10-15",
         "--vis-dir",
-        "outputs/iqi_grade_infer/vis"
+        "outputs/iqi_grade_infer_cj/vis"
       ]
     },
     {
