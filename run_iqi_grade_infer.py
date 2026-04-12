@@ -190,6 +190,10 @@ def main() -> None:
                     roi_gray=artifacts.get("roi_gray"),
                     roi_ocr_result=full_record.get("roi_ocr") or {},
                     wire_result=full_record.get("wire") or {},
+                    visualization=full_record.get("visualization") or {},
+                    plate_code=full_record.get("plate_code"),
+                    grade=full_record.get("grade"),
+                    wire_count=full_record.get("wire_count"),
                 )
     finally:
         inferencer.close()
