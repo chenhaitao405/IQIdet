@@ -1196,11 +1196,18 @@ def build_iqi_statistics(results: Sequence[Dict[str, Any]], topk: int = 200) -> 
 
 
 def build_delivery_record(record: Dict[str, Any]) -> Dict[str, Any]:
-    plate = record.get("plate") or {}
-    wire = record.get("wire") or {}
-    roi = record.get("roi") or {}
+    visualization = record.get("visualization") or {}
     fields = record.get("fields") or {}
-    return {
+    plate_text_items_selected = []
+    for item in visualization.get("plate_text_items_selected") or []:
+        plate_text_items_selected.append(
+            {
+                "text": item.get("text"),
+                "score": item.get("score"),
+                "box_image_xy": item.get("box_image_xy"),
+            }
+        )
+    payload = {
         "image_path": record.get("image_path"),
         "ok": bool(record.get("ok", False)),
         "result_code": int(record.get("result_code", 9001)),
@@ -1214,17 +1221,10 @@ def build_delivery_record(record: Dict[str, Any]) -> Dict[str, Any]:
         "wire_count": record.get("wire_count"),
         "general_fields_found": bool(record.get("general_fields_found", False)),
         "iqi_marker_found": bool(record.get("iqi_marker_found", False)),
-        "roi": {
-            "polygon_xy": roi.get("polygon"),
-            "bbox": roi.get("bbox"),
-            "confidence": roi.get("conf"),
-            "class_id": roi.get("class_id"),
-        },
-        "plate": {
-            "raw_texts": plate.get("raw_texts") or [],
-            "normalized_texts": plate.get("normalized_texts") or [],
-            "candidate_codes": plate.get("candidate_codes") or [],
-            "corrections": plate.get("corrections") or [],
+        "visualization": {
+            "roi_polygon_xy": visualization.get("roi_polygon_xy"),
+            "plate_text_items_selected": plate_text_items_selected,
+            "wire_lines": visualization.get("wire_lines") or [],
         },
         "fields": {
             "component_codes": fields.get("component_codes") or [],
@@ -1234,15 +1234,14 @@ def build_delivery_record(record: Dict[str, Any]) -> Dict[str, Any]:
             "pipe_specs": fields.get("pipe_specs") or [],
         },
         "field_statistics": record.get("field_statistics") or {},
-        "wire": {
-            "status": wire.get("status"),
-            "wire_count": wire.get("wire_count"),
-            "parsed_line_count": wire.get("parsed_line_count"),
-            "lines": wire.get("lines") or [],
-        },
         "warnings": record.get("warnings") or [],
         "errors": record.get("errors") or [],
     }
+    if record.get("final_result_vis_path"):
+        payload["final_result_vis_path"] = record.get("final_result_vis_path")
+    if record.get("status_vis_dir"):
+        payload["status_vis_dir"] = record.get("status_vis_dir")
+    return payload
 
 
 def collect_input_images(

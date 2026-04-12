@@ -210,15 +210,46 @@ cd /home/cht/code/IQIdet
 - `wire_count`
 - `general_fields_found`
 - `iqi_marker_found`
-- `roi`
-- `plate`
+- `visualization`
 - `fields`
 - `field_statistics`
-- `wire`
 - `warnings`
 - `errors`
+- `final_result_vis_path`（仅在启用 `--vis-dir` 时输出）
+- `status_vis_dir`（仅在启用 `--vis-dir` 时输出）
 
-## 10. fields 字段说明
+说明：
+
+- `final_result_vis_path` 和 `status_vis_dir` 都是相对 `meta.vis_dir` 的路径
+
+## 10. visualization 字段说明
+
+`visualization` 统一承载前端绘图所需的 ROI / OCR / 丝线信息，坐标均可直接用于原图绘制：
+
+```json
+"visualization": {
+  "roi_polygon_xy": [[...], [...], [...], [...]],
+  "plate_text_items_selected": [
+    {
+      "text": "FE12J",
+      "score": 0.98,
+      "box_image_xy": [[...], [...], [...], [...]]
+    }
+  ],
+  "wire_lines": []
+}
+```
+
+其中：
+
+- `roi_polygon_xy`：像质计 ROI 四点坐标，原图坐标
+- `plate_text_items_selected`：仅保留与最终 `plate_code` 对应的 OCR 文本框
+- `plate_text_items_selected[*].text`：识别文本
+- `plate_text_items_selected[*].score`：OCR 置信度
+- `plate_text_items_selected[*].box_image_xy`：OCR 文本框四点坐标，原图坐标
+- `wire_lines[*].image_xy`：识别出的像质丝线段，原图坐标
+
+## 11. fields 字段说明
 
 新增后的 `fields` 结构如下：
 
@@ -232,7 +263,7 @@ cd /home/cht/code/IQIdet
 }
 ```
 
-### 10.1 component_codes
+### 11.1 component_codes
 
 每项示例：
 
@@ -247,7 +278,7 @@ cd /home/cht/code/IQIdet
 }
 ```
 
-### 10.2 weld_film_pairs
+### 11.2 weld_film_pairs
 
 每项示例：
 
@@ -264,7 +295,7 @@ cd /home/cht/code/IQIdet
 }
 ```
 
-### 10.3 weld_numbers
+### 11.3 weld_numbers
 
 每项示例：
 
@@ -279,7 +310,7 @@ cd /home/cht/code/IQIdet
 }
 ```
 
-### 10.4 film_numbers
+### 11.4 film_numbers
 
 每项示例：
 
@@ -294,7 +325,7 @@ cd /home/cht/code/IQIdet
 }
 ```
 
-### 10.5 pipe_specs
+### 11.5 pipe_specs
 
 每项示例：
 
@@ -311,7 +342,7 @@ cd /home/cht/code/IQIdet
 }
 ```
 
-## 11. field_statistics 字段说明
+## 12. field_statistics 字段说明
 
 示例：
 
@@ -327,7 +358,7 @@ cd /home/cht/code/IQIdet
 }
 ```
 
-## 12. 成功结果示例
+## 13. 成功结果示例
 
 ```json
 {
@@ -343,23 +374,22 @@ cd /home/cht/code/IQIdet
   "wire_count": 3,
   "general_fields_found": true,
   "iqi_marker_found": true,
+  "visualization": {
+    "roi_polygon_xy": [[...], [...], [...], [...]],
+    "plate_text_items_selected": [{"text": "FE12J", "score": 0.98, "box_image_xy": [[...], [...], [...], [...]]}],
+    "wire_lines": [{"index": 0, "image_xy": [[...], [...]]}]
+  },
   "fields": {
     "component_codes": [{"value": "4S9"}],
     "weld_film_pairs": [{"weld_no": "66", "film_no": "2Y"}],
     "weld_numbers": [{"value": "66"}],
     "film_numbers": [{"value": "2Y"}],
     "pipe_specs": [{"value": "57X12", "outer_diameter": "57", "wall_thickness": "12"}]
-  },
-  "wire": {
-    "status": "ok",
-    "wire_count": 3,
-    "parsed_line_count": 3,
-    "lines": []
   }
 }
 ```
 
-## 13. 失败结果说明
+## 14. 失败结果说明
 
 若全图字段识别成功，但 IQI 主任务失败，结果可能是：
 
@@ -377,7 +407,7 @@ cd /home/cht/code/IQIdet
   - `2005 marker_number_missing`
   - `2007 marker_number_out_of_range`
 
-## 14. 集成侧推荐解析方式
+## 15. 集成侧推荐解析方式
 
 集成侧建议分两层读取：
 
@@ -394,6 +424,12 @@ cd /home/cht/code/IQIdet
 - `fields.film_numbers`
 - `fields.component_codes`
 - `fields.pipe_specs`
+
+3. 若要做原图可视化
+- `visualization.roi_polygon_xy`
+- `visualization.plate_text_items_selected`
+- `visualization.wire_lines`
+- `final_result_vis_path`
 
 推荐逻辑：
 
