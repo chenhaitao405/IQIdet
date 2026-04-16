@@ -1,11 +1,28 @@
 import json
+import sys
 import tempfile
+import types
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
 
 import numpy as np
+
+fake_fclip_stage = types.ModuleType("gauge.fclip_stage")
+fake_fclip_stage.FClipInferencer = object
+fake_fclip_stage.invert_perspective_matrix = lambda matrix: matrix
+fake_fclip_stage.perspective_transform_points = lambda points, _matrix: points
+fake_fclip_stage.undo_ccw90_points = lambda points, pre_rotate_size=None: points
+sys.modules.setdefault("gauge.fclip_stage", fake_fclip_stage)
+
+fake_ocr_stage = types.ModuleType("gauge.ocr_stage")
+fake_ocr_stage.PaddleOCRSubprocessClient = object
+fake_ocr_stage.build_ocr_item_debug_images = lambda *args, **kwargs: {}
+fake_ocr_stage.build_ocr_statistics = lambda *args, **kwargs: {}
+fake_ocr_stage.draw_ocr_on_roi = lambda *args, **kwargs: None
+fake_ocr_stage.infer_roi_ocr = lambda *args, **kwargs: {}
+sys.modules.setdefault("gauge.ocr_stage", fake_ocr_stage)
 
 from gauge.iqi_inferencer import build_delivery_record
 import run_iqi_grade_infer
