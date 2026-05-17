@@ -40,7 +40,7 @@ class PaddleOCRSubprocessClient:
         self.python_bin = python_bin or sys.executable
         self.det_limit_side_len = int(det_limit_side_len) if det_limit_side_len is not None else None
         self.det_limit_type = str(det_limit_type) if det_limit_type else None
-        self.repo_root = Path(__file__).resolve().parents[1]
+        self.repo_root = Path(__file__).resolve().parents[2]
         self.worker_script = Path(__file__).with_name("ocr_paddle_worker.py")
         self.process: Optional[subprocess.Popen[str]] = None
         self._start()

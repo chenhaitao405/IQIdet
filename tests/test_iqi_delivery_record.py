@@ -1,4 +1,5 @@
 import json
+import io
 import sys
 import tempfile
 import types
@@ -99,6 +100,147 @@ class BuildDeliveryRecordTest(unittest.TestCase):
 
 
 class RunIQIGradeInferMainTest(unittest.TestCase):
+    def test_parse_args_accepts_hidden_correction_options_without_showing_in_help(self) -> None:
+        with mock.patch(
+            "sys.argv",
+            [
+                "run_iqi_grade_infer.py",
+                "--image-path",
+                "demo.png",
+                "--gauge-weights",
+                "models/guagerotation.pt",
+                "--fclip-ckpt",
+                "models/fclip67.pth.tar",
+                "--enable-correction",
+                "--correction-model",
+                "models/weld_orientation_model.pth",
+                "--correction-device",
+                "cuda:0",
+                "--correction-verbose",
+            ],
+        ):
+            args = run_iqi_grade_infer.parse_args()
+
+        self.assertTrue(args.enable_correction)
+        self.assertEqual(args.correction_model, "models/weld_orientation_model.pth")
+        self.assertEqual(args.correction_device, "cuda:0")
+        self.assertTrue(args.correction_verbose)
+
+        with mock.patch("argparse.ArgumentParser.exit", side_effect=RuntimeError("help")), \
+            mock.patch("sys.argv", ["run_iqi_grade_infer.py", "--help"]), \
+            mock.patch("sys.stdout", new_callable=io.StringIO) as stdout:
+            with self.assertRaises(RuntimeError):
+                run_iqi_grade_infer.parse_args()
+        help_text = stdout.getvalue()
+        self.assertNotIn("--enable-correction", help_text)
+        self.assertNotIn("--correction-model", help_text)
+
+    def test_main_passes_hidden_correction_options_to_inferencer(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            output_json = tmp_path / "iqi_grade_results.json"
+            image_path = tmp_path / "BGD-009.bmp"
+            image_path.write_bytes(b"stub")
+
+            args = SimpleNamespace(
+                image_path=str(image_path),
+                image_dir=None,
+                image_list=None,
+                max_images=None,
+                output_json=str(output_json),
+                vis_dir=None,
+                gauge_weights="models/guagerotation.pt",
+                gauge_conf=0.25,
+                gauge_iou=0.45,
+                gauge_imgsz=640,
+                gauge_device=None,
+                gauge_select="conf",
+                gauge_class=None,
+                fclip_ckpt="models/fclip67.pth.tar",
+                fclip_device=None,
+                fclip_config="models/fclip_config.yaml",
+                fclip_params="params.yaml",
+                fclip_threshold=None,
+                enhance_mode="windowing",
+                no_rotate=False,
+                enable_correction=True,
+                correction_model="models/weld_orientation_model.pth",
+                correction_device="cuda:0",
+                correction_verbose=True,
+                ocr_device="gpu",
+                ocr_det_model_name="PP-OCRv5_server_det",
+                ocr_det_model_dir=None,
+                ocr_rec_model_name="en_PP-OCRv5_mobile_rec",
+                ocr_rec_model_dir="models/OCR_rec_inference_best_accuracy",
+                ocr_min_score=0.0,
+                ocr_det_limit_side_len=960,
+                ocr_det_limit_type="max",
+                ocr_topk=200,
+                ocr_number_range="6,10-15",
+                enable_ocr_orientation=True,
+                ocr_orientation_model="models/ocr_orientation_model.pth",
+                ocr_orientation_device="cuda:0",
+            )
+
+            full_record = {
+                "image_path": str(image_path),
+                "ok": True,
+                "result_code": 0,
+                "result_name": "success",
+                "result_message": "识别成功",
+                "grade": 11,
+                "iqi_type": "uniform",
+                "plate_code": "FE11JB",
+                "plate_number": 11,
+                "plate_source": "roi",
+                "wire_count": 5,
+                "general_fields_found": True,
+                "iqi_marker_found": True,
+                "fields": {
+                    "component_codes": [],
+                    "weld_film_pairs": [],
+                    "weld_numbers": [],
+                    "film_numbers": [],
+                    "pipe_specs": [],
+                },
+                "field_statistics": {},
+                "warnings": [],
+                "errors": [],
+                "visualization": {},
+            }
+
+            inferencer = mock.Mock()
+            inferencer.infer_image_path.return_value = (full_record, None)
+            inferencer.get_runtime_meta.return_value = {"runtime": "stub"}
+
+            with mock.patch.object(run_iqi_grade_infer, "parse_args", return_value=args), \
+                mock.patch.object(run_iqi_grade_infer, "collect_input_images", return_value=[image_path]), \
+                mock.patch.object(run_iqi_grade_infer, "IQIInferencer", return_value=inferencer) as cls_mock, \
+                mock.patch.object(
+                    run_iqi_grade_infer,
+                    "build_iqi_statistics",
+                    return_value={
+                        "images_total": 1,
+                        "success_total": 1,
+                        "failure_total": 0,
+                        "result_code_hist": {"0": 1},
+                        "result_code_hist_named": {"success": 1},
+                        "iqi_type_hist": {"uniform": 1},
+                        "grade_hist": {"11": 1},
+                        "field_totals": {},
+                        "images_with_general_fields": 1,
+                        "images_with_iqi_marker": 1,
+                    },
+                ):
+                run_iqi_grade_infer.main()
+
+            cls_mock.assert_called_once()
+            kwargs = cls_mock.call_args.kwargs
+            self.assertTrue(kwargs["enable_correction"])
+            self.assertEqual(kwargs["correction_model"], "models/weld_orientation_model.pth")
+            self.assertEqual(kwargs["correction_device"], "cuda:0")
+            self.assertTrue(kwargs["correction_verbose"])
+
     def test_main_writes_visualization_fields_into_delivery_json(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             tmp_path = Path(tmpdir)
@@ -128,6 +270,10 @@ class RunIQIGradeInferMainTest(unittest.TestCase):
                 fclip_threshold=None,
                 enhance_mode="windowing",
                 no_rotate=False,
+                enable_correction=False,
+                correction_model=None,
+                correction_device=None,
+                correction_verbose=False,
                 ocr_device="gpu",
                 ocr_det_model_name="PP-OCRv5_server_det",
                 ocr_det_model_dir=None,

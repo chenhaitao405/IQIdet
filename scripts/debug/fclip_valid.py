@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Validate F-Clip with count precision.
 Usage:
-    single_valid.py [options] <model-config> <ckpt>
-    single_valid.py (-h | --help )
+    fclip_valid.py [options] <model-config> <ckpt>
+    fclip_valid.py (-h | --help )
 
 Arguments:
    <model-config>                  Path to model yaml config
@@ -22,8 +22,16 @@ Options:
 
 import json
 import os
+import sys
+from pathlib import Path
 from docopt import docopt
 import torch
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+SRC_ROOT = REPO_ROOT / "src"
+for path in (REPO_ROOT, SRC_ROOT):
+    if str(path) not in sys.path:
+        sys.path.insert(0, str(path))
 
 from FClip.config import C, M
 from FClip.datasets import collate

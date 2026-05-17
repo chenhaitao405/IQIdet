@@ -15,9 +15,14 @@ from typing import Any, Dict, Optional
 import cv2
 import numpy as np
 
-from gauge.iqi_inferencer import collect_input_images
-from gauge.pipeline_utils import SUPPORTED_IMAGE_EXTS, ensure_dir
-from region_ocr_api import RegionOCRService
+REPO_ROOT = Path(__file__).resolve().parents[2]
+SRC_ROOT = REPO_ROOT / "src"
+for path in (REPO_ROOT, SRC_ROOT):
+    if str(path) not in sys.path:
+        sys.path.insert(0, str(path))
+
+from gauge.pipeline_utils import SUPPORTED_IMAGE_EXTS, collect_images, ensure_dir
+from gauge.region_ocr_service import RegionOCRService
 
 try:  # pragma: no cover
     from tqdm import tqdm
@@ -135,6 +140,25 @@ def _resolve_rec_model_dir(raw_value: Optional[str], repo_root: Path) -> Path:
             raise FileNotFoundError(f"OCR recognition model directory not found: {rec_model_dir}")
         return rec_model_dir
     return _resolve_default_rec_model_dir(repo_root)
+
+
+def collect_input_images(
+    image_path: Optional[str] = None,
+    image_dir: Optional[str] = None,
+    image_list: Optional[str] = None,
+    max_images: Optional[int] = None,
+) -> list[Path]:
+    if image_path:
+        paths = [Path(image_path).resolve()]
+    else:
+        paths = collect_images(
+            Path(image_dir).resolve() if image_dir else None,
+            Path(image_list).resolve() if image_list else None,
+            max_images=max_images,
+        )
+    if max_images is not None:
+        paths = paths[:max_images]
+    return paths
 
 
 def _get_rel_path(image_path: Path, image_root: Optional[Path]) -> Path:
@@ -343,7 +367,7 @@ def _save_visualization(
 
 def main() -> None:
     args = parse_args()
-    repo_root = Path(__file__).resolve().parent
+    repo_root = REPO_ROOT
 
     output_json = _resolve_cli_path(args.output_json)
     ensure_dir(output_json.parent)

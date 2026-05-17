@@ -8,7 +8,7 @@ Workflow:
 3) Generate F-Clip training maps (lcmap/lcoff/lleng/angle) with limited augmentations.
 
 Usage:
-  python dataset/weld.py \
+  python src/dataset/weld.py \
     --label_dir /path/to/label \
     --img_dir /path/to/img \
     --out_dir /path/to/output \

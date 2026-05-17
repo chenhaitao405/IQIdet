@@ -131,7 +131,7 @@
       },
       "args": [
         "--image-dir",
-        "local/OCRdatasets/cjtest",
+        "/home/cht/datasets/iqiTEST",
         "--gauge-weights",
         "models/guagerotation.pt",
         "--fclip-ckpt",
@@ -139,7 +139,7 @@
         "--fclip-config",
         "models/fclip_config.yaml",
         "--output-json",
-        "outputs/iqi_grade_infer_cj/iqi_grade_results.json",
+        "outputs/iqi_grade_infer_szj/iqi_grade_results.json",
         "--ocr-det-model-name",
         "PP-OCRv5_server_det",
         "--ocr-det-limit-side-len",
@@ -147,7 +147,7 @@
         "--ocr-det-limit-type",
         "max",
         "--ocr-rec-model-dir",
-        "models/OCR_rec_inference_best_accuracy",
+        "models/OCR_rec_inference_best_accuracy0325",
         "--enable-ocr-orientation",
         "--ocr-orientation-model",
         "models/ocr_orientation_model.pth",
@@ -156,7 +156,7 @@
         "--ocr-number-range",
         "6,10-15",
         "--vis-dir",
-        "outputs/iqi_grade_infer_cj/vis"
+        "outputs/iqi_grade_infer_szj/vis"
       ]
     },
     {
