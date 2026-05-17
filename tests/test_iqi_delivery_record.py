@@ -38,11 +38,11 @@ class BuildDeliveryRecordTest(unittest.TestCase):
             "result_name": "success",
             "result_message": "识别成功",
             "grade": 11,
-            "iqi_type": "uniform",
-            "plate_code": "FE11JB",
-            "plate_number": 11,
+            "iqi_type": "general",
+            "plate_code": "10FEJB",
+            "plate_number": 10,
             "plate_source": "roi",
-            "wire_count": 5,
+            "wire_count": 2,
             "general_fields_found": True,
             "iqi_marker_found": True,
             "visualization": {
@@ -51,7 +51,7 @@ class BuildDeliveryRecordTest(unittest.TestCase):
                 "plate_text_items": [{"text": "X"}],
                 "plate_text_items_selected": [
                     {
-                        "text": "FE11J",
+                        "text": "10FEJ",
                         "score": 0.91,
                         "box_image_xy": [[10, 11], [12, 13], [14, 15], [16, 17]],
                         "bbox_image": [10, 11, 16, 17],
@@ -62,8 +62,8 @@ class BuildDeliveryRecordTest(unittest.TestCase):
             },
             "final_result_vis_path": "vis/success/demo/finalresult.png",
             "roi": {"polygon": [[0, 0], [1, 1], [2, 2], [3, 3]]},
-            "plate": {"raw_texts": ["X", "FE11J"]},
-            "wire": {"status": "ok", "wire_count": 5},
+            "plate": {"raw_texts": ["X", "10FEJ"]},
+            "wire": {"status": "ok", "wire_count": 2},
             "fields": {
                 "component_codes": [{"value": "4S9"}],
                 "weld_film_pairs": [{"weld_no": "66", "film_no": "2Y"}],
@@ -84,7 +84,7 @@ class BuildDeliveryRecordTest(unittest.TestCase):
                 "roi_polygon_xy": [[1, 2], [3, 4], [5, 6], [7, 8]],
                 "plate_text_items_selected": [
                     {
-                        "text": "FE11J",
+                        "text": "10FEJ",
                         "score": 0.91,
                         "box_image_xy": [[10, 11], [12, 13], [14, 15], [16, 17]],
                     }
@@ -176,7 +176,7 @@ class RunIQIGradeInferMainTest(unittest.TestCase):
                 ocr_det_limit_side_len=960,
                 ocr_det_limit_type="max",
                 ocr_topk=200,
-                ocr_number_range="6,10-15",
+                ocr_number_range="1-19",
                 enable_ocr_orientation=True,
                 ocr_orientation_model="models/ocr_orientation_model.pth",
                 ocr_orientation_device="cuda:0",
@@ -189,11 +189,11 @@ class RunIQIGradeInferMainTest(unittest.TestCase):
                 "result_name": "success",
                 "result_message": "识别成功",
                 "grade": 11,
-                "iqi_type": "uniform",
-                "plate_code": "FE11JB",
-                "plate_number": 11,
+                "iqi_type": "general",
+                "plate_code": "10FEJB",
+                "plate_number": 10,
                 "plate_source": "roi",
-                "wire_count": 5,
+                "wire_count": 2,
                 "general_fields_found": True,
                 "iqi_marker_found": True,
                 "fields": {
@@ -225,7 +225,7 @@ class RunIQIGradeInferMainTest(unittest.TestCase):
                         "failure_total": 0,
                         "result_code_hist": {"0": 1},
                         "result_code_hist_named": {"success": 1},
-                        "iqi_type_hist": {"uniform": 1},
+                        "iqi_type_hist": {"general": 1},
                         "grade_hist": {"11": 1},
                         "field_totals": {},
                         "images_with_general_fields": 1,
@@ -283,7 +283,7 @@ class RunIQIGradeInferMainTest(unittest.TestCase):
                 ocr_det_limit_side_len=960,
                 ocr_det_limit_type="max",
                 ocr_topk=200,
-                ocr_number_range="6,10-15",
+                ocr_number_range="1-19",
                 enable_ocr_orientation=True,
                 ocr_orientation_model="models/ocr_orientation_model.pth",
                 ocr_orientation_device="cuda:0",
@@ -296,23 +296,23 @@ class RunIQIGradeInferMainTest(unittest.TestCase):
                 "result_name": "success",
                 "result_message": "识别成功",
                 "grade": 11,
-                "iqi_type": "uniform",
-                "plate_code": "FE11JB",
-                "plate_number": 11,
+                "iqi_type": "general",
+                "plate_code": "10FEJB",
+                "plate_number": 10,
                 "plate_source": "roi",
-                "wire_count": 5,
+                "wire_count": 2,
                 "general_fields_found": True,
                 "iqi_marker_found": True,
                 "roi": {"polygon": [[1, 2], [3, 4], [5, 6], [7, 8]]},
-                "plate": {"raw_texts": ["FE11J"]},
-                "wire": {"status": "ok", "wire_count": 5, "lines": []},
+                "plate": {"raw_texts": ["10FEJ"]},
+                "wire": {"status": "ok", "wire_count": 2, "lines": []},
                 "visualization": {
                     "roi_polygon_xy": [[1, 2], [3, 4], [5, 6], [7, 8]],
                     "roi_bbox": [1, 2, 7, 8],
                     "plate_text_items": [{"text": "X"}],
                     "plate_text_items_selected": [
                         {
-                            "text": "FE11J",
+                            "text": "10FEJ",
                             "score": 0.91,
                             "box_image_xy": [[10, 11], [12, 13], [14, 15], [16, 17]],
                             "bbox_image": [10, 11, 16, 17],
@@ -360,7 +360,7 @@ class RunIQIGradeInferMainTest(unittest.TestCase):
                         "failure_total": 0,
                         "result_code_hist": {"0": 1},
                         "result_code_hist_named": {"success": 1},
-                        "iqi_type_hist": {"uniform": 1},
+                        "iqi_type_hist": {"general": 1},
                         "grade_hist": {"11": 1},
                         "field_totals": {},
                         "images_with_general_fields": 1,
@@ -373,7 +373,7 @@ class RunIQIGradeInferMainTest(unittest.TestCase):
                 payload = json.load(f)
 
             result = payload["results"][0]
-            self.assertEqual(result["visualization"]["plate_text_items_selected"][0]["text"], "FE11J")
+            self.assertEqual(result["visualization"]["plate_text_items_selected"][0]["text"], "10FEJ")
             self.assertEqual(
                 set(result["visualization"]["plate_text_items_selected"][0].keys()),
                 {"text", "score", "box_image_xy"},

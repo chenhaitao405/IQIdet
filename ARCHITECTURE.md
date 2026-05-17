@@ -159,6 +159,8 @@ OCR 运行在独立子进程中。主进程通过 `PaddleOCRSubprocessClient` �
 
 `src/gauge/iqi_rules.py` 是业务规则核心。它维护结果码表、OCR 文本归一化、焊道号/片号/部件代号/管道规格提取、像质计标识候选构造、允许编号范围解析、等级计算和错误优先级选择。该模块基本不依赖模型和图像库，适合保持为可单独测试的纯逻辑层。
 
+单丝型像质计标识解析以标记顺序判定类型：`数字+材料+JB` 为通用像质计，`材料+数字+JB` 为专用像质计，材料代号不再参与类型判定。`compute_iqi_grade()` 只接受 `general/special`：通用像质计按 `标记丝号 + 可见丝数 - 1` 计算等级，专用像质计在至少识别到 1 根丝时直接输出标记丝号。详细合同见 `docs/contract/IQI_SINGLE_WIRE_MARKER_GRADE_RULE.md`。
+
 `src/gauge/ocr_stage.py` 封装 PaddleOCR 交互和 OCR 结果结构。`infer_roi_ocr()` 的命名来自早期 ROI OCR，但当前也被全图 OCR 复用：它先跑 TextDetection，再逐框裁剪、可选文本方向矫正、TextRecognition，最后返回 `items/all_items/texts/scores/timings_ms` 等统一结构。
 
 `src/gauge/roi_stage.py` 只处理 YOLO-OBB 输出解析。它从 Ultralytics result 中读取 `obb.xyxyxyxy/conf/cls`，按置信度或面积选择一个 ROI，并转换为统一的 `polygon/bbox/conf/class_id`。

@@ -207,14 +207,8 @@ wire_count: int | None
 
 当前 `gauge/iqi_rules.py` 周边文档和逻辑中存在历史规则：
 
-- `FE -> uniform`
-- `NI -> gradient`
-- `E+J -> uniform`
-- `I+J -> gradient`
-
 该规则会把材料代号误当成像质计类型。按本契约，后续应改为：
 
 - 先从标记顺序判断 `general` 或 `special`。
 - 再解析材料代号，仅作为材料字段保存。
 - 最后按 `general` 或 `special` 调用对应等级公式。
-

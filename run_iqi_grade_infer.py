@@ -94,7 +94,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--ocr-number-range",
         default=DEFAULT_ALLOWED_NUMBERS_SPEC,
-        help="Allowed OCR marker numbers, e.g. 6,10-15.",
+        help="Allowed OCR marker numbers, e.g. 1-19.",
     )
 
     parser.add_argument("--enable-ocr-orientation", action="store_true", help="Enable text-crop orientation correction before OCR recognition.")

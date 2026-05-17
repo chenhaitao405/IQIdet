@@ -146,11 +146,11 @@ class IQIInferencerMarkerFailureWireTest(unittest.TestCase):
             "result_code": 0,
             "result_name": "success",
             "result_message": "识别成功",
-            "iqi_type": "uniform",
-            "number": 11,
-            "plate_code": "FE11JB",
-            "raw_texts": ["FE11JB"],
-            "candidate_codes": ["FE11JB"],
+            "iqi_type": "general",
+            "number": 10,
+            "plate_code": "10FEJB",
+            "raw_texts": ["10FEJB"],
+            "candidate_codes": ["10FEJB"],
             "corrections": [],
         }
         general_fields = {
@@ -171,7 +171,7 @@ class IQIInferencerMarkerFailureWireTest(unittest.TestCase):
             },
         }
         ocr_result = {
-            "all_items": [{"text": "FE11JB", "status": "ok", "accepted_by_score": True}],
+            "all_items": [{"text": "10FEJB", "status": "ok", "accepted_by_score": True}],
             "item_errors": [],
             "timings_ms": {},
         }

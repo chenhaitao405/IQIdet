@@ -95,7 +95,7 @@ cd /home/cht/code/IQIdet
   --enable-ocr-orientation \
   --ocr-orientation-model models/ocr_orientation_model.pth \
   --ocr-orientation-device cuda:0 \
-  --ocr-number-range 6,10-15
+  --ocr-number-range 1-19
 ```
 
 ### 5.2 路径列表批量
@@ -109,7 +109,7 @@ cd /home/cht/code/IQIdet
   --output-json outputs/iqi_grade_infer/from_list.json \
   --ocr-det-model-name PP-OCRv5_server_det \
   --ocr-rec-model-dir models/OCR_rec_inference_best_accuracy \
-  --ocr-number-range 6,10-15
+  --ocr-number-range 1-19
 ```
 
 ## 6. 当前字段规则
@@ -154,15 +154,12 @@ cd /home/cht/code/IQIdet
 
 继续沿用当前 IQI 规则：
 
-- `FE` -> `uniform`
-- `NI` -> `gradient`
-- `E+J` -> `uniform`
-- `I+J` -> `gradient`
+- `10FEJB` -> `general`
+- `FE10JB` -> `special`
 
 数字范围：
 
-- 默认允许：`6,10-15`
-- 单数字 `6` 会被标准化成 `06`
+- 默认允许：`1-19`
 - 可通过 `--ocr-number-range` 修改
 
 ## 7. 输出 JSON 结构
@@ -369,9 +366,9 @@ cd /home/cht/code/IQIdet
   "result_name": "success",
   "result_message": "识别成功",
   "grade": 12,
-  "iqi_type": "uniform",
-  "plate_code": "FE12JB",
-  "plate_number": 12,
+  "iqi_type": "general",
+  "plate_code": "10FEJB",
+  "plate_number": 10,
   "wire_count": 3,
   "general_fields_found": true,
   "iqi_marker_found": true,
