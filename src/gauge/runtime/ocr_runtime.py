@@ -43,7 +43,7 @@ class PaddleOCRSubprocessClient:
         self.startup_timeout_s = float(startup_timeout_s)
         self.request_timeout_s = float(request_timeout_s)
         self.repo_root = Path(__file__).resolve().parents[2]
-        self.worker_script = Path(__file__).resolve().parent / "services" / "ocr_paddle_worker.py"
+        self.worker_script = Path(__file__).resolve().parent / "ocr_paddle_worker.py"
         self.process: Optional[subprocess.Popen[str]] = None
         self._lock = threading.Lock()
         self._start()

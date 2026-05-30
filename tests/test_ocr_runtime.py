@@ -4,7 +4,7 @@ import threading
 import unittest
 from unittest import mock
 
-from gauge.ocr_runtime import PaddleOCRSubprocessClient
+from gauge.runtime.ocr_runtime import PaddleOCRSubprocessClient
 
 
 class _FakeProcess:

@@ -33,7 +33,7 @@ class BaseRegionService(Generic[T]):
     @staticmethod
     def decode_base64(image_base64: str) -> np.ndarray:
         """Decode base64 image (supports data URL prefix)."""
-        from gauge.region_runtime import decode_base64
+        from gauge.runtime.region_runtime import decode_base64
 
         return decode_base64(image_base64)
 

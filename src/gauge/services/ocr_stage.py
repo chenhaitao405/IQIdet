@@ -13,7 +13,7 @@ import cv2
 import numpy as np
 
 from gauge.models.ocr import OCRItem, OCRResult, OCRTimings, OrientationInfo
-from gauge.ocr_runtime import PaddleOCRSubprocessClient
+from gauge.runtime.ocr_runtime import PaddleOCRSubprocessClient
 
 
 def _configure_paddle_runtime(device: str) -> str:

@@ -4,7 +4,7 @@ import unittest
 import cv2
 import numpy as np
 
-from gauge.region_runtime import decode_base64, register_region_service_shutdown, shutdown_region_runtime
+from gauge.runtime.region_runtime import decode_base64, register_region_service_shutdown, shutdown_region_runtime
 
 
 class _Closable:

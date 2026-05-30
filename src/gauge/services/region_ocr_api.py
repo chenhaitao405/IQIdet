@@ -8,7 +8,7 @@ from typing import Any, Dict, Optional
 
 import numpy as np
 
-from gauge.region_runtime import decode_base64, executor, register_region_service_shutdown
+from gauge.runtime.region_runtime import decode_base64, executor, register_region_service_shutdown
 from gauge.services.region_ocr_service import RegionOCRService
 
 try:  # pragma: no cover
