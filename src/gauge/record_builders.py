@@ -19,6 +19,12 @@ from gauge.models.record import IQIRecord
 from gauge.services.ocr_stage import build_ocr_statistics
 
 
+def _optional_section(value: Any) -> Any:
+    if isinstance(value, dict) and not value:
+        return None
+    return value
+
+
 def build_iqi_record(ctx: Any) -> IQIRecord:
     primary_code = choose_primary_result_code(
         [entry["result_code"] for entry in ctx.record_errors]
@@ -72,7 +78,7 @@ def build_iqi_record(ctx: Any) -> IQIRecord:
         ocr=ctx.full_ocr_result,
         full_image_ocr=ctx.full_ocr_result,
         full_image_plate=ctx.full_plate_result,
-        roi=ctx.roi_info,
+        roi=_optional_section(ctx.roi_info),
         roi_ocr=ctx.roi_ocr_result,
         roi_plate=ctx.roi_plate_result,
         plate=rec_plate,

@@ -48,7 +48,7 @@ class ROIDetectStage(PipelineStage):
             )
 
         if not yolo_result:
-            ctx.roi_info = {}
+            ctx.roi_info = None
             ctx.roi_ocr_result = build_skipped_ocr(
                 "skipped_no_roi", "未检测到像质计 ROI"
             )
@@ -61,7 +61,7 @@ class ROIDetectStage(PipelineStage):
             class_filter=config.class_filter,
         )
         if roi_info_resized is None:
-            ctx.roi_info = {}
+            ctx.roi_info = None
             ctx.roi_ocr_result = build_skipped_ocr(
                 "skipped_no_roi", "未检测到像质计 ROI"
             )
@@ -75,7 +75,7 @@ class ROIDetectStage(PipelineStage):
         roi_cropped, crop_matrix = crop_rotated_polygon(ctx.image, polygon)
 
         if roi_cropped is None or crop_matrix is None:
-            ctx.roi_info = {}
+            ctx.roi_info = None
             ctx.roi_ocr_result = build_skipped_ocr(
                 "skipped_roi_invalid", "像质计 ROI 透视展开失败"
             )

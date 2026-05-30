@@ -67,6 +67,26 @@ class RecordBuilderTest(unittest.TestCase):
         self.assertEqual(dumped["fields"]["component_codes"][0]["value"], "4S9")
         self.assertEqual(dumped["plate"]["plate_code"], "10FEJB")
 
+    def test_build_iqi_record_treats_empty_roi_as_absent(self) -> None:
+        ctx = StageContext(image_path="demo.png", config=PipelineConfig())
+        ctx.roi_info = {}
+        ctx.roi_ocr_result = {"status": "skipped_no_roi", "texts": [], "all_items": [], "items": []}
+        ctx.wire_result = {"status": "skipped_no_roi", "wire_count": None}
+        ctx.record_errors = [
+            {
+                "stage": "roi_detect",
+                "result_code": 1101,
+                "result_name": "roi_not_found",
+                "result_message": "未检测到像质计 ROI",
+            }
+        ]
+
+        record = build_iqi_record(ctx)
+        dumped = record.model_dump()
+
+        self.assertEqual(dumped["result_code"], 1101)
+        self.assertIsNone(dumped["roi"])
+
 
 if __name__ == "__main__":
     unittest.main()
