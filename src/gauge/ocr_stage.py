@@ -17,6 +17,8 @@ from typing import Any, Dict, List, Optional
 import cv2
 import numpy as np
 
+from gauge.models.ocr import OCRItem, OCRResult, OCRTimings, OrientationInfo
+
 
 class PaddleOCRSubprocessClient:
     """Persistent PaddleOCR worker running in a separate process."""
@@ -458,15 +460,6 @@ def infer_roi_ocr(
     orientation_ms = 0.0
     rec_ms = 0.0
 
-    def _build_timing_payload() -> Dict[str, float]:
-        total_ms = (time.perf_counter() - pipeline_start) * 1000.0
-        return {
-            "text_det_ms": round(float(det_ms), 3),
-            "text_orientation_ms": round(float(orientation_ms), 3),
-            "text_rec_ms": round(float(rec_ms), 3),
-            "text_total_ms": round(float(total_ms), 3),
-        }
-
     try:
         det_input = _ensure_rgb(roi_image)
         det_start = time.perf_counter()
@@ -476,20 +469,12 @@ def infer_roi_ocr(
         dt_polys = det_output.get("dt_polys", [])
         dt_scores = det_output.get("dt_scores", [])
         if not dt_polys:
-            return {
-                "status": "no_text",
-                "texts": [],
-                "scores": [],
-                "items": [],
-                "all_items": [],
-                "num_items": 0,
-                "selected_variant": "none",
-                "all_texts_original": [],
-                "all_texts_mirror": [],
-                "det_box_count": 0,
-                "rec_item_count": 0,
-                "timings_ms": _build_timing_payload(),
-            }
+            return OCRResult(
+                status="no_text",
+                det_box_count=0,
+                rec_item_count=0,
+                timings_ms=OCRTimings(),
+            ).model_dump()
 
         all_items: List[Dict[str, Any]] = []
         item_errors: List[Dict[str, Any]] = []
@@ -533,38 +518,32 @@ def infer_roi_ocr(
                     item_status = "low_score"
                 success_count += 1
                 all_items.append(
-                    {
-                        "crop_index": idx,
-                        "text": text,
-                        "score": score,
-                        "box": poly_np.tolist(),
-                        "det_score": float(dt_scores[idx]) if idx < len(dt_scores) and dt_scores[idx] is not None else None,
-                        "crop_size": [int(crop.shape[1]), int(crop.shape[0])],
-                        "status": item_status,
-                        "accepted_by_score": bool(accepted_by_score),
-                        "orientation": orientation_info,
-                    }
+                    OCRItem(
+                        crop_index=idx,
+                        text=text,
+                        score=score,
+                        box=poly_np.tolist(),
+                        det_score=float(dt_scores[idx]) if idx < len(dt_scores) and dt_scores[idx] is not None else None,
+                        crop_size=[int(crop.shape[1]), int(crop.shape[0])],
+                        status=item_status,
+                        accepted_by_score=bool(accepted_by_score),
+                        orientation=orientation_info,
+                    ).model_dump()
                 )
             except Exception as exc:
                 item_errors.append({"crop_index": idx, "error": str(exc)})
                 all_items.append(
-                    {
-                        "crop_index": idx,
-                        "text": "",
-                        "score": None,
-                        "box": np.array(poly, dtype=np.float32).reshape(-1, 2).tolist(),
-                        "det_score": float(dt_scores[idx]) if idx < len(dt_scores) and dt_scores[idx] is not None else None,
-                        "status": "error",
-                        "accepted_by_score": False,
-                        "error": str(exc),
-                        "orientation": {
-                            "label": None,
-                            "confidence": None,
-                            "status": "error",
-                            "corrected": False,
-                            "actions": None,
-                        },
-                    }
+                    OCRItem(
+                        crop_index=idx,
+                        text="",
+                        score=None,
+                        box=np.array(poly, dtype=np.float32).reshape(-1, 2).tolist(),
+                        det_score=float(dt_scores[idx]) if idx < len(dt_scores) and dt_scores[idx] is not None else None,
+                        status="error",
+                        accepted_by_score=False,
+                        error=str(exc),
+                        orientation=OrientationInfo(status="error"),
+                    ).model_dump()
                 )
 
         scored_items = [item for item in all_items if item.get("accepted_by_score")]
@@ -580,41 +559,37 @@ def infer_roi_ocr(
         else:
             status = "no_text_after_score"
 
-        return {
-            "status": status,
-            "texts": texts,
-            "scores": scores,
-            "items": scored_items,
-            "all_items": all_items,
-            "num_items": len(scored_items),
-            "selected_variant": "det_rec",
-            "all_texts_original": all_texts,
-            "all_texts_mirror": [],
-            "det_box_count": len(dt_polys),
-            "rec_item_count": len(all_items),
-            "jb_items": jb_items,
-            "jb_texts": [str(item.get("text", "")) for item in jb_items],
-            "jb_item_count": len(jb_items),
-            "item_errors": item_errors,
-            "timings_ms": _build_timing_payload(),
-        }
+        return OCRResult(
+            status=status,
+            texts=texts,
+            scores=scores,
+            items=scored_items,
+            all_items=all_items,
+            num_items=len(scored_items),
+            selected_variant="det_rec",
+            all_texts_original=all_texts,
+            det_box_count=len(dt_polys),
+            rec_item_count=len(all_items),
+            jb_items=jb_items,
+            jb_texts=[str(item.get("text", "")) for item in jb_items],
+            jb_item_count=len(jb_items),
+            item_errors=item_errors,
+            timings_ms=OCRTimings(
+                text_det_ms=round(float(det_ms), 3),
+                text_orientation_ms=round(float(orientation_ms), 3),
+                text_rec_ms=round(float(rec_ms), 3),
+                text_total_ms=round(float(det_ms + orientation_ms + rec_ms), 3),
+            ),
+        ).model_dump()
     except Exception as exc:
-        return {
-            "status": "error",
-            "error": str(exc),
-            "texts": [],
-            "scores": [],
-            "items": [],
-            "all_items": [],
-            "num_items": 0,
-            "selected_variant": "error",
-            "all_texts_original": [],
-            "all_texts_mirror": [],
-            "det_box_count": 0,
-            "rec_item_count": 0,
-            "item_errors": [{"crop_index": None, "error": str(exc)}],
-            "timings_ms": _build_timing_payload(),
-        }
+        return OCRResult(
+            status="error",
+            error=str(exc),
+            det_box_count=0,
+            rec_item_count=0,
+            item_errors=[{"crop_index": None, "error": str(exc)}],
+            timings_ms=OCRTimings(),
+        ).model_dump()
 
 
 def build_ocr_statistics(results: List[Dict[str, Any]], topk: int = 200) -> Dict[str, Any]:
