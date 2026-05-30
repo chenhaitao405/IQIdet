@@ -74,6 +74,16 @@ class DebugScriptLayoutTest(unittest.TestCase):
 
         self.assertFalse((repo_root / "fclip_valid.py").exists())
         self.assertFalse((repo_root / "run_region_ocr_batch.py").exists())
+        self.assertFalse((repo_root / "src" / "gauge" / "training" / "infer.py").exists())
+        self.assertFalse((repo_root / "src" / "gauge" / "training" / "valid.py").exists())
+
+    def test_training_helpers_do_not_execute_at_import(self) -> None:
+        repo_root = Path(__file__).resolve().parents[1]
+        script = repo_root / "src" / "gauge" / "training" / "OBBtraintest.py"
+        source = script.read_text(encoding="utf-8")
+
+        self.assertIn('if __name__ == "__main__":', source)
+        self.assertIn("main()", source)
 
 
 if __name__ == "__main__":
