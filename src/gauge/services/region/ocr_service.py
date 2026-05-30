@@ -31,7 +31,7 @@ class RegionOCRService:
         ocr_orientation_verbose: bool = False,
         python_bin: Optional[str] = None,
     ):
-        self.repo_root = Path(__file__).resolve().parents[3]  # src/gauge/services/region_ocr_service.py → repo root
+        self.repo_root = Path(__file__).resolve().parents[4]  # src/gauge/services/region/ocr_service.py → repo root
         self.enhance_mode = str(enhance_mode)
         self.ocr_orientation_verbose = bool(ocr_orientation_verbose)
         self._infer_lock = threading.Lock()
@@ -44,7 +44,7 @@ class RegionOCRService:
         )
         self.ocr_text_corrector = None
         if enable_orientation:
-            from gauge.services.ocr_orientation import OCRTextOrientationCorrector
+            from gauge.services.orientation.ocr_text import OCRTextOrientationCorrector
 
             self.ocr_text_corrector = OCRTextOrientationCorrector(
                 model_path=self._resolve_path(ocr_orientation_model),

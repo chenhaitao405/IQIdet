@@ -9,7 +9,7 @@ import torch.nn as nn
 from pathlib import Path
 from torchvision import models, transforms
 
-from gauge.services.correction import BaseOrientationCorrector
+from gauge.services.orientation.base import BaseOrientationCorrector
 
 
 class WeldOrientationCorrector(BaseOrientationCorrector):

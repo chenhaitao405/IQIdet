@@ -9,7 +9,7 @@ from typing import Any, Dict, Optional
 import numpy as np
 
 from gauge.runtime.region_runtime import decode_base64, executor, register_region_service_shutdown
-from gauge.services.region_snr_service import RegionSNRService
+from gauge.services.region.snr_service import RegionSNRService
 
 try:  # pragma: no cover
     from fastapi import HTTPException

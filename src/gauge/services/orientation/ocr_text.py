@@ -12,7 +12,7 @@ import torch.nn as nn
 from PIL import Image
 from torchvision import models, transforms
 
-from gauge.services.correction import BaseOrientationCorrector
+from gauge.services.orientation.base import BaseOrientationCorrector
 
 
 class SquarePadResize:
