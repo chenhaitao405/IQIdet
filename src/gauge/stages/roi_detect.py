@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any, Dict, Optional
 
 import numpy as np
@@ -19,6 +20,8 @@ from gauge.pipeline_utils import (
 from gauge.roi_stage import extract_best_obb
 from gauge.stages.base import PipelineStage, StageContext
 
+logger = logging.getLogger(__name__)
+
 
 class ROIDetectStage(PipelineStage):
     """Detect the IQI ROI using YOLO-OBB, then crop, rotate, and enhance."""
@@ -26,6 +29,7 @@ class ROIDetectStage(PipelineStage):
     name = "roi_detect"
 
     def run(self, ctx: StageContext) -> StageContext:
+        logger.debug("stage_started", extra={"stage": self.name, "image": ctx.image_path})
         gauge_model = self.services.get("gauge_model")
         config = self.config.gauge
 
@@ -48,6 +52,7 @@ class ROIDetectStage(PipelineStage):
             ctx.roi_ocr_result = build_skipped_ocr(
                 "skipped_no_roi", "未检测到像质计 ROI"
             )
+            logger.info("stage_done", extra={"stage": self.name, "roi_found": False, "reason": "no_detection"})
             return ctx
 
         roi_info_resized = extract_best_obb(
@@ -60,6 +65,7 @@ class ROIDetectStage(PipelineStage):
             ctx.roi_ocr_result = build_skipped_ocr(
                 "skipped_no_roi", "未检测到像质计 ROI"
             )
+            logger.info("stage_done", extra={"stage": self.name, "roi_found": False, "reason": "no_best_obb"})
             return ctx
 
         roi_info = scale_roi_info_to_original(
@@ -73,6 +79,7 @@ class ROIDetectStage(PipelineStage):
             ctx.roi_ocr_result = build_skipped_ocr(
                 "skipped_roi_invalid", "像质计 ROI 透视展开失败"
             )
+            logger.info("stage_done", extra={"stage": self.name, "roi_found": False, "reason": "crop_failed"})
             return ctx
 
         if ctx.debug_artifacts is not None:
@@ -110,4 +117,5 @@ class ROIDetectStage(PipelineStage):
         ctx.pre_rotate_size = pre_rotate_size
         ctx.rotated = bool(rotated)
 
+        logger.info("stage_done", extra={"stage": self.name, "roi_found": True, "rotated": bool(rotated)})
         return ctx

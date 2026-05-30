@@ -3,11 +3,14 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import Any, Dict
 
 from gauge.pipeline_utils import load_image
 from gauge.stages.base import PipelineStage, StageContext
+
+logger = logging.getLogger(__name__)
 
 
 class ImageLoadStage(PipelineStage):
@@ -16,6 +19,8 @@ class ImageLoadStage(PipelineStage):
     name = "image_load"
 
     def run(self, ctx: StageContext) -> StageContext:
+        logger.debug("stage_started", extra={"stage": self.name, "image": ctx.image_path})
+
         image = load_image(Path(ctx.image_path))
         height, width = image.shape[:2]
 
@@ -26,4 +31,5 @@ class ImageLoadStage(PipelineStage):
         if ctx.debug_artifacts is not None:
             ctx.debug_artifacts["image"] = image
 
+        logger.info("stage_done", extra={"stage": self.name, "height": height, "width": width})
         return ctx

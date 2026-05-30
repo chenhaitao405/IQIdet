@@ -3,9 +3,12 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any, Dict, Optional
 
 from gauge.stages.base import PipelineStage, StageContext
+
+logger = logging.getLogger(__name__)
 
 
 class CorrectionStage(PipelineStage):
@@ -21,6 +24,8 @@ class CorrectionStage(PipelineStage):
         return self.corrector is not None
 
     def run(self, ctx: StageContext) -> StageContext:
+        logger.debug("stage_started", extra={"stage": self.name, "image": ctx.image_path})
+
         corrector = self.corrector
         correction_info: Dict[str, Any] = {
             "label": 0,
@@ -43,4 +48,13 @@ class CorrectionStage(PipelineStage):
         if ctx.debug_artifacts is not None:
             ctx.debug_artifacts["image"] = image
 
+        logger.info(
+            "stage_done",
+            extra={
+                "stage": self.name,
+                "label": correction_info.get("label"),
+                "corrected": correction_info.get("corrected"),
+                "confidence": correction_info.get("confidence"),
+            },
+        )
         return ctx

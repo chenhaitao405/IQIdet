@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -10,6 +11,8 @@ from gauge.config import PipelineConfig
 from gauge.exceptions import IQIError, IQIStageSkipped
 from gauge.models.record import IQIRecord
 from gauge.stages.base import PipelineStage, StageContext
+
+logger = logging.getLogger(__name__)
 from gauge.stages.correction import CorrectionStage
 from gauge.stages.full_image_ocr import FullImageOCRStage
 from gauge.stages.grade_fusion import GradeFusionStage
@@ -49,11 +52,22 @@ class PipelineRunner:
         for stage in self.stages:
             try:
                 if not stage.should_run(ctx):
+                    logger.debug("stage_skipped", extra={"stage": stage.name, "image": str(image_path)})
                     continue
                 ctx = stage.run(ctx)
             except IQIStageSkipped:
+                logger.debug("stage_skipped", extra={"stage": stage.name, "image": str(image_path)})
                 continue
             except IQIError as exc:
+                logger.warning(
+                    "stage_error",
+                    extra={
+                        "stage": stage.name,
+                        "result_code": exc.result_code,
+                        "result_name": exc.result_name,
+                        "result_message": str(exc),
+                    },
+                )
                 ctx.record_errors.append(
                     {
                         "stage": stage.name,
@@ -63,6 +77,10 @@ class PipelineRunner:
                     }
                 )
             except Exception as exc:
+                logger.error(
+                    "stage_crashed",
+                    extra={"stage": stage.name, "error": str(exc)},
+                )
                 return IQIRecord.create_error(
                     9001,
                     f"{stage.name}: {str(exc)}",

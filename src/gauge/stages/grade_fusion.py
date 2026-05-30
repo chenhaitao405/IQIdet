@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any, Dict, List, Optional
 
 from gauge.iqi_rules import (
@@ -13,6 +14,8 @@ from gauge.iqi_rules import (
 from gauge.pipeline_utils import build_skipped_wire
 from gauge.stages.base import PipelineStage, StageContext
 
+logger = logging.getLogger(__name__)
+
 
 class GradeFusionStage(PipelineStage):
     """Select the best plate result, compute IQI grade, and compile errors."""
@@ -20,6 +23,7 @@ class GradeFusionStage(PipelineStage):
     name = "grade_fusion"
 
     def run(self, ctx: StageContext) -> StageContext:
+        logger.debug("stage_started", extra={"stage": self.name, "image": ctx.image_path})
         config = self.config
         allowed_numbers = parse_allowed_numbers_spec(config.ocr.number_range)
         roi_error_code: Optional[int] = None
@@ -156,4 +160,14 @@ class GradeFusionStage(PipelineStage):
         ctx.plate_result = selected_plate
         ctx.plate_source = plate_source
 
+        logger.info(
+            "stage_done",
+            extra={
+                "stage": self.name,
+                "plate_source": plate_source,
+                "grade": grade_result.get("grade") if grade_result else None,
+                "marker_ok": bool(selected_plate.get("ok")),
+                "error_count": len(error_entries),
+            },
+        )
         return ctx

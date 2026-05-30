@@ -3,10 +3,14 @@
 
 from __future__ import annotations
 
+import logging
+
 import numpy as np
 
 from gauge.pipeline_utils import build_skipped_wire
 from gauge.stages.base import PipelineStage, StageContext
+
+logger = logging.getLogger(__name__)
 
 
 class WireDetectStage(PipelineStage):
@@ -18,6 +22,7 @@ class WireDetectStage(PipelineStage):
         return ctx.roi_gray is not None
 
     def run(self, ctx: StageContext) -> StageContext:
+        logger.debug("stage_started", extra={"stage": self.name, "image": ctx.image_path})
         fclip_inferencer = self.services.get("fclip_inferencer")
 
         if fclip_inferencer is None:
@@ -25,6 +30,7 @@ class WireDetectStage(PipelineStage):
                 "error",
                 "FClip is disabled because no checkpoint was provided.",
             )
+            logger.info("stage_done", extra={"stage": self.name, "wire_count": None, "status": "disabled"})
             return ctx
 
         crop_inverse_matrix = (
@@ -44,4 +50,13 @@ class WireDetectStage(PipelineStage):
 
         ctx.wire_result = wire_result
         ctx.warnings.extend(wire_result.get("warnings") or [])
+
+        logger.info(
+            "stage_done",
+            extra={
+                "stage": self.name,
+                "wire_count": wire_result.get("wire_count"),
+                "status": wire_result.get("status"),
+            },
+        )
         return ctx

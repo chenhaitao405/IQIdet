@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any, Dict, Optional
 
 from gauge.iqi_rules import (
@@ -20,6 +21,8 @@ from gauge.pipeline_utils import (
 )
 from gauge.stages.base import PipelineStage, StageContext
 
+logger = logging.getLogger(__name__)
+
 
 class FullImageOCRStage(PipelineStage):
     """Run OCR on the full image, extract general fields, and match IQI plate markers."""
@@ -27,6 +30,7 @@ class FullImageOCRStage(PipelineStage):
     name = "full_image_ocr"
 
     def run(self, ctx: StageContext) -> StageContext:
+        logger.debug("stage_started", extra={"stage": self.name, "image": ctx.image_path})
         config = self.config
         ocr_backend = self.services.get("ocr_backend")
         ocr_text_corrector = self.services.get("ocr_text_corrector")
@@ -110,6 +114,14 @@ class FullImageOCRStage(PipelineStage):
         ctx.general_fields_data = general_fields_data
         ctx.field_statistics = field_statistics
 
+        logger.info(
+            "stage_done",
+            extra={
+                "stage": self.name,
+                "marker_found": bool(full_plate_result.get("ok")),
+                "general_fields_found": field_statistics.get("general_fields_found", False),
+            },
+        )
         return ctx
 
 

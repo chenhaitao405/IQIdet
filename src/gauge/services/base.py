@@ -3,6 +3,7 @@
 from __future__ import annotations
 import base64
 import atexit
+import logging
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Dict, Generic, Optional, TypeVar
 import cv2
@@ -18,6 +19,8 @@ except ImportError:
             self.detail = str(detail)
 
 T = TypeVar("T")
+
+logger = logging.getLogger(__name__)
 
 
 class BaseRegionService(Generic[T]):

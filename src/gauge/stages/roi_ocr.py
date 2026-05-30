@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
@@ -21,6 +22,8 @@ from gauge.pipeline_utils import (
     scale_box_points,
 )
 from gauge.stages.base import PipelineStage, StageContext
+
+logger = logging.getLogger(__name__)
 
 
 def _project_roi_box_to_image(
@@ -87,6 +90,7 @@ class ROIOCRStage(PipelineStage):
         return ctx.roi_gray is not None
 
     def run(self, ctx: StageContext) -> StageContext:
+        logger.debug("stage_started", extra={"stage": self.name, "image": ctx.image_path})
         config = self.config
         ocr_backend = self.services.get("ocr_backend")
         ocr_text_corrector = self.services.get("ocr_text_corrector")
@@ -150,6 +154,13 @@ class ROIOCRStage(PipelineStage):
         ctx.roi_plate_result = roi_plate_result
         ctx.roi_plate_vis_items = roi_plate_vis_items
 
+        logger.info(
+            "stage_done",
+            extra={
+                "stage": self.name,
+                "marker_found": bool(roi_plate_result and roi_plate_result.get("ok")),
+            },
+        )
         return ctx
 
 
