@@ -4,13 +4,20 @@
 from __future__ import annotations
 
 from collections import Counter
-import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import cv2
 import numpy as np
 
+from gauge.config import (
+    CorrectionConfig,
+    EnhanceConfig,
+    FClipConfig,
+    GaugeConfig,
+    OCRConfig,
+    PipelineConfig,
+)
 from gauge.fclip_stage import (
     FClipInferencer,
     invert_perspective_matrix,
@@ -55,98 +62,154 @@ class IQIInferencer:
 
     def __init__(
         self,
-        gauge_weights: str,
-        fclip_ckpt: Optional[str] = None,
-        gauge_conf: float = 0.25,
-        gauge_iou: float = 0.45,
-        gauge_imgsz: int = 640,
-        gauge_device: Optional[str] = None,
-        gauge_select: str = "conf",
-        gauge_class: Optional[int] = None,
-        enhance_mode: str = "windowing",
-        rotate_roi: bool = True,
-        enable_correction: bool = False,
-        correction_model: Optional[str] = None,
-        correction_device: Optional[str] = None,
-        correction_verbose: bool = False,
-        ocr_device: str = "gpu",
-        ocr_det_model_name: str = "PP-OCRv5_server_det",
-        ocr_det_model_dir: Optional[str] = None,
-        ocr_rec_model_name: str = "en_PP-OCRv5_mobile_rec",
-        ocr_rec_model_dir: Optional[str] = None,
-        ocr_det_limit_side_len: int = 960,
-        ocr_det_limit_type: str = "max",
-        ocr_min_score: float = 0.0,
-        enable_ocr_orientation: bool = False,
-        ocr_orientation_model: Optional[str] = None,
-        ocr_orientation_device: Optional[str] = None,
-        ocr_orientation_verbose: bool = False,
-        ocr_number_range: Optional[Sequence[int] | str] = None,
-        fclip_device: Optional[str] = None,
-        fclip_model_config: str = "config/model.yaml",
-        fclip_params: str = "params.yaml",
-        fclip_threshold: Optional[float] = None,
+        config: Optional[PipelineConfig] = None,
+        **kwargs: Any,
     ):
-        self.gauge_weights = str(gauge_weights)
-        self.fclip_ckpt = str(fclip_ckpt) if fclip_ckpt else None
-        self.gauge_conf = float(gauge_conf)
-        self.gauge_iou = float(gauge_iou)
-        self.gauge_imgsz = int(gauge_imgsz)
-        self.gauge_device = gauge_device
-        self.gauge_select = str(gauge_select)
-        self.gauge_class = gauge_class
-        self.enhance_mode = str(enhance_mode)
-        self.rotate_roi = bool(rotate_roi)
-        self.correction_verbose = bool(correction_verbose)
-        self.ocr_det_limit_side_len = int(ocr_det_limit_side_len) if ocr_det_limit_side_len is not None else 960
-        self.ocr_det_limit_type = str(ocr_det_limit_type or "max")
-        self.ocr_min_score = float(ocr_min_score)
-        self.ocr_orientation_verbose = bool(ocr_orientation_verbose)
-        if isinstance(ocr_number_range, str) or ocr_number_range is None:
-            self.ocr_allowed_numbers = parse_allowed_numbers_spec(ocr_number_range)
+        # ---- Build config from kwargs if not provided (legacy path) ----
+        if config is not None:
+            self.config = config
         else:
-            self.ocr_allowed_numbers = frozenset(int(x) for x in ocr_number_range)
-        self.ocr_number_range = format_allowed_numbers_spec(self.ocr_allowed_numbers)
-        self.fclip_model_config = str(Path(fclip_model_config).resolve())
-        self.fclip_params = str(Path(fclip_params).resolve())
-        self.fclip_threshold = fclip_threshold
+            gauge_weights = kwargs.pop("gauge_weights", "")
+            fclip_ckpt = kwargs.pop("fclip_ckpt", None)
+            gauge_conf = float(kwargs.pop("gauge_conf", 0.25))
+            gauge_iou = float(kwargs.pop("gauge_iou", 0.45))
+            gauge_imgsz = int(kwargs.pop("gauge_imgsz", 640))
+            gauge_device = kwargs.pop("gauge_device", None)
+            gauge_select = str(kwargs.pop("gauge_select", "conf"))
+            gauge_class = kwargs.pop("gauge_class", None)
+            enhance_mode = str(kwargs.pop("enhance_mode", "windowing"))
+            rotate_roi = bool(kwargs.pop("rotate_roi", True))
+            enable_correction = bool(kwargs.pop("enable_correction", False))
+            correction_model = kwargs.pop("correction_model", None)
+            correction_device = kwargs.pop("correction_device", None)
+            correction_verbose = bool(kwargs.pop("correction_verbose", False))
+            ocr_device = str(kwargs.pop("ocr_device", "gpu"))
+            ocr_det_model_name = str(kwargs.pop("ocr_det_model_name", "PP-OCRv5_server_det"))
+            ocr_det_model_dir = kwargs.pop("ocr_det_model_dir", None)
+            ocr_rec_model_name = str(kwargs.pop("ocr_rec_model_name", "en_PP-OCRv5_mobile_rec"))
+            ocr_rec_model_dir = kwargs.pop("ocr_rec_model_dir", None)
+            ocr_det_limit_side_len = int(kwargs.pop("ocr_det_limit_side_len", 960))
+            ocr_det_limit_type = str(kwargs.pop("ocr_det_limit_type", "max"))
+            ocr_min_score = float(kwargs.pop("ocr_min_score", 0.0))
+            enable_ocr_orientation = bool(kwargs.pop("enable_ocr_orientation", False))
+            ocr_orientation_model = kwargs.pop("ocr_orientation_model", None)
+            ocr_orientation_device = kwargs.pop("ocr_orientation_device", None)
+            ocr_orientation_verbose = bool(kwargs.pop("ocr_orientation_verbose", False))
+            ocr_number_range = kwargs.pop("ocr_number_range", None)
+            fclip_device = kwargs.pop("fclip_device", None)
+            fclip_model_config = kwargs.pop("fclip_model_config", "config/model.yaml")
+            fclip_params = kwargs.pop("fclip_params", "params.yaml")
+            fclip_threshold = kwargs.pop("fclip_threshold", None)
 
+            self.config = PipelineConfig(
+                gauge=GaugeConfig(
+                    weights=gauge_weights,
+                    conf=gauge_conf,
+                    iou=gauge_iou,
+                    imgsz=gauge_imgsz,
+                    device=gauge_device,
+                    select=gauge_select,
+                    gauge_class=gauge_class,
+                ),
+                fclip=FClipConfig(
+                    ckpt=fclip_ckpt,
+                    device=fclip_device,
+                    fclip_model_config=str(Path(fclip_model_config).resolve()),
+                    params=str(Path(fclip_params).resolve()),
+                    threshold=fclip_threshold,
+                ),
+                ocr=OCRConfig(
+                    device=ocr_device,
+                    det_model_name=ocr_det_model_name,
+                    det_model_dir=ocr_det_model_dir,
+                    rec_model_name=ocr_rec_model_name,
+                    rec_model_dir=ocr_rec_model_dir,
+                    det_limit_side_len=ocr_det_limit_side_len,
+                    det_limit_type=ocr_det_limit_type,
+                    min_score=ocr_min_score,
+                    enable_orientation=enable_ocr_orientation,
+                    orientation_model=ocr_orientation_model,
+                    orientation_device=ocr_orientation_device,
+                    orientation_verbose=ocr_orientation_verbose,
+                    number_range=format_allowed_numbers_spec(
+                        parse_allowed_numbers_spec(
+                            ocr_number_range
+                            if not isinstance(ocr_number_range, (list, tuple))
+                            else format_allowed_numbers_spec(ocr_number_range)
+                        )
+                    ),
+                ),
+                correction=CorrectionConfig(
+                    enabled=enable_correction,
+                    model=correction_model,
+                    device=correction_device,
+                    verbose=correction_verbose,
+                ),
+                enhance=EnhanceConfig(
+                    mode=enhance_mode,
+                    rotate_roi=rotate_roi,
+                ),
+            )
+
+        # ---- Store legacy attr aliases for backward compatibility ----
+        self.gauge_weights = str(self.config.gauge.weights)
+        self.fclip_ckpt = self.config.fclip.ckpt
+        self.gauge_conf = float(self.config.gauge.conf)
+        self.gauge_iou = float(self.config.gauge.iou)
+        self.gauge_imgsz = int(self.config.gauge.imgsz)
+        self.gauge_device = self.config.gauge.device
+        self.gauge_select = str(self.config.gauge.select)
+        self.gauge_class = self.config.gauge.class_filter
+        self.enhance_mode = str(self.config.enhance.mode)
+        self.rotate_roi = bool(self.config.enhance.rotate_roi)
+        self.correction_verbose = bool(self.config.correction.verbose)
+        self.ocr_det_limit_side_len = int(self.config.ocr.det_limit_side_len)
+        self.ocr_det_limit_type = str(self.config.ocr.det_limit_type)
+        self.ocr_min_score = float(self.config.ocr.min_score)
+        self.ocr_orientation_verbose = bool(self.config.ocr.orientation_verbose)
+        self.ocr_allowed_numbers = parse_allowed_numbers_spec(self.config.ocr.number_range)
+        self.ocr_number_range = format_allowed_numbers_spec(self.config.ocr.allowed_numbers)
+        self.fclip_model_config = str(self.config.fclip.fclip_model_config)
+        self.fclip_params = str(self.config.fclip.params)
+        self.fclip_threshold = self.config.fclip.threshold
+
+        # ---- Model initialization (kept from original) ----
         self.corrector = None
-        if enable_correction:
-            if not correction_model:
+        if self.config.correction.enabled:
+            if not self.config.correction.model:
                 raise ValueError("--correction-model is required when enable_correction=True")
             from gauge.weld_correction import WeldOrientationCorrector
 
             self.corrector = WeldOrientationCorrector(
-                model_path=correction_model,
+                model_path=self.config.correction.model,
                 model_type="resnet50",
-                device=correction_device,
+                device=self.config.correction.device,
             )
 
         self.ocr_text_corrector = None
-        if enable_ocr_orientation:
-            if not ocr_orientation_model:
+        if self.config.ocr.enable_orientation:
+            if not self.config.ocr.orientation_model:
                 raise ValueError("--ocr-orientation-model is required when enable_ocr_orientation=True")
             from gauge.ocr_orientation import OCRTextOrientationCorrector
 
-            model_path = Path(ocr_orientation_model)
+            model_path = Path(self.config.ocr.orientation_model)
             if not model_path.is_absolute():
                 model_path = (Path.cwd() / model_path).resolve()
             self.ocr_text_corrector = OCRTextOrientationCorrector(
                 model_path=model_path,
                 model_type="resnet34",
-                device=ocr_orientation_device,
+                device=self.config.ocr.orientation_device,
             )
 
         from ultralytics import YOLO
 
         self.gauge_model = YOLO(self.gauge_weights)
         self.ocr_backend = PaddleOCRSubprocessClient(
-            device=ocr_device,
-            det_model_name=ocr_det_model_name,
-            det_model_dir=ocr_det_model_dir,
-            rec_model_name=ocr_rec_model_name,
-            rec_model_dir=ocr_rec_model_dir,
+            device=self.config.ocr.device,
+            det_model_name=self.config.ocr.det_model_name,
+            det_model_dir=self.config.ocr.det_model_dir,
+            rec_model_name=self.config.ocr.rec_model_name,
+            rec_model_dir=self.config.ocr.rec_model_dir,
             det_limit_side_len=self.ocr_det_limit_side_len,
             det_limit_type=self.ocr_det_limit_type,
         )
@@ -154,11 +217,23 @@ class IQIInferencer:
         if self.fclip_ckpt:
             self.fclip_inferencer = FClipInferencer(
                 ckpt_path=self.fclip_ckpt,
-                device=fclip_device,
+                device=self.config.fclip.device,
                 model_config=self.fclip_model_config,
                 params_file=self.fclip_params,
-                threshold=fclip_threshold,
+                threshold=self.fclip_threshold,
             )
+
+        # ---- Build PipelineRunner ----
+        from gauge.pipeline import PipelineRunner
+
+        services: Dict[str, Any] = {
+            "gauge_model": self.gauge_model,
+            "ocr_backend": self.ocr_backend,
+            "fclip_inferencer": self.fclip_inferencer,
+            "corrector": self.corrector,
+            "ocr_text_corrector": self.ocr_text_corrector,
+        }
+        self.runner = PipelineRunner.from_config(self.config, services=services)
 
     def close(self) -> None:
         if self.ocr_backend is not None:
@@ -199,77 +274,45 @@ class IQIInferencer:
             "ocr_runtime": "subprocess_det_rec",
         }
 
+    # ------------------------------------------------------------------
+    # Legacy static/class helper methods (kept for backward compatibility)
+    # ------------------------------------------------------------------
+
     @staticmethod
     def _build_skipped_wire(status: str, error: Optional[str] = None) -> Dict[str, Any]:
-        payload = {
-            "status": str(status),
-            "wire_count": None,
-            "parsed_line_count": 0,
-            "lines": [],
-            "warnings": [],
-        }
-        if error:
-            payload["error"] = str(error)
-        return payload
+        from gauge.pipeline_utils import build_skipped_wire
+
+        return build_skipped_wire(status, error)
 
     @staticmethod
     def _scale_box_points(box: Any, scale: float) -> Any:
-        if box is None or scale == 1.0:
-            return box
-        try:
-            pts = np.array(box, dtype=np.float32).reshape(-1, 2)
-        except Exception:
-            return box
-        pts = pts / float(scale)
-        return pts.tolist()
+        from gauge.pipeline_utils import scale_box_points
+
+        return scale_box_points(box, scale)
 
     @classmethod
     def _scale_ocr_items_to_original(cls, items: Sequence[Dict[str, Any]], scale: float) -> List[Dict[str, Any]]:
-        if scale == 1.0:
-            return [dict(item) for item in items]
-        scaled_items: List[Dict[str, Any]] = []
-        for item in items:
-            scaled = dict(item)
-            scaled["box"] = cls._scale_box_points(item.get("box"), scale)
-            scaled_items.append(scaled)
-        return scaled_items
+        from gauge.pipeline_utils import scale_ocr_items_to_original
+
+        return scale_ocr_items_to_original(items, scale)
 
     @classmethod
     def _scale_roi_info_to_original(cls, roi_info: Dict[str, Any], scale: float) -> Dict[str, Any]:
-        if scale == 1.0:
-            return dict(roi_info)
-        mapped = dict(roi_info)
-        polygon = cls._scale_box_points(roi_info.get("polygon"), scale)
-        mapped["polygon"] = polygon
-        bbox = roi_info.get("bbox")
-        if bbox is not None:
-            mapped["bbox"] = [float(value) / float(scale) for value in bbox]
-        return mapped
+        from gauge.pipeline_utils import scale_roi_info_to_original
+
+        return scale_roi_info_to_original(roi_info, scale)
 
     @staticmethod
     def _is_usable_ocr_item(item: Dict[str, Any]) -> bool:
-        return bool(
-            str(item.get("text", "")).strip()
-            and item.get("status") != "error"
-            and item.get("accepted_by_score", True)
-        )
+        from gauge.pipeline_utils import is_usable_ocr_item
+
+        return is_usable_ocr_item(item)
 
     @staticmethod
     def _box_points_to_bbox(box: Any) -> Optional[List[float]]:
-        if box is None:
-            return None
-        try:
-            pts = np.asarray(box, dtype=np.float32).reshape(-1, 2)
-        except Exception:
-            return None
-        if pts.size == 0:
-            return None
-        return [
-            float(np.min(pts[:, 0])),
-            float(np.min(pts[:, 1])),
-            float(np.max(pts[:, 0])),
-            float(np.max(pts[:, 1])),
-        ]
+        from gauge.pipeline_utils import box_points_to_bbox
+
+        return box_points_to_bbox(box)
 
     @staticmethod
     def _project_roi_box_to_image(
@@ -327,33 +370,9 @@ class IQIInferencer:
         items: Sequence[Dict[str, Any]],
         source: str,
     ) -> List[Dict[str, Any]]:
-        vis_items: List[Dict[str, Any]] = []
-        text_index = 0
-        for item in items:
-            if not cls._is_usable_ocr_item(item):
-                continue
-            box_image = item.get("box_image")
-            if box_image is None:
-                box_image = item.get("box")
-            vis_items.append(
-                {
-                    "text_index": int(text_index),
-                    "crop_index": item.get("crop_index"),
-                    "source": str(source),
-                    "text": str(item.get("text", "")),
-                    "normalized_text": normalize_text(item.get("text", "")),
-                    "score": item.get("score"),
-                    "det_score": item.get("det_score"),
-                    "status": item.get("status"),
-                    "accepted_by_score": bool(item.get("accepted_by_score", True)),
-                    "box_image_xy": box_image,
-                    "bbox_image": cls._box_points_to_bbox(box_image),
-                    "box_roi_xy": item.get("box") if source == "roi" else None,
-                    "bbox_roi": cls._box_points_to_bbox(item.get("box")) if source == "roi" else None,
-                }
-            )
-            text_index += 1
-        return vis_items
+        from gauge.pipeline_utils import build_plate_visualization_items
+
+        return build_plate_visualization_items(items, source)
 
     @staticmethod
     def _select_plate_visualization_items(
@@ -436,14 +455,9 @@ class IQIInferencer:
         prefix: str,
         ocr_result: Optional[Dict[str, Any]],
     ) -> None:
-        if not ocr_result:
-            return
-        for key, value in (ocr_result.get("timings_ms") or {}).items():
-            normalized_key = str(key)
-            if normalized_key == "text_total_ms":
-                step_timings[f"{prefix}_ocr_ms"] = float(value)
-            else:
-                step_timings[f"{prefix}_{normalized_key}"] = float(value)
+        from gauge.pipeline_utils import merge_prefixed_ocr_timings
+
+        merge_prefixed_ocr_timings(step_timings, prefix, ocr_result)
 
     @staticmethod
     def _finalize_record(
@@ -470,426 +484,65 @@ class IQIInferencer:
         record["grade"] = int(grade) if primary_code == 0 and grade is not None else None
         return record
 
+    # ------------------------------------------------------------------
+    # Main inference entry point
+    # ------------------------------------------------------------------
+
     def infer_image_path(
         self,
         image_path: Path,
         return_debug_artifacts: bool = False,
         debug_timer: bool = False,
     ) -> Tuple[Dict[str, Any], Optional[Dict[str, np.ndarray]]]:
-        debug_artifacts: Optional[Dict[str, np.ndarray]] = {} if return_debug_artifacts else None
-        pipeline_start = time.perf_counter()
-        step_timings: Dict[str, float] = {}
-
-        def _mark(step_name: str, start_time: float) -> None:
-            if debug_timer:
-                step_timings[step_name] = (time.perf_counter() - start_time) * 1000.0
-
-        def _attach_timing(target: Dict[str, Any]) -> None:
-            if debug_timer:
-                total_ms = (time.perf_counter() - pipeline_start) * 1000.0
-                target["timings_ms"] = {
-                    key: round(float(value), 3)
-                    for key, value in {**step_timings, "total_ms": total_ms}.items()
-                }
-
-        def _build_skipped_ocr(status: str, error: Optional[str] = None) -> Dict[str, Any]:
-            payload: Dict[str, Any] = {
-                "status": str(status),
-                "texts": [],
-                "scores": [],
-                "items": [],
-                "all_items": [],
-                "num_items": 0,
-                "selected_variant": str(status),
-                "all_texts_original": [],
-                "all_texts_mirror": [],
-                "det_box_count": 0,
-                "rec_item_count": 0,
-                "jb_items": [],
-                "jb_texts": [],
-                "jb_item_count": 0,
-                "item_errors": [],
-                "timings_ms": {
-                    "text_det_ms": 0.0,
-                    "text_orientation_ms": 0.0,
-                    "text_rec_ms": 0.0,
-                    "text_total_ms": 0.0,
-                },
-            }
-            if error:
-                payload["error"] = str(error)
-            return payload
-
-        record: Dict[str, Any] = {
-            "image_path": str(image_path),
-            "status": "error",
-            "ok": False,
-            "result_code": 9001,
-            "result_name": "internal_error",
-            "result_message": "内部异常",
-            "grade": None,
-            "iqi_type": None,
-            "plate_code": None,
-            "plate_number": None,
-            "plate_source": None,
-            "wire_count": None,
-            "fields": {
-                "component_codes": [],
-                "weld_film_pairs": [],
-                "weld_numbers": [],
-                "film_numbers": [],
-                "pipe_specs": [],
-            },
-            "field_statistics": {
-                "component_code_count": 0,
-                "weld_film_pair_count": 0,
-                "weld_number_count": 0,
-                "film_number_count": 0,
-                "pipe_spec_count": 0,
-                "general_fields_found": False,
-                "full_image_marker_found": False,
-                "roi_marker_found": False,
-                "iqi_marker_found": False,
-            },
-            "warnings": [],
-            "errors": [],
-        }
         try:
-            step_start = time.perf_counter()
-            image = load_image(image_path)
-            _mark("image_read_ms", step_start)
-            if debug_artifacts is not None:
-                debug_artifacts["image"] = image
-            height, width = image.shape[:2]
-            record["width"] = int(width)
-            record["height"] = int(height)
-
-            correction_info = {
-                "label": 0,
-                "confidence": None,
-                "status": "disabled",
-                "corrected": False,
-                "actions": None,
-            }
-            if self.corrector is not None:
-                step_start = time.perf_counter()
-                image, correction_info = self.corrector.correct_image(image, verbose=self.correction_verbose)
-                _mark("correction_ms", step_start)
-                if debug_artifacts is not None:
-                    debug_artifacts["image"] = image
-                height, width = image.shape[:2]
-                record["width"] = int(width)
-                record["height"] = int(height)
-            record["correction"] = correction_info
-
-            step_start = time.perf_counter()
-            sampled_image, resize_scale = resize_long_side(image, self.ocr_det_limit_side_len)
-            _mark("full_resize_ms", step_start)
-            if debug_artifacts is not None:
-                debug_artifacts["sampled_image"] = sampled_image
-
-            record["full_image_preprocess"] = {
-                "resize_scale": float(resize_scale),
-                "resize_long_side": int(self.ocr_det_limit_side_len),
-                "sampled_size": [int(sampled_image.shape[1]), int(sampled_image.shape[0])],
-                "ocr_enhance_mode": "windowing",
-            }
-
-            step_start = time.perf_counter()
-            full_ocr_input = enhance_windowing_gray(sampled_image)
-            _mark("full_windowing_ms", step_start)
-            if debug_artifacts is not None:
-                debug_artifacts["full_ocr_input"] = full_ocr_input
-
-            step_start = time.perf_counter()
-            full_ocr_result = infer_roi_ocr(
-                self.ocr_backend,
-                self.ocr_backend,
-                full_ocr_input,
-                min_score=self.ocr_min_score,
-                text_orientation_corrector=self.ocr_text_corrector,
-                text_orientation_verbose=self.ocr_orientation_verbose,
+            record = self.runner.run(
+                image_path,
+                return_debug_artifacts=return_debug_artifacts,
             )
-            _mark("full_image_ocr_ms", step_start)
-            self._merge_prefixed_ocr_timings(step_timings, "full", full_ocr_result)
-
-            full_items_original = self._scale_ocr_items_to_original(full_ocr_result.get("all_items") or [], resize_scale)
-            full_plate_vis_items = self._build_plate_visualization_items(full_items_original, source="full_image")
-            full_ocr_result = dict(full_ocr_result)
-            full_ocr_result["all_items_original"] = full_items_original
-            full_ocr_result["items_original"] = [item for item in full_items_original if self._is_usable_ocr_item(item)]
-
-            step_start = time.perf_counter()
-            general_fields = extract_general_fields_from_ocr_items(full_items_original)
-            _mark("general_field_match_ms", step_start)
-
-            step_start = time.perf_counter()
-            full_plate_result = infer_plate_from_ocr_items(
-                full_items_original,
-                require_jb=True,
-                allowed_numbers=self.ocr_allowed_numbers,
-            )
-            _mark("full_marker_match_ms", step_start)
-            full_plate_result = dict(full_plate_result)
-            full_plate_result["raw_text_items"] = full_plate_vis_items
-
-            warnings: List[str] = []
-            if full_ocr_result.get("item_errors"):
-                warnings.append("全图OCR存在部分文本框识别异常")
-            if full_plate_result.get("corrections"):
-                warnings.append("全图 OCR 标识解析触发了规则纠错")
-
-            field_statistics = dict(general_fields.get("field_statistics") or {})
-            field_statistics["full_image_marker_found"] = bool(full_plate_result.get("ok"))
-            field_statistics["roi_marker_found"] = False
-            field_statistics["iqi_marker_found"] = bool(full_plate_result.get("ok"))
-
-            record["ocr"] = full_ocr_result
-            record["full_image_ocr"] = full_ocr_result
-            record["full_image_plate"] = full_plate_result
-            record["fields"] = general_fields.get("fields") or record["fields"]
-            record["field_statistics"] = field_statistics
-            record["general_fields_found"] = bool(field_statistics.get("general_fields_found", False))
-
-            roi_info: Dict[str, Any] = {}
-            roi_image = None
-            roi_gray = None
-            roi_ocr_result: Optional[Dict[str, Any]] = None
-            roi_plate_result: Optional[Dict[str, Any]] = None
-            roi_plate_vis_items: List[Dict[str, Any]] = []
-            roi_error_code: Optional[int] = None
-            roi_error_message: Optional[str] = None
-
-            step_start = time.perf_counter()
-            yolo_result = self.gauge_model.predict(
-                source=sampled_image,
-                conf=self.gauge_conf,
-                iou=self.gauge_iou,
-                imgsz=self.gauge_imgsz,
-                device=self.gauge_device,
-                verbose=False,
-            )
-            if debug_artifacts is not None:
-                debug_artifacts["gauge_yolo_result"] = yolo_result[0] if yolo_result else None
-            _mark("roi_detect_ms", step_start)
-
-            if not yolo_result:
-                roi_error_code = 1101
-                roi_error_message = "未检测到像质计 ROI"
-                roi_ocr_result = _build_skipped_ocr("skipped_no_roi", roi_error_message)
-            else:
-                roi_info_resized = extract_best_obb(yolo_result[0], select=self.gauge_select, class_filter=self.gauge_class)
-                if roi_info_resized is None:
-                    roi_error_code = 1101
-                    roi_error_message = "未检测到像质计 ROI"
-                    roi_ocr_result = _build_skipped_ocr("skipped_no_roi", roi_error_message)
-                else:
-                    roi_info = self._scale_roi_info_to_original(roi_info_resized, resize_scale)
-                    step_start = time.perf_counter()
-                    polygon = np.array(roi_info["polygon"], dtype=np.float32)
-                    roi_cropped, crop_matrix = crop_rotated_polygon(image, polygon)
-                    _mark("roi_crop_ms", step_start)
-                    if roi_cropped is None or crop_matrix is None:
-                        roi_error_code = 1102
-                        roi_error_message = "像质计 ROI 透视展开失败"
-                        roi_ocr_result = _build_skipped_ocr("skipped_roi_invalid", roi_error_message)
-                    else:
-                        if debug_artifacts is not None:
-                            debug_artifacts["roi_cropped"] = roi_cropped
-                            debug_artifacts["roi_crop_matrix"] = crop_matrix
-                        step_start = time.perf_counter()
-                        pre_rotate_size = [int(roi_cropped.shape[1]), int(roi_cropped.shape[0])]
-                        crop_inverse_matrix = invert_perspective_matrix(crop_matrix)
-                        roi_image, rotated, rotation = rotate_if_wide(roi_cropped, enable=self.rotate_roi)
-                        if self.enhance_mode == "windowing":
-                            roi_window_start = time.perf_counter()
-                            roi_gray = enhance_windowing_gray(roi_image)
-                            _mark("roi_windowing_ms", roi_window_start)
-                        else:
-                            roi_gray = to_gray(roi_image)
-                            if debug_timer:
-                                step_timings.setdefault("roi_windowing_ms", 0.0)
-                        _mark("roi_preprocess_ms", step_start)
-                        if debug_artifacts is not None:
-                            debug_artifacts["roi_image"] = roi_image
-                            debug_artifacts["roi_gray"] = roi_gray
-
-                        step_start = time.perf_counter()
-                        roi_ocr_result = infer_roi_ocr(
-                            self.ocr_backend,
-                            self.ocr_backend,
-                            roi_gray,
-                            min_score=self.ocr_min_score,
-                            text_orientation_corrector=self.ocr_text_corrector,
-                            text_orientation_verbose=self.ocr_orientation_verbose,
-                        )
-                        _mark("roi_ocr_ms", step_start)
-                        self._merge_prefixed_ocr_timings(step_timings, "roi", roi_ocr_result)
-
-                        step_start = time.perf_counter()
-                        roi_plate_result = infer_plate_from_ocr_items(
-                            roi_ocr_result.get("all_items") or [],
-                            require_jb=True,
-                            allowed_numbers=self.ocr_allowed_numbers,
-                        )
-                        _mark("roi_marker_match_ms", step_start)
-                        roi_projected_items = self._project_ocr_items_to_image(
-                            roi_ocr_result.get("all_items") or [],
-                            crop_inverse_matrix=crop_inverse_matrix,
-                            pre_rotate_size=pre_rotate_size,
-                            rotated=bool(rotated),
-                        )
-                        roi_plate_vis_items = self._build_plate_visualization_items(roi_projected_items, source="roi")
-                        roi_ocr_result = dict(roi_ocr_result)
-                        roi_ocr_result["all_items_image"] = roi_projected_items
-                        roi_ocr_result["items_image"] = [item for item in roi_projected_items if self._is_usable_ocr_item(item)]
-                        if roi_plate_result is not None:
-                            roi_plate_result = dict(roi_plate_result)
-                            roi_plate_result["raw_text_items"] = roi_plate_vis_items
-
-                        if roi_ocr_result.get("item_errors"):
-                            warnings.append("ROI OCR存在部分文本框识别异常")
-                        if roi_plate_result.get("corrections"):
-                            warnings.append("ROI OCR 标识解析触发了规则纠错")
-
-                        record["preprocess"] = {
-                            "rotation": int(rotation),
-                            "rotated": bool(rotated),
-                            "enhance_mode": self.enhance_mode,
-                            "roi_size": [int(roi_image.shape[1]), int(roi_image.shape[0])],
-                        }
-                        record["roi"] = {
-                            **roi_info,
-                            "crop_size_before_rotate": pre_rotate_size,
-                            "crop_inverse_matrix": crop_inverse_matrix.tolist(),
-                        }
-
-            if not roi_info:
-                record["roi"] = {}
-            if roi_ocr_result is not None:
-                record["roi_ocr"] = roi_ocr_result
-            if roi_plate_result is not None:
-                record["roi_plate"] = roi_plate_result
-
-            selected_plate: Dict[str, Any]
-            plate_source: Optional[str] = None
-            if roi_plate_result is not None and roi_plate_result.get("ok"):
-                selected_plate = roi_plate_result
-                plate_source = "roi"
-                if full_plate_result.get("ok") and full_plate_result.get("plate_code") != roi_plate_result.get("plate_code"):
-                    warnings.append("全图 OCR 与 ROI OCR 标识不一致，已按 ROI OCR 结果输出")
-            elif full_plate_result.get("ok"):
-                selected_plate = full_plate_result
-                plate_source = "full_image"
-                if roi_plate_result is not None and not roi_plate_result.get("ok"):
-                    warnings.append("ROI OCR 未识别出像质计标识，已回退到全图 OCR 结果")
-            elif roi_plate_result is not None:
-                selected_plate = roi_plate_result
-            else:
-                selected_plate = full_plate_result
-
-            field_statistics["roi_marker_found"] = bool(roi_plate_result and roi_plate_result.get("ok"))
-            field_statistics["iqi_marker_found"] = bool(selected_plate.get("ok"))
-            record["field_statistics"] = field_statistics
-            record["general_fields_found"] = bool(field_statistics.get("general_fields_found", False))
-            record["iqi_marker_found"] = bool(selected_plate.get("ok"))
-            selected_plate = dict(selected_plate)
-            if plate_source == "roi":
-                selected_plate["raw_text_items"] = roi_plate_vis_items
-            elif plate_source == "full_image":
-                selected_plate["raw_text_items"] = full_plate_vis_items
-            else:
-                selected_plate.setdefault("raw_text_items", [])
-            record["plate"] = selected_plate
-            record["plate_source"] = plate_source
-
-            if roi_error_code is not None:
-                record["wire"] = self._build_skipped_wire(
-                    "skipped_no_roi" if roi_error_code == 1101 else "skipped_roi_invalid",
-                    roi_error_message,
-                )
-                error_entries = [{"stage": "roi", **build_result_status(roi_error_code, roi_error_message)}]
-                self._attach_visualization_payload(
-                    record,
-                    roi_plate_vis_items=roi_plate_vis_items,
-                    full_plate_vis_items=full_plate_vis_items,
-                )
-                final_record = self._finalize_record(record, error_entries, warnings)
-                _attach_timing(final_record)
-                return final_record, debug_artifacts
-
-            if self.fclip_inferencer is not None:
-                step_start = time.perf_counter()
-                wire_result = self.fclip_inferencer.infer(
-                    roi_gray,
-                    crop_inverse_matrix=np.array(record["roi"].get("crop_inverse_matrix"), dtype=np.float32),
-                    pre_rotate_size=record["roi"].get("crop_size_before_rotate"),
-                    rotated=bool(record.get("preprocess", {}).get("rotated", False)),
-                )
-                _mark("wire_infer_ms", step_start)
-            else:
-                wire_result = {
-                    "status": "error",
-                    "error": "FClip is disabled because no checkpoint was provided.",
-                    "wire_count": None,
-                    "parsed_line_count": 0,
-                    "lines": [],
-                    "warnings": [],
-                }
-
-            warnings.extend(wire_result.get("warnings") or [])
-            record["wire"] = wire_result
-
-            wire_error_entries: List[Dict[str, Any]] = []
-            if wire_result.get("status") != "ok":
-                wire_error_entries.append({"stage": "wire", **build_result_status(3001, wire_result.get("error") or "像质丝识别失败")})
-            elif wire_result.get("wire_count") is None:
-                wire_error_entries.append({"stage": "wire", **build_result_status(3002)})
-
-            if not selected_plate.get("ok"):
-                error_entries = list(wire_error_entries)
-                error_entries.append({"stage": "marker", **build_result_status(int(selected_plate.get("result_code", 9001)))})
-                self._attach_visualization_payload(
-                    record,
-                    roi_plate_vis_items=roi_plate_vis_items,
-                    full_plate_vis_items=full_plate_vis_items,
-                )
-                final_record = self._finalize_record(record, error_entries, warnings)
-                _attach_timing(final_record)
-                return final_record, debug_artifacts
-
-            step_start = time.perf_counter()
-            grade_result = compute_iqi_grade(
-                selected_plate.get("iqi_type"),
-                selected_plate.get("number"),
-                wire_result.get("wire_count"),
-                allowed_numbers=self.ocr_allowed_numbers,
-            )
-            _mark("grade_fusion_ms", step_start)
-            record["grade_rule"] = grade_result
-            error_entries = list(wire_error_entries)
-            if selected_plate.get("ok") and wire_result.get("status") == "ok" and not grade_result.get("ok"):
-                error_entries.append({"stage": "grade", **build_result_status(int(grade_result.get("result_code", 9001)))})
-
-            final_record = self._finalize_record(record, error_entries, warnings, grade=grade_result.get("grade"))
-            final_record["plate_source"] = plate_source
-            self._attach_visualization_payload(
-                final_record,
-                roi_plate_vis_items=roi_plate_vis_items,
-                full_plate_vis_items=full_plate_vis_items,
-            )
-            _attach_timing(final_record)
-            return final_record, debug_artifacts
-        except FileNotFoundError as exc:
-            record.update(build_result_status(1001, str(exc)))
-            record["errors"] = [{"stage": "image", **build_result_status(1001, str(exc))}]
-            _attach_timing(record)
-            return record, debug_artifacts
+            return record.model_dump(), record._debug_artifacts
         except Exception as exc:
-            record.update(build_result_status(9001, str(exc)))
-            record["errors"] = [{"stage": "pipeline", **build_result_status(9001, str(exc))}]
-            _attach_timing(record)
-            return record, debug_artifacts
+            from gauge.iqi_rules import build_result_status
+
+            record: Dict[str, Any] = {
+                "image_path": str(image_path),
+                "status": "error",
+                "ok": False,
+                "result_code": 9001,
+                "result_name": "internal_error",
+                "result_message": str(exc),
+                "grade": None,
+                "iqi_type": None,
+                "plate_code": None,
+                "plate_number": None,
+                "plate_source": None,
+                "wire_count": None,
+                "fields": {
+                    "component_codes": [],
+                    "weld_film_pairs": [],
+                    "weld_numbers": [],
+                    "film_numbers": [],
+                    "pipe_specs": [],
+                },
+                "field_statistics": {
+                    "component_code_count": 0,
+                    "weld_film_pair_count": 0,
+                    "weld_number_count": 0,
+                    "film_number_count": 0,
+                    "pipe_spec_count": 0,
+                    "general_fields_found": False,
+                    "full_image_marker_found": False,
+                    "roi_marker_found": False,
+                    "iqi_marker_found": False,
+                },
+                "warnings": [],
+                "errors": [{"stage": "pipeline", **build_result_status(9001, str(exc))}],
+            }
+            return record, None
+
+
+# ---------------------------------------------------------------------------
+# Module-level helper functions (unchanged)
+# ---------------------------------------------------------------------------
 
 
 def build_wire_vis_image(roi_image: np.ndarray, wire_result: Dict[str, Any]) -> np.ndarray:
