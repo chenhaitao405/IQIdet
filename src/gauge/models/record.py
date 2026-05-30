@@ -57,7 +57,7 @@ class IQIRecord(BaseModel):
 
     @classmethod
     def create_error(cls, code: int, message: str, image_path: str = "") -> "IQIRecord":
-        from gauge.iqi_rules import build_result_status
+        from gauge.domain.iqi_rules import build_result_status
         status = build_result_status(code, message)
         return cls(
             image_path=image_path,

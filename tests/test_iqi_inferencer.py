@@ -170,7 +170,7 @@ class IQIInferencerMarkerFailureWireTest(unittest.TestCase):
                 "gauge.stages.roi_ocr.infer_plate_from_ocr_items",
                 return_value=marker_failure,
             ), \
-            mock.patch("gauge.iqi_rules.compute_iqi_grade") as compute_grade:
+            mock.patch("gauge.domain.iqi_rules.compute_iqi_grade") as compute_grade:
             with warnings.catch_warnings(record=True) as caught:
                 warnings.simplefilter("always")
                 # Pydantic emits serializer warnings when mock dicts are passed

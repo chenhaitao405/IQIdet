@@ -6,7 +6,7 @@ from __future__ import annotations
 from collections import Counter
 from typing import Any, Dict, List, Optional, Sequence
 
-from gauge.iqi_rules import (
+from gauge.domain.iqi_rules import (
     build_result_status,
     choose_primary_result_code,
     infer_plate_from_texts,
@@ -16,7 +16,6 @@ from gauge.iqi_rules import (
     summarize_result_codes_named,
 )
 from gauge.models.record import IQIRecord
-from gauge.services.ocr_stage import build_ocr_statistics
 
 
 def _optional_section(value: Any) -> Any:
@@ -181,6 +180,8 @@ def build_visualization(ctx: Any) -> Dict[str, Any]:
 
 
 def build_iqi_statistics(results: Sequence[Dict[str, Any]], topk: int = 200) -> Dict[str, Any]:
+    from gauge.services.ocr_stage import build_ocr_statistics
+
     ocr_stats = build_ocr_statistics(list(results), topk=topk)
     grade_counter = Counter()
     type_counter = Counter()

@@ -6,7 +6,7 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, Optional
 
-from gauge.iqi_rules import (
+from gauge.domain.iqi_rules import (
     extract_general_fields_from_ocr_items,
     infer_plate_from_ocr_items,
 )
@@ -127,6 +127,6 @@ class FullImageOCRStage(PipelineStage):
 
 def parse_allowed_numbers(spec: Optional[str]) -> Any:
     """Parse allowed numbers string to frozenset."""
-    from gauge.iqi_rules import parse_allowed_numbers_spec
+    from gauge.domain.iqi_rules import parse_allowed_numbers_spec
 
     return parse_allowed_numbers_spec(spec)

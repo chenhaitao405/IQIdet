@@ -78,7 +78,7 @@ class StageContext(BaseModel):
 
     def to_record(self) -> IQIRecord:
         """Build the final IQIRecord from current context state."""
-        from gauge.record_builders import build_iqi_record
+        from gauge.domain.record_builders import build_iqi_record
 
         record = build_iqi_record(self)
         if self.debug_artifacts is not None:

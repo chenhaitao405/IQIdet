@@ -2,7 +2,7 @@ import unittest
 import warnings
 
 from gauge.config import PipelineConfig
-from gauge.record_builders import build_iqi_record
+from gauge.domain.record_builders import build_iqi_record
 from gauge.stages.base import StageContext
 
 

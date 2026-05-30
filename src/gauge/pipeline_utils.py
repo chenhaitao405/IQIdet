@@ -281,7 +281,7 @@ def build_plate_visualization_items(
     source: str,
 ) -> List[Dict[str, Any]]:
     """Build visualization-ready plate items from OCR items."""
-    from gauge.iqi_rules import normalize_text
+    from gauge.domain.iqi_rules import normalize_text
 
     vis_items: List[Dict[str, Any]] = []
     text_index = 0

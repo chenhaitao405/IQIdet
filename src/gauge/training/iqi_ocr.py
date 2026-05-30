@@ -8,7 +8,7 @@ from typing import Any, Sequence
 import cv2
 import numpy as np
 
-from gauge.iqi_rules import compute_iqi_grade, infer_plate_from_texts
+from gauge.domain.iqi_rules import compute_iqi_grade, infer_plate_from_texts
 
 
 def _ensure_bgr(image: Any) -> Any:

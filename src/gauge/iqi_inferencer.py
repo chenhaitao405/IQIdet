@@ -22,7 +22,7 @@ from gauge.services.fclip_stage import (
     perspective_transform_points,
     undo_ccw90_points,
 )
-from gauge.iqi_rules import (
+from gauge.domain.iqi_rules import (
     build_result_status,
     choose_primary_result_code,
     compute_iqi_grade,
@@ -33,7 +33,7 @@ from gauge.iqi_rules import (
     normalize_text,
     parse_allowed_numbers_spec,
 )
-from gauge.record_builders import build_delivery_record, build_iqi_statistics
+from gauge.domain.record_builders import build_delivery_record, build_iqi_statistics
 from gauge.ocr_runtime import PaddleOCRSubprocessClient
 from gauge.services.ocr_stage import infer_roi_ocr
 from gauge.pipeline_utils import (
@@ -497,7 +497,7 @@ class IQIInferencer:
             )
             return record.model_dump(), record._debug_artifacts
         except Exception as exc:
-            from gauge.iqi_rules import build_result_status
+            from gauge.domain.iqi_rules import build_result_status
 
             record: Dict[str, Any] = {
                 "image_path": str(image_path),

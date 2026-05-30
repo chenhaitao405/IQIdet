@@ -6,7 +6,7 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, List, Optional
 
-from gauge.iqi_rules import (
+from gauge.domain.iqi_rules import (
     build_result_status,
     compute_iqi_grade,
     parse_allowed_numbers_spec,
