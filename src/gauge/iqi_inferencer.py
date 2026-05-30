@@ -669,6 +669,8 @@ class IQIInferencer:
                 device=self.gauge_device,
                 verbose=False,
             )
+            if debug_artifacts is not None:
+                debug_artifacts["gauge_yolo_result"] = yolo_result[0] if yolo_result else None
             _mark("roi_detect_ms", step_start)
 
             if not yolo_result:
@@ -692,6 +694,9 @@ class IQIInferencer:
                         roi_error_message = "像质计 ROI 透视展开失败"
                         roi_ocr_result = _build_skipped_ocr("skipped_roi_invalid", roi_error_message)
                     else:
+                        if debug_artifacts is not None:
+                            debug_artifacts["roi_cropped"] = roi_cropped
+                            debug_artifacts["roi_crop_matrix"] = crop_matrix
                         step_start = time.perf_counter()
                         pre_rotate_size = [int(roi_cropped.shape[1]), int(roi_cropped.shape[0])]
                         crop_inverse_matrix = invert_perspective_matrix(crop_matrix)
