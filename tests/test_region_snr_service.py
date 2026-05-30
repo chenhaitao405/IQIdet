@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-from gauge.region_snr_service import RegionSNRService
+from gauge.services.region.snr_service import RegionSNRService
 
 
 class RegionSNRServiceTest(unittest.TestCase):

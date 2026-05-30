@@ -1,0 +1,2 @@
+[console_scripts]
+iqi-grade-infer = gauge.cli:main

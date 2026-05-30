@@ -44,7 +44,7 @@
         "--fclip-config",
         "models/fclip_config.yaml",
         "--output-json",
-        "outputs/iqi_grade_infer_szj/iqi_grade_results.json",
+        "outputs/iqi_grade_infer_szj/iqi_grade_results_ori.json",
         "--ocr-det-model-name",
         "PP-OCRv5_server_det",
         "--ocr-det-limit-side-len",

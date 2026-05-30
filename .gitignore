@@ -1,7 +1,6 @@
 .idea
 build_gif.py
 draw_pr_curve.py
-__pycache__
 data
 fig
 logs
@@ -14,8 +13,9 @@ IQIdata/gauge_obb
 /outputs
 /local
 /runs
+cache/
+__pycache__/
 !/models/
 !/models/**
 TODO.md
-
-/graphify-out
+graphify-out/

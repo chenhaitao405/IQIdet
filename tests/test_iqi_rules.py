@@ -8,7 +8,7 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from gauge.iqi_rules import compute_iqi_grade, infer_plate_from_texts
+from gauge.domain.iqi_rules import compute_iqi_grade, infer_plate_from_texts
 
 
 class IQIRulesContractTest(unittest.TestCase):
