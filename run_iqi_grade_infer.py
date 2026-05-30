@@ -183,8 +183,8 @@ def main() -> None:
     )
 
     setup_logging(
-        level=getattr(logging, args.log_level),
-        json_output=args.log_json,
+        level=getattr(logging, getattr(args, "log_level", "INFO")),
+        json_output=getattr(args, "log_json", False),
     )
 
     full_results = []
