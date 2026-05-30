@@ -14,7 +14,7 @@ class OrientationInfo(BaseModel):
 
 
 class OCRItem(BaseModel):
-    crop_index: int
+    crop_index: int = -1
     text: str = ""
     score: Optional[float] = None
     box: List[List[float]] = Field(default_factory=list)

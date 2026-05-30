@@ -15,7 +15,7 @@ import numpy as np
 
 os.environ.setdefault("PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK", "True")
 
-from gauge.ocr_stage import (  # noqa: E402
+from gauge.services.ocr_stage import (  # noqa: E402
     _ensure_rgb,
     _run_text_det_predict,
     _run_text_rec_predict,

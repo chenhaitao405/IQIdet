@@ -8,7 +8,7 @@ from typing import Any, Dict, Optional
 
 import numpy as np
 
-from gauge.fclip_stage import invert_perspective_matrix
+from gauge.services.fclip_stage import invert_perspective_matrix
 from gauge.pipeline_utils import (
     build_skipped_ocr,
     crop_rotated_polygon,
@@ -17,7 +17,7 @@ from gauge.pipeline_utils import (
     scale_roi_info_to_original,
     to_gray,
 )
-from gauge.roi_stage import extract_best_obb
+from gauge.services.roi_stage import extract_best_obb
 from gauge.stages.base import PipelineStage, StageContext
 
 logger = logging.getLogger(__name__)

@@ -12,7 +12,7 @@ from typing import Any, Dict, Optional
 import numpy as np
 
 from gauge.iqi_rules import normalize_text
-from gauge.ocr_stage import PaddleOCRSubprocessClient
+from gauge.services.ocr_stage import PaddleOCRSubprocessClient
 from gauge.pipeline_utils import enhance_windowing_gray, to_gray
 
 
@@ -44,7 +44,7 @@ class RegionOCRService:
         )
         self.ocr_text_corrector = None
         if enable_orientation:
-            from gauge.ocr_orientation import OCRTextOrientationCorrector
+            from gauge.services.ocr_orientation import OCRTextOrientationCorrector
 
             self.ocr_text_corrector = OCRTextOrientationCorrector(
                 model_path=self._resolve_path(ocr_orientation_model),

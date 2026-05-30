@@ -1,16 +1,16 @@
 # Graph Report - IQIdet  (2026-05-30)
 
 ## Corpus Check
-- 1642 files · ~39,718,716 words
+- 1668 files · ~39,785,844 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 17446 nodes · 23374 edges · 1441 communities (1309 shown, 132 thin omitted)
-- Extraction: 94% EXTRACTED · 6% INFERRED · 0% AMBIGUOUS · INFERRED: 1432 edges (avg confidence: 0.6)
+- 17715 nodes · 24001 edges · 1464 communities (1330 shown, 134 thin omitted)
+- Extraction: 93% EXTRACTED · 7% INFERRED · 0% AMBIGUOUS · INFERRED: 1698 edges (avg confidence: 0.6)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `6bbd1a03`
+- Built from commit: `2ae65dc8`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -1385,6 +1385,27 @@
 - [[_COMMUNITY_Community 1382|Community 1382]]
 - [[_COMMUNITY_Community 1383|Community 1383]]
 - [[_COMMUNITY_Community 1384|Community 1384]]
+- [[_COMMUNITY_Community 1441|Community 1441]]
+- [[_COMMUNITY_Community 1442|Community 1442]]
+- [[_COMMUNITY_Community 1443|Community 1443]]
+- [[_COMMUNITY_Community 1444|Community 1444]]
+- [[_COMMUNITY_Community 1445|Community 1445]]
+- [[_COMMUNITY_Community 1446|Community 1446]]
+- [[_COMMUNITY_Community 1447|Community 1447]]
+- [[_COMMUNITY_Community 1448|Community 1448]]
+- [[_COMMUNITY_Community 1449|Community 1449]]
+- [[_COMMUNITY_Community 1450|Community 1450]]
+- [[_COMMUNITY_Community 1451|Community 1451]]
+- [[_COMMUNITY_Community 1452|Community 1452]]
+- [[_COMMUNITY_Community 1453|Community 1453]]
+- [[_COMMUNITY_Community 1454|Community 1454]]
+- [[_COMMUNITY_Community 1455|Community 1455]]
+- [[_COMMUNITY_Community 1456|Community 1456]]
+- [[_COMMUNITY_Community 1457|Community 1457]]
+- [[_COMMUNITY_Community 1458|Community 1458]]
+- [[_COMMUNITY_Community 1459|Community 1459]]
+- [[_COMMUNITY_Community 1460|Community 1460]]
+- [[_COMMUNITY_Community 1461|Community 1461]]
 
 ## God Nodes (most connected - your core abstractions)
 1. `vocab` - 349 edges
@@ -1394,20 +1415,20 @@
 5. `DonutSwinModelOutput` - 52 edges
 6. `更新` - 51 edges
 7. `Box` - 47 edges
-8. `IQIInferencer` - 44 edges
-9. `Recently Update` - 40 edges
-10. `check_simple_inference_result()` - 39 edges
+8. `IQIInferencer` - 46 edges
+9. `AdaptiveImageProcessor` - 42 edges
+10. `OCRTextOrientationCorrector` - 40 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `Namespace` --uses--> `IQIInferencer`  [INFERRED]
   run_iqi_grade_infer.py → src/gauge/iqi_inferencer.py
 - `Any` --uses--> `IQIInferencer`  [INFERRED]
   run_iqi_grade_infer.py → src/gauge/iqi_inferencer.py
-- `IQIInferencer` --uses--> `IQIInferencer`  [INFERRED]
-  tests/test_iqi_inferencer.py → src/gauge/iqi_inferencer.py
 - `Tensor` --uses--> `IQIInferencer`  [INFERRED]
   scripts/debug/dump_iqi_fclip_trace.py → src/gauge/iqi_inferencer.py
 - `Path` --uses--> `IQIInferencer`  [INFERRED]
+  run_iqi_grade_infer.py → src/gauge/iqi_inferencer.py
+- `main()` --calls--> `build_delivery_record()`  [INFERRED]
   run_iqi_grade_infer.py → src/gauge/iqi_inferencer.py
 
 ## Hyperedges (group relationships)
@@ -1420,63 +1441,63 @@
 - **FClip Detection Head Implementations** — models___init___multitaskhead, models___init___linehead, models___init___lcnnhead [INFERRED 0.85]
 - **Gauge Detector Training Augmentation** — config_augment_augmentation_pipeline, config_augment_quadrantal_rotation [EXTRACTED 1.00]
 
-## Communities (1441 total, 132 thin omitted)
+## Communities (1464 total, 134 thin omitted)
 
 ### Community 0 - "IQI Inferencer Core"
-Cohesion: 0.17
-Nodes (19): FClipInferencer, Torch-based FClip inferencer for wire count and line endpoints., build_delivery_record(), build_final_result_vis_image(), build_iqi_statistics(), build_wire_vis_image(), collect_input_images(), IQIInferencer (+11 more)
+Cohesion: 0.13
+Nodes (27): FClipInferencer, Torch-based FClip inferencer for wire count and line endpoints., Torch-based FClip inferencer for wire count and line endpoints., build_delivery_record(), build_final_result_vis_image(), build_iqi_statistics(), build_wire_vis_image(), collect_input_images() (+19 more)
 
 ### Community 1 - "OCR Subprocess Pipeline"
-Cohesion: 0.10
-Nodes (41): decode_image(), main(), parse_args(), write_response(), build_ocr_item_debug_images(), build_ocr_statistics(), _configure_paddle_runtime(), _contains_jb() (+33 more)
+Cohesion: 0.06
+Nodes (61): decode_image(), main(), parse_args(), write_response(), build_ocr_item_debug_images(), build_ocr_statistics(), _configure_paddle_runtime(), _contains_jb() (+53 more)
 
 ### Community 2 - "FClip Trainer Engine"
-Cohesion: 0.33
-Nodes (4): init_lr_scheduler(), WarmUpCosine, WarmUpSingle, _LRScheduler
+Cohesion: 0.36
+Nodes (3): init_lr_scheduler(), WarmUpCosine, WarmUpSingle
 
 ### Community 3 - "Loss Functions"
-Cohesion: 0.16
-Nodes (7): ce_loss(), focal_loss(), l12loss(), merge 2 cls and multi-cls ce loss     :param logits: [cls_num, bs, h, w]     :pa, TODO     another version of focal loss from corner net     only for two cls, sigmoid_l1_loss(), FClip
+Cohesion: 0.08
+Nodes (17): anchor_loss(), balanced_positive_negative_sampler(), ce_loss(), focal_loss(), gaussian_soft_ce_loss(), l12loss(), lt(), lt_loss() (+9 more)
 
 ### Community 4 - "Adaptive Image Processing"
-Cohesion: 0.08
-Nodes (24): AdaptiveImageProcessor, Apply windowing and optional negative transform to weld film images., Resize while preserving aspect ratio, then pad to a square canvas., SquarePadResize, Image, bool, int, ndarray (+16 more)
+Cohesion: 0.06
+Nodes (40): AdaptiveImageProcessor, Apply windowing and optional negative transform to weld film images., Resize while preserving aspect ratio, then pad to a square canvas., Resize while preserving aspect ratio, then pad to a square canvas., SquarePadResize, Image, BaseOrientationCorrector, Detect and restore image orientation across 8 direction classes. (+32 more)
 
 ### Community 5 - "IQI Rules Engine"
-Cohesion: 0.15
-Nodes (38): _base_field_record(), _box_center(), _build_candidates_from_marker_sequence(), _build_candidates_from_sequence(), build_result_status(), _build_text_sequences(), _canonical_material_token(), choose_primary_result_code() (+30 more)
+Cohesion: 0.11
+Nodes (52): BaseModel, _base_field_record(), _box_center(), _build_candidates_from_marker_sequence(), _build_candidates_from_sequence(), build_result_status(), _build_text_sequences(), _canonical_material_token() (+44 more)
 
 ### Community 6 - "Region SNR API"
-Cohesion: 0.12
-Nodes (21): clipperException, m_descr, Exception, BaseModel, compute_region_snr(), _decode_base64_image(), Field(), get_region_snr_service() (+13 more)
+Cohesion: 0.15
+Nodes (18): BaseModel, compute_region_snr(), _decode_base64_image(), Field(), get_region_snr_service(), HTTPException, init_region_snr_api(), 计算单个区域的归一化信噪比（base64 输入）。 (+10 more)
 
 ### Community 7 - "FClip Model Heads"
-Cohesion: 0.12
-Nodes (10): BasicBlock, Bottleneck, conv3x3(), get_hr_config(), get_pose_net(), HighResolutionModule, PoseHighResolutionNet, 3x3 convolution with padding (+2 more)
+Cohesion: 0.11
+Nodes (11): LCNNHead, LineHead, MultitaskHead, BasicBlock, Bottleneck, conv3x3(), get_hr_config(), get_pose_net() (+3 more)
 
 ### Community 8 - "FClip Inference Utils"
-Cohesion: 0.25
-Nodes (16): device, load_config_from_yaml(), build_line_records(), _ensure_float32_matrix(), _ensure_gray(), invert_perspective_matrix(), lines_yx_to_xy(), perspective_transform_points() (+8 more)
+Cohesion: 0.10
+Nodes (34): main(), device, _ensure_box(), load_configs(), build_infer_model(), draw_count_pair(), get_count_pred(), infer_heatmaps() (+26 more)
 
 ### Community 9 - "Region OCR API"
-Cohesion: 0.12
-Nodes (21): BaseModel, _decode_base64_image(), Field(), get_region_ocr_service(), HTTPException, init_region_ocr_api(), 同步识别单张图片区域（base64 输入），用于前端实时 OCR 框选功能。, recognize_region() (+13 more)
+Cohesion: 0.09
+Nodes (44): _build_summary(), _build_timing_stats(), _build_visualization(), collect_input_images(), _get_rel_path(), main(), _normalize_vis_text(), parse_args() (+36 more)
 
 ### Community 10 - "Dataset Crop Augmentation"
 Cohesion: 0.10
 Nodes (11): eval(), find_images_with_bounding_size(), load_predictor(), main(), Dataset, offset_wrapper(), translate the offset to gaussian mode, WireframeHuangKun (+3 more)
 
 ### Community 11 - "Pipeline Image Utilities"
-Cohesion: 0.10
-Nodes (35): apply_clahe(), apply_window_level(), auto_window_level(), collect_images(), crop_rotated_polygon(), enhance_windowing_gray(), ensure_dir(), format_polygon() (+27 more)
+Cohesion: 0.06
+Nodes (59): apply_clahe(), apply_window_level(), auto_window_level(), box_points_to_bbox(), build_plate_visualization_items(), build_skipped_ocr(), build_skipped_wire(), collect_images() (+51 more)
 
 ### Community 12 - "Weld Dataset Pipeline"
 Cohesion: 0.18
 Nodes (22): angle_from_vertical(), apply_clahe(), apply_window_level(), augment_and_save(), auto_window_level(), crop_rotated_rect(), draw_lines(), enhance_windowing_gray() (+14 more)
 
 ### Community 13 - "FClip Line Parsing"
-Cohesion: 0.15
-Nodes (11): _topk_scores(), line_parsing_from_npz(), OneStageLineParsing, PointParsing, :param xy: (K, 2)         :param xy_idx: (K,)         :param length_regress: (H,, non_maximum_suppression(), structure_nms_torch(), bool (+3 more)
+Cohesion: 0.07
+Nodes (49): GradeError, ImageReadError, IQIError, IQIStageSkipped, MarkerAmbiguousError, MarkerError, MarkerMissingJBError, MarkerNumberOutOfRangeError (+41 more)
 
 ### Community 14 - "FClip Box Core"
 Cohesion: 0.17
@@ -1491,8 +1512,8 @@ Cohesion: 0.20
 Nodes (8): main(), main(), save_heatmap(), to_int(), main(), save_heatmap(), to_int(), parmap()
 
 ### Community 17 - "FClip Box Collections"
-Cohesion: 0.20
-Nodes (37): _args_snapshot(), _array_diff_stats(), _array_sha256(), _array_stats(), _asset_hashes(), _bbox_from_polygon(), _code_hashes(), _command_output() (+29 more)
+Cohesion: 0.11
+Nodes (49): _args_snapshot(), _array_diff_stats(), _array_sha256(), _array_stats(), _asset_hashes(), _bbox_from_polygon(), _code_hashes(), _command_output() (+41 more)
 
 ### Community 18 - "FClip Config Box"
 Cohesion: 0.16
@@ -1515,12 +1536,12 @@ Cohesion: 0.38
 Nodes (10): ensure_dir(), main(), order_points(), parse_args(), polygon_to_obb(), resolve_image_path(), write_data_yaml(), ndarray (+2 more)
 
 ### Community 23 - "FClip Box Accessors"
-Cohesion: 0.12
-Nodes (6): benchmark, Logger, mkdir_if_missing(), np_softmax(), Compute softmax values for each sets of scores in x., Write console output to external text file.     Code imported from https://githu
+Cohesion: 0.11
+Nodes (7): benchmark, Logger, mkdir_if_missing(), np_softmax(), Compute softmax values for each sets of scores in x., Write console output to external text file.     Code imported from https://githu, object
 
 ### Community 24 - "Community 24"
-Cohesion: 0.23
-Nodes (8): AttributeError, BoxError, BoxKeyError, _from_json(), _from_yaml(), Non standard dictionary exceptions, Transform a json object string into a Box object. If the incoming         json i, Transform a json object string into a BoxList object. If the incoming         js
+Cohesion: 0.08
+Nodes (11): bool, int, str, DistillationSARLabelDecode, Normalizes a string by removing unnecessary spaces.          Args:             s, Post-processes a string by fixing text and normalizing it.          Args:, Convert between text-label and text-index, convert text-index into text-label. (+3 more)
 
 ### Community 25 - "FClip Metrics"
 Cohesion: 0.48
@@ -1543,8 +1564,8 @@ Cohesion: 0.03
 Nodes (20): ClsLoss, EASTLoss, tcl_pos: N x 128 x 3         tcl_mask: N x 128 x 1         tcl_label: N x X list, SASTLoss, AttentionLoss, CPPDLoss, LaTeXOCRLoss, LaTeXOCR adopt CrossEntropyLoss for network training. (+12 more)
 
 ### Community 40 - "LCNN Head Module"
-Cohesion: 0.04
-Nodes (29): bool, int, str, ABINetLabelDecode, CANLabelDecode, CPPDLabelDecode, CTCLabelDecode, DistillationCTCLabelDecode (+21 more)
+Cohesion: 0.06
+Nodes (17): ABINetLabelDecode, CPPDLabelDecode, CTCLabelDecode, DistillationCTCLabelDecode, LaTeXOCRDecode, NRTRLabelDecode, Convert between text-label and text-index, Convert between text-label and text-index (+9 more)
 
 ### Community 42 - "Community 42"
 Cohesion: 0.15
@@ -1559,12 +1580,12 @@ Cohesion: 0.24
 Nodes (3): ModelPrinter, Temporarily prints things on the screen, Permanently prints things on the screen
 
 ### Community 45 - "Community 45"
-Cohesion: 0.17
-Nodes (5): Trainer, recursive_to(), get_global(), :param fn:         :param i:         :param result:  {, VisualizeResults
+Cohesion: 0.26
+Nodes (3): get_global(), :param fn:         :param i:         :param result:  {, VisualizeResults
 
 ### Community 46 - "Community 46"
-Cohesion: 0.22
-Nodes (9): _camel_killer(), _conversion_checks(), _get_box_config(), Convert a key into something that is accessible as an attribute, CamelKiller, qu'est-ce que c'est?      Taken from http://stackoverflow.com/a/117, Internal use for checking if a duplicate safe attribute already exists      :par, Due to the way pickling works in python 3, we need to make sure         the box, _safe_attr() (+1 more)
+Cohesion: 0.14
+Nodes (16): BoxError, BoxKeyError, _camel_killer(), _conversion_checks(), _from_json(), _from_yaml(), _get_box_config(), Convert a key into something that is accessible as an attribute (+8 more)
 
 ### Community 47 - "Community 47"
 Cohesion: 0.20
@@ -1583,8 +1604,8 @@ Cohesion: 0.40
 Nodes (3): coor_rot90(), save_heatmap(), to_int()
 
 ### Community 51 - "Community 51"
-Cohesion: 0.48
-Nodes (5): _ensure_box(), load_configs(), build_model(), get_outdir(), main()
+Cohesion: 0.16
+Nodes (12): Any, bool, IQIRecord, PipelineConfig, str, PipelineStage, Mutable state flowing through pipeline stages.      Each stage reads from and wr, Base class for a single pipeline stage. (+4 more)
 
 ### Community 52 - "Community 52"
 Cohesion: 0.05
@@ -1595,8 +1616,8 @@ Cohesion: 0.14
 Nodes (35): CELoss, DBLoss, DMLLoss, DistanceLoss, DKDLoss, DMLLoss, KLDivLoss, LossFromOutput (+27 more)
 
 ### Community 54 - "Community 54"
-Cohesion: 0.05
-Nodes (16): PaddleXPredictorWrapper, PredictorCLISubcommandExecutor, FormulaRecognition, FormulaRecognitionSubcommandExecutor, SealTextDetection, SealTextDetectionSubcommandExecutor, TableStructureRecognition, TableStructureRecognitionSubcommandExecutor (+8 more)
+Cohesion: 0.06
+Nodes (18): ABC, PaddleXPredictorWrapper, PredictorCLISubcommandExecutor, FormulaRecognitionSubcommandExecutor, SealTextDetection, SealTextDetectionSubcommandExecutor, TableStructureRecognitionSubcommandExecutor, TextDetectionMixin (+10 more)
 
 ### Community 55 - "Community 55"
 Cohesion: 0.07
@@ -1604,7 +1625,7 @@ Nodes (63): Abs(), AddEdgeToSEL(), AddJoin(), AddLocalMaxPoly(), AddLocalMinPoly
 
 ### Community 56 - "Community 56"
 Cohesion: 0.06
-Nodes (29): Const, Cosine, CyclicalCosine, DecayLearningRate, Linear, LinearWarmupCosine, MultiStepDecay, OneCycle (+21 more)
+Nodes (30): _LRScheduler, Const, Cosine, CyclicalCosine, DecayLearningRate, Linear, LinearWarmupCosine, MultiStepDecay (+22 more)
 
 ### Community 57 - "Community 57"
 Cohesion: 0.06
@@ -1619,12 +1640,12 @@ Cohesion: 0.08
 Nodes (29): AttentionMaskConverter, CustomMBartDecoder, CustomMBartForCausalLM, _prepare_4d_attention_mask(), _prepare_4d_causal_attention_mask(), _prepare_4d_causal_attention_mask_export(), Make causal mask used for bi-directional self-attention., Converts 2D attention mask to 4D attention mask by expanding mask to (bsz, head_ (+21 more)
 
 ### Community 60 - "Community 60"
-Cohesion: 0.05
-Nodes (48): cal_distance(), cal_iou(), center_rule_match(), convert_coord(), deal_eb_token(), deal_successive_space(), distance_rule_match(), extra_match() (+40 more)
+Cohesion: 0.12
+Nodes (13): extra_match(), find_no_match(), get_match_dict(), Matcher, pickle_load(), Find out no match end2end bbox in previous match list.     :param match_list: ma, This function will create some virtual master bboxes,     and get match with the, Convert match_list to a dict, where key is master bbox's index, value is end2end (+5 more)
 
 ### Community 61 - "Community 61"
-Cohesion: 0.04
-Nodes (23): DetectionDetEvalEvaluator, DetectionICDAR2013Evaluator, DetectionMTWI2018Evaluator, Config, Config, object, Config, read_params() (+15 more)
+Cohesion: 0.06
+Nodes (16): DetectionDetEvalEvaluator, DetectionICDAR2013Evaluator, DetectionMTWI2018Evaluator, Config, Config, object, Config, read_params() (+8 more)
 
 ### Community 62 - "Community 62"
 Cohesion: 0.12
@@ -1647,8 +1668,8 @@ Cohesion: 0.07
 Nodes (16): Adaptive2DPositionalEncoding, ConvBNLayer, LocalityAwareFeedforward, MultiHeadAttention, PositionalEncoding, PositionwiseFeedForward, Sinusoid position encoding table., Args:             feat (Tensor): Feature tensor of shape :math:`(N, D_m, H, W)`. (+8 more)
 
 ### Community 67 - "Community 67"
-Cohesion: 0.13
-Nodes (13): PipelineCLISubcommandExecutor, # TODO: Should we use a third-party CLI library to auto-generate command-line, apply_patches(), Apply patches to paddlex layout parsing utilities to fix integer overflow     an, # TODO: Support dict and list types, # FIXME: Passing API key through CLI is not secure; consider using, # HACK: We should consider reducing duplication., # FIXME: Passing API key through CLI is not secure; consider using (+5 more)
+Cohesion: 0.11
+Nodes (12): PipelineCLISubcommandExecutor, # TODO: Should we use a third-party CLI library to auto-generate command-line, apply_patches(), Apply patches to paddlex layout parsing utilities to fix integer overflow     an, # TODO: Support dict and list types, # FIXME: Passing API key through CLI is not secure; consider using, # HACK: We should consider reducing duplication., # FIXME: Passing API key through CLI is not secure; consider using (+4 more)
 
 ### Community 68 - "Community 68"
 Cohesion: 0.06
@@ -1660,11 +1681,11 @@ Nodes (21): CausalLMOutputWithCrossAttentionsAndCounting, CustomMBartDecoder, Cu
 
 ### Community 70 - "Community 70"
 Cohesion: 0.07
-Nodes (24): ABINetHead, BCNLanguage, decoder_layer(), encoder_layer(), _get_length(), _get_mask(), PositionAttention, Greed decoder to obtain length from logit (+16 more)
+Nodes (25): ABINetHead, BCNLanguage, decoder_layer(), encoder_layer(), _get_length(), _get_mask(), PositionAttention, Greed decoder to obtain length from logit (+17 more)
 
 ### Community 71 - "Community 71"
-Cohesion: 0.06
-Nodes (31): conv_bn(), DiverseBranchBlock, Identity, IdentityBasedConv1x1, PPHGNetV2, PPHGNetV2_B0(), PPHGNetV2_B1(), PPHGNetV2_B2() (+23 more)
+Cohesion: 0.05
+Nodes (35): AdaptiveAvgPool2D, BNAndPad, conv_bn(), DiverseBranchBlock, Identity, IdentityBasedConv1x1, LearnableAffineBlock, PPHGNetV2 (+27 more)
 
 ### Community 72 - "Community 72"
 Cohesion: 0.06
@@ -1675,16 +1696,16 @@ Cohesion: 0.07
 Nodes (26): TextE2E, draw_boxes(), LayoutPredictor, main(), build_post_process(), create_operators(), create operators based on the config     Args:         params(list): a dict list, transform() (+18 more)
 
 ### Community 74 - "Community 74"
-Cohesion: 0.09
-Nodes (16): Block, ConvBNLayer, CTCHead, get_para_bias_attr(), AddPos, FCTranspose, MultiHead, img_metas: [label, valid_ratio] (+8 more)
+Cohesion: 0.12
+Nodes (12): Block, ConvBNLayer, AddPos, FCTranspose, MultiHead, BidirectionalLSTM, EncoderWithCascadeRNN, EncoderWithFC (+4 more)
 
 ### Community 75 - "Community 75"
 Cohesion: 0.08
 Nodes (42): AddChild(), BuildResult2(), CleanPolygon(), CleanPolygons(), Clear(), ClearGhostJoins(), ClearJoins(), CopyAELToSEL() (+34 more)
 
 ### Community 76 - "Community 76"
-Cohesion: 0.07
-Nodes (27): eval_function(), main(), reader_wrapper(), main(), build_lr_scheduler(), build_optimizer(), main(), main() (+19 more)
+Cohesion: 0.08
+Nodes (22): main(), build_lr_scheduler(), build_optimizer(), main(), main(), main(), PACT, prune_model() (+14 more)
 
 ### Community 77 - "Community 77"
 Cohesion: 0.08
@@ -1699,12 +1720,12 @@ Cohesion: 0.08
 Nodes (43): AddGhostJoin(), AppendPolygon(), CreateOutRec(), DoSimplePolygons(), DupOutPt(), FirstIsBottomPt(), FixupFirstLefts1(), FixupFirstLefts2() (+35 more)
 
 ### Community 80 - "Community 80"
-Cohesion: 0.08
-Nodes (36): BaseCVResult, Mat, Status, TextRecPredictor(), TextRecPredictorParams, unique_ptr, vector, class (+28 more)
+Cohesion: 0.15
+Nodes (14): BaseCVResult, Mat, Status, TextRecPredictor(), TextRecPredictorParams, unique_ptr, vector, class (+6 more)
 
 ### Community 81 - "Community 81"
-Cohesion: 0.05
-Nodes (16): convert text-index into text-label., convert text-index into text-label., Convert between text-label and text-index, convert text-index into text-label., Convert between text-label and text-index, convert text-index into text-label., text = self.decode(text)         if label is None:             return text, Convert between text-label and text-index (+8 more)
+Cohesion: 0.11
+Nodes (6): Convert between text-label and text-index, convert text-index into text-label., Convert between text-label and text-index, convert text-index into text-label., RFLLabelDecode, SRNLabelDecode
 
 ### Community 82 - "Community 82"
 Cohesion: 0.13
@@ -1712,7 +1733,7 @@ Nodes (40): Apply(), BaseProcessor(), CheckImageSize(), ComponentsProcessor(), C
 
 ### Community 83 - "Community 83"
 Cohesion: 0.06
-Nodes (25): CosineAnnealingDecay, LinearWarmup, PiecewiseDecay, Cosine, CosineWarmup, create_multi_optimizer(), ExponentialWarmup, L1Decay (+17 more)
+Nodes (27): CosineAnnealingDecay, LinearWarmup, PiecewiseDecay, Cosine, CosineWarmup, create_multi_optimizer(), create_optimizer(), ExponentialWarmup (+19 more)
 
 ### Community 84 - "Community 84"
 Cohesion: 0.07
@@ -1720,7 +1741,7 @@ Nodes (38): add_id(), ctc_decoder_for_image(), ctc_greedy_decoder(), expand_poly
 
 ### Community 85 - "Community 85"
 Cohesion: 0.06
-Nodes (12): ClsHead, Class orientation      Args:          params(dict): super parameters for build C, CT_Head, FCEHead, multi_apply(), The class for implementing FCENet head.     FCENet(CVPR2021): Fourier Contour Em, PSEHead, ConvBNLayer (+4 more)
+Nodes (13): ClsHead, Class orientation      Args:          params(dict): super parameters for build C, CT_Head, ConvBNLayer, EASTHead, PSEHead, CTCHead, get_para_bias_attr() (+5 more)
 
 ### Community 86 - "Community 86"
 Cohesion: 0.08
@@ -1747,16 +1768,16 @@ Cohesion: 0.11
 Nodes (21): Attention, Block, Conv2dAlign, HybridEmbed, _init_vit_weights(), Mlp, myLinear, CNN Feature Map Embedding     Extract feature map from CNN, flatten, project to (+13 more)
 
 ### Community 92 - "Community 92"
-Cohesion: 0.07
-Nodes (23): ArgumentParser, ndarray, str, ArgsParser, _check_image_file(), Config, expand_polygon(), get_image_file_list() (+15 more)
+Cohesion: 0.08
+Nodes (21): ndarray, str, _check_image_file(), Config, expand_polygon(), get_image_file_list(), load(), _load_json() (+13 more)
 
 ### Community 93 - "Community 93"
-Cohesion: 0.09
-Nodes (36): FastAPI, _check_vlm_ready(), _configure_logger(), _create_aistudio_output_without_result(), _general_exception_handler(), _handle_infer(), _handle_restructure_pages(), health() (+28 more)
+Cohesion: 0.11
+Nodes (30): _configure_logger(), _create_aistudio_output_without_result(), _general_exception_handler(), _handle_infer(), _handle_restructure_pages(), health(), _json_decode_exception_handler(), _process_triton_request() (+22 more)
 
 ### Community 94 - "Community 94"
-Cohesion: 0.09
-Nodes (17): clones(), DecoderLayer, Embeddings, FeedForward, masked_fill(), MultiHeadAttention, PositionalEncoding, Decoder is made of self attention, source attention and feed forward. (+9 more)
+Cohesion: 0.11
+Nodes (14): clones(), DecoderLayer, Embeddings, FeedForward, masked_fill(), MultiHeadAttention, PositionalEncoding, Decoder is made of self attention, source attention and feed forward. (+6 more)
 
 ### Community 95 - "Community 95"
 Cohesion: 0.05
@@ -1767,8 +1788,8 @@ Cohesion: 0.06
 Nodes (11): A, dt, j, K, kt(), mathmlBuilder(), Q, toText() (+3 more)
 
 ### Community 97 - "Community 97"
-Cohesion: 0.09
-Nodes (16): BaseLogger, Loggers, WandbLogger, ArgsParser, check_device(), eval(), get_center(), load_config() (+8 more)
+Cohesion: 0.15
+Nodes (3): BaseLogger, Loggers, WandbLogger
 
 ### Community 98 - "Community 98"
 Cohesion: 0.14
@@ -1799,20 +1820,20 @@ Cohesion: 0.06
 Nodes (33): AddBoundsToLML, AddPath, AddPaths, Clear, CreateOutRec, DeleteFromAEL, DisposeAllOutRecs, DisposeLocalMinimaList (+25 more)
 
 ### Community 105 - "Community 105"
-Cohesion: 0.08
-Nodes (28): calculate_box_extents(), _convert_trt(), create_font(), create_predictor(), draw_box_txt_fine(), draw_ocr(), draw_ocr_box_txt(), get_infer_gpuid() (+20 more)
+Cohesion: 0.09
+Nodes (27): calculate_box_extents(), _convert_trt(), create_font(), create_predictor(), draw_box_txt_fine(), draw_ocr(), draw_ocr_box_txt(), get_infer_gpuid() (+19 more)
 
 ### Community 106 - "Community 106"
-Cohesion: 0.09
-Nodes (10): ABC, ChartParsing, ChartParsingSubcommandExecutor, BaseDocVLM, BaseDocVLMSubcommandExecutor, DocVLM, DocVLMSubcommandExecutor, CLISubcommandExecutor (+2 more)
+Cohesion: 0.14
+Nodes (6): ChartParsing, ChartParsingSubcommandExecutor, BaseDocVLM, BaseDocVLMSubcommandExecutor, DocVLM, DocVLMSubcommandExecutor
 
 ### Community 107 - "Community 107"
 Cohesion: 0.10
 Nodes (12): ChannelShuffle, DepthConv, DepthSpatialSepConv, DYMicroBlock, DYShiftMax, get_micronet_config(), GroupConv, MaxGroupPooling (+4 more)
 
 ### Community 108 - "Community 108"
-Cohesion: 0.08
-Nodes (15): AdaptiveAvgPool2D, ConvBNAct, HGV2_Block, HGV2_Stage, LearnableAffineBlock, LightConvBNAct, PPHGNetV2_B6_Formula, LightConvBNAct is a combination of pw and dw layers.      Args:         in_chann (+7 more)
+Cohesion: 0.12
+Nodes (7): Adadelta, Adam, AdamW, Momentum, Root Mean Squared Propagation (RMSProp) is an unpublished, adaptive learning rat, Simple Momentum optimizer with velocity state.     Args:         learning_rate (, RMSProp
 
 ### Community 109 - "Community 109"
 Cohesion: 0.11
@@ -1839,8 +1860,8 @@ Cohesion: 0.06
 Nodes (31): 1.1 方法一：使用 Docker 镜像, 1.2 方法二：手动安装 PaddlePaddle 和 PaddleOCR, 1. 环境准备, 2.1 命令行方式体验, 2.2 Python脚本方式集成, 2. 快速开始, 3.1.1 方法一：使用 Docker 镜像, 3.1.2 方法二：通过 PaddleOCR CLI 安装和使用 (+23 more)
 
 ### Community 115 - "Community 115"
-Cohesion: 0.08
-Nodes (8): PaddleXPipelineWrapper, prepare_common_init_args(), _merge_dicts(), _to_builtin(), FormulaRecognitionPipeline, FormulaRecognitionPipelineCLISubcommandExecutor, SealRecognition, SealRecognitionCLISubcommandExecutor
+Cohesion: 0.10
+Nodes (7): PaddleXPipelineWrapper, DocPreprocessor, parse_common_args(), prepare_common_init_args(), _merge_dicts(), _to_builtin(), DocPreprocessorCLISubcommandExecutor
 
 ### Community 116 - "Community 116"
 Cohesion: 0.09
@@ -1899,8 +1920,8 @@ Cohesion: 0.07
 Nodes (27): 10. visualization 字段说明, 11.1 component_codes, 11.2 weld_film_pairs, 11.3 weld_numbers, 11.4 film_numbers, 11.5 pipe_specs, 11. fields 字段说明, 12. field_statistics 字段说明 (+19 more)
 
 ### Community 130 - "Community 130"
-Cohesion: 0.10
-Nodes (13): get_score_C(), get score for CentripetalText (CT) prediction., # NOTE: source code use 'orin' to indicate '#', here we use 'anno',, compute area of a quad., Cluster pixels in tcl_map based on quads., Estimate sample points number., first resize the tcl_map, tvo_map and tbo_map to the input_size, then restore th, The post process for SAST. (+5 more)
+Cohesion: 0.15
+Nodes (9): compute area of a quad., Cluster pixels in tcl_map based on quads., Estimate sample points number., first resize the tcl_map, tvo_map and tbo_map to the input_size, then restore th, The post process for SAST., Transfer vertical point_pairs into poly point in clockwise., Generate shrink_quad_along_width., expand poly along width. (+1 more)
 
 ### Community 131 - "Community 131"
 Cohesion: 0.12
@@ -1915,8 +1936,8 @@ Cohesion: 0.11
 Nodes (13): DonutSwinEncoderOutput, DonutSwinModelOutput, Convert self to a tuple containing all the attributes/keys that are not `None`., Convert self to a tuple containing all the attributes/keys that are not `None`., Vary_VIT_B_Formula, OrderedDict, encoder_feat(), encoder_feat_ppformulanet_l() (+5 more)
 
 ### Community 134 - "Community 134"
-Cohesion: 0.25
-Nodes (26): DBPostProcessParams, DetResizeForTestParam, Mat, optional, pair, Point2f, StatusOr, string (+18 more)
+Cohesion: 0.20
+Nodes (29): DBPostProcessParams, DetResizeForTestParam, Mat, optional, pair, Point2f, StatusOr, string (+21 more)
 
 ### Community 135 - "Community 135"
 Cohesion: 0.07
@@ -1995,8 +2016,8 @@ Cohesion: 0.08
 Nodes (24): lr, pg0, pg1, pg2, metrics, mAP50-95(B), mAP50(B), precision(B) (+16 more)
 
 ### Community 155 - "Community 155"
-Cohesion: 0.11
-Nodes (8): PGNet_PostProcess, CTPostProcess, The post process for Centripetal Text (CT)., DistillationDBPostProcess, PGPostProcess, The post process for PGNet., PSEPostProcess, The post process for PSE.
+Cohesion: 0.12
+Nodes (7): PGNet_PostProcess, CTPostProcess, The post process for Centripetal Text (CT)., PGPostProcess, The post process for PGNet., PSEPostProcess, The post process for PSE.
 
 ### Community 156 - "Community 156"
 Cohesion: 0.13
@@ -2015,12 +2036,12 @@ Cohesion: 0.12
 Nodes (11): Channel_T, ConvBNLayer, CSPLayer, CSPPAN, DarknetBottleneck, DPModule, The basic bottleneck block used in Darknet.     Each Block consists of two ConvM, Cross Stage Partial Layer.     Args:         in_channels (int): The input channe (+3 more)
 
 ### Community 160 - "Community 160"
-Cohesion: 0.10
-Nodes (19): BaseCVResult, Mat, Status, TextDetPredictor(), TextDetPredictorParams, unique_ptr, vector, class (+11 more)
+Cohesion: 0.11
+Nodes (16): BaseCVResult, Mat, Status, TextDetPredictor(), TextDetPredictorParams, unique_ptr, vector, class (+8 more)
 
 ### Community 161 - "Community 161"
-Cohesion: 0.12
-Nodes (9): AttnLabelDecode, Convert between text-label and text-index, Convert between text-label and text-index, text = self.decode(text)         if label is None:             return text, SPINLabelDecode, convert text-label into text-index., convert text-label into text-index., TableLabelDecode (+1 more)
+Cohesion: 0.15
+Nodes (7): AttnLabelDecode, Convert between text-label and text-index, text = self.decode(text)         if label is None:             return text, convert text-label into text-index., convert text-label into text-index., TableLabelDecode, TableMasterLabelDecode
 
 ### Community 162 - "Community 162"
 Cohesion: 0.08
@@ -2055,8 +2076,8 @@ Cohesion: 0.08
 Nodes (23): 1. OmniDocBench v1.5, 2. OmniDocBench v1.0, PaddleOCR-VL 在 OmniDocBench v1.0 的整体、文本、公式、表格以及阅读顺序等几乎所有评估指标上均达到了 SOTA 性能。, PaddleOCR-VL 在 OmniDocBench v1.5 上的整体、文本、公式、表格和阅读顺序中均达到最先进的性能。, 一、PaddleOCR-VL简介, 三、 模型性能, 二、技术架构, 五、可视化 (+15 more)
 
 ### Community 170 - "Community 170"
-Cohesion: 0.13
-Nodes (16): EASTPostProcess, The post process for EAST., Restore rectangle from quadrangle., restore text boxes from score map and geo map, intersection(), intersection_iog(), nms(), nms_locality() (+8 more)
+Cohesion: 0.23
+Nodes (12): intersection(), intersection_iog(), nms(), nms_locality(), Locality aware nms. This code is referred from: https://github.com/songdejia/EAS, soft_nms     :para boxes_in, N x 9 (coords + score)     :para threshould, elimin, locality aware nms of EAST     :param polys: a N*9 numpy array. first 8 coordina, Standard nms, return inds. (+4 more)
 
 ### Community 171 - "Community 171"
 Cohesion: 0.08
@@ -2071,8 +2092,8 @@ Cohesion: 0.13
 Nodes (9): Attention, Block, drop_path(), DropPath, Identity, Mlp, Drop paths (Stochastic Depth) per sample (when applied in main path of residual, Drop paths (Stochastic Depth) per sample  (when applied in main path of residual (+1 more)
 
 ### Community 174 - "Community 174"
-Cohesion: 0.26
-Nodes (22): _build_summary(), _build_timing_stats(), _build_visualization(), collect_input_images(), _get_rel_path(), main(), _normalize_vis_text(), parse_args() (+14 more)
+Cohesion: 0.15
+Nodes (15): cal_distance(), deal_successive_space(), distance_rule_match(), flatten(), get_match_text_dict(), is_abs_lower_than_threshold(), Sorted the bbox in the same line(group)     compare coord 'x' value, where 'y' v, This function will group the render end2end bboxes in row.     :param end2end_xy (+7 more)
 
 ### Community 175 - "Community 175"
 Cohesion: 0.09
@@ -2083,8 +2104,8 @@ Cohesion: 0.09
 Nodes (22): 1. Installation, 2.1 Quick Start, 2.2 MCP Host Configuration Details, 2.3 Working Modes Explained, 2.4 Using `uvx`, 2. Using with Claude for Desktop, 3. Running the Server, 4. Parameter Reference (+14 more)
 
 ### Community 177 - "Community 177"
-Cohesion: 0.12
-Nodes (18): Build(), BuildResize(), Process(), BaseCVResult(), getAdaptiveFontScale(), SaveToImg(), SaveToJson(), BaseCVResult (+10 more)
+Cohesion: 0.08
+Nodes (31): Build(), BuildResize(), Process(), Apply(), BaseProcessor(), Crop(), CropImage(), Process() (+23 more)
 
 ### Community 178 - "Community 178"
 Cohesion: 0.09
@@ -2095,16 +2116,16 @@ Cohesion: 0.09
 Nodes (22): 1.1. Prepare for dataset, 1.2. Custom Dataset, 1.3. Download data, 1. Data Preparation, (1) Training set, 2.1. Start Training, 2.2. Resume Training, 2.3. Mixed Precision Training (+14 more)
 
 ### Community 180 - "Community 180"
-Cohesion: 0.16
-Nodes (6): LayoutDetection, LayoutDetectionSubcommandExecutor, ObjectDetection, ObjectDetectionSubcommandExecutor, TableCellsDetection, TableCellsDetectionSubcommandExecutor
+Cohesion: 0.09
+Nodes (12): FormulaRecognition, LayoutDetection, LayoutDetectionSubcommandExecutor, ObjectDetection, ObjectDetectionSubcommandExecutor, TableCellsDetection, TableCellsDetectionSubcommandExecutor, TableStructureRecognition (+4 more)
 
 ### Community 181 - "Community 181"
-Cohesion: 0.09
-Nodes (12): Test Chinese characters are properly grouped., Tests for BaseRecLabelDecode.get_word_info() method., Test that German words with accented characters are not split., Test longer German words with umlauts remain intact., Test French words with accented characters., Test that underscores are treated as word splitters., Test mixed content with spaces and accented characters., Test French words with apostrophes like n'êtes. (+4 more)
+Cohesion: 0.08
+Nodes (13): Test Chinese characters are properly grouped., Tests for BaseRecLabelDecode.get_word_info() method., Create a BaseRecLabelDecode instance for testing., Test that German words with accented characters are not split., Test longer German words with umlauts remain intact., Test French words with accented characters., Test that underscores are treated as word splitters., Test mixed content with spaces and accented characters. (+5 more)
 
 ### Community 182 - "Community 182"
-Cohesion: 0.16
-Nodes (13): parse_pattern_str(), use 'handle_func' to modify the sub-layer(s) specified by 'layer_name_pattern'., stop forward and backward after 'stop_layer_name'.          Args:             st, freeze the layer named layer_name and its previous layer.          Args:, update the result(s) to be returned.          Args:             return_patterns, set the layer specified by layer_name and layer_index_list to Identity.      Arg, parse the string type pattern.      Args:         pattern (str): The pattern to, set_identity() (+5 more)
+Cohesion: 0.09
+Nodes (20): ConvBNAct, HGV2_Block, HGV2_Stage, LightConvBNAct, parse_pattern_str(), LightConvBNAct is a combination of pw and dw layers.      Args:         in_chann, HGV2_Block, the basic unit that constitutes the HGV2_Stage.      Args:         i, HGV2_Stage, the basic unit that constitutes the PPHGNetV2.      Args:         in (+12 more)
 
 ### Community 183 - "Community 183"
 Cohesion: 0.10
@@ -2123,8 +2144,8 @@ Cohesion: 0.15
 Nodes (12): HTMLParser, delete_paragraph(), get_cell_html(), get_table_columns(), get_table_dimensions(), get_table_rows(), HtmlToDocx, Copy settings from another instance of HtmlToDocx (+4 more)
 
 ### Community 187 - "Community 187"
-Cohesion: 0.11
-Nodes (17): Build(), Process(), BaseCVResult(), getAdaptiveFontScale(), SaveToImg(), SaveToJson(), BaseCVResult, WarpPredictor() (+9 more)
+Cohesion: 0.14
+Nodes (13): Build(), Process(), BaseCVResult(), BaseCVResult, WarpPredictor(), Mat, Status, unique_ptr (+5 more)
 
 ### Community 188 - "Community 188"
 Cohesion: 0.09
@@ -2147,8 +2168,8 @@ Cohesion: 0.22
 Nodes (21): bool, float, int, Namespace, object, Path, str, build_dict_chars() (+13 more)
 
 ### Community 193 - "Community 193"
-Cohesion: 0.13
-Nodes (14): int, _execute(), _get_parser(), main(), # TODO: Register the subparser whether the plugin is installed or not, _register_genai_server_command(), _register_install_genai_server_deps_command(), _register_install_hpi_deps_command() (+6 more)
+Cohesion: 0.15
+Nodes (14): DeprecationWarning, int, _execute(), _get_parser(), main(), # TODO: Register the subparser whether the plugin is installed or not, _register_genai_server_command(), _register_install_genai_server_deps_command() (+6 more)
 
 ### Community 194 - "Community 194"
 Cohesion: 0.14
@@ -2175,8 +2196,8 @@ Cohesion: 0.10
 Nodes (20): 1.1 Basic Installation Issues, 1. Installation and Environment Setup, 2.1 Model Selection, 2. Model Usage and Configuration, 3.1 GPU Optimization, 3. Performance Optimization, 4.1 Service Deployment, 4. Deployment Issues (+12 more)
 
 ### Community 200 - "Community 200"
-Cohesion: 0.15
-Nodes (7): Attention, CPPDHead, DecoderLayer, EdgeDecoderLayer, # NOTE: drop path for stochastic depth, we shall see if this is better than drop, # NOTE: drop path for stochastic depth, we shall see if this is better than drop, Embeddings
+Cohesion: 0.16
+Nodes (6): Attention, CPPDHead, DecoderLayer, EdgeDecoderLayer, # NOTE: drop path for stochastic depth, we shall see if this is better than drop, # NOTE: drop path for stochastic depth, we shall see if this is better than drop
 
 ### Community 201 - "Community 201"
 Cohesion: 0.17
@@ -2187,24 +2208,24 @@ Cohesion: 0.24
 Nodes (20): Any, float, int, Namespace, ndarray, Path, str, build_detection_image() (+12 more)
 
 ### Community 203 - "Community 203"
-Cohesion: 0.10
-Nodes (10): BaseRecLabelDecode, PRENLabelDecode, convert text-index into text-label., Convert between text-label and text-index, Group the decoded characters and record the corresponding decoded positions., Convert between text-label and text-index, convert text-index into text-label., Test that French words with accents are properly grouped. (+2 more)
+Cohesion: 0.09
+Nodes (11): BaseRecLabelDecode, CANLabelDecode, PRENLabelDecode, Convert between latex-symbol and symbol-index, convert text-index into text-label., Convert between text-label and text-index, Group the decoded characters and record the corresponding decoded positions., Convert between text-label and text-index (+3 more)
 
 ### Community 204 - "Community 204"
 Cohesion: 0.13
 Nodes (11): BasicBlock, Res-Net network structure, Args:             input_channel (int): input channel             output_channel, Args:             block (block): convolution block             planes (int): inp, Feature Extractor is proposed in  FAN Ref [1]      Ref [1]: Focusing Attention:, Args:             in_channels (int): input channel             output_channel (i, Args:             inputs: input feature          Returns:             output fea, Args:             inplanes (int): input channel             planes (int): channe (+3 more)
 
 ### Community 205 - "Community 205"
-Cohesion: 0.12
-Nodes (10): cal_recall_precision_f1(), default_evaluation_params(), evaluate_method(), default_evaluation_params: Default parameters to use for the validation and eval, Method validate_data: validates that all files in the results folder are correct, Method evaluate_method: evaluate method and returns the results         Results., validate_data(), Returns accuracy score evaluation result.         - overall accuracy         - m (+2 more)
+Cohesion: 0.20
+Nodes (7): cal_recall_precision_f1(), default_evaluation_params(), evaluate_method(), default_evaluation_params: Default parameters to use for the validation and eval, Method validate_data: validates that all files in the results folder are correct, Method evaluate_method: evaluate method and returns the results         Results., validate_data()
 
 ### Community 206 - "Community 206"
 Cohesion: 0.10
 Nodes (19): 2.1 Overall Description, 2.2 Format Specification, 3.1 PaddleOCR Branch Description, 3.2.10 Some Conventions For Submitting Code, 3.2.1 Create Your `Remote Repo`, 3.2.2 Login And Connect Using Token, 3.2.3 Create Local Branch, 3.2.4 Use Pre-Commit Hook (+11 more)
 
 ### Community 207 - "Community 207"
-Cohesion: 0.13
-Nodes (10): get_dataloader(), get_dataset(), get_transforms(), ICDARCollectFN, 获取训练dataset     :param data_path: dataset文件列表，每个文件内以如下格式存储 ‘path/to/img\tlabel’, get_metric(), main(), get_post_processing() (+2 more)
+Cohesion: 0.14
+Nodes (8): get_dataloader(), get_dataset(), get_transforms(), ICDARCollectFN, 获取训练dataset     :param data_path: dataset文件列表，每个文件内以如下格式存储 ‘path/to/img\tlabel’, get_metric(), main(), EVAL
 
 ### Community 208 - "Community 208"
 Cohesion: 0.10
@@ -2212,11 +2233,11 @@ Nodes (20): 2.11 训练调试与配置文件, Q: config yml文件中的ratio_lis
 
 ### Community 209 - "Community 209"
 Cohesion: 0.19
-Nodes (11): OCRTextOrientationCorrector, Detect and restore text-crop orientation across 8 direction classes., PaddleOCRSubprocessClient, Persistent PaddleOCR worker running in a separate process., Module, float, Any, bool (+3 more)
+Nodes (13): ArgsParser, check_device(), eval(), get_center(), load_config(), merge_config(), preprocess(), Log error and exit when set use_gpu=true in paddlepaddle     cpu version. (+5 more)
 
 ### Community 210 - "Community 210"
-Cohesion: 0.16
-Nodes (8): Compute measured and normalized SNR on a cropped image region., RegionSNRService, Any, float, int, ndarray, str, RegionSNRServiceTest
+Cohesion: 0.23
+Nodes (7): Compute measured and normalized SNR on a cropped image region., RegionSNRService, Any, float, int, ndarray, str
 
 ### Community 211 - "Community 211"
 Cohesion: 0.16
@@ -2311,8 +2332,8 @@ Cohesion: 0.15
 Nodes (8): main(), Sort text boxes in order from top to bottom, left to right     args:         dt_, sorted_boxes(), TextSystem, slice_generator(), OCRSystem, Get the chinese texts in the predicted images.         Args:             images, initialize with the necessary elements
 
 ### Community 234 - "Community 234"
-Cohesion: 0.12
-Nodes (10): anchor_loss(), balanced_positive_negative_sampler(), gaussian_soft_ce_loss(), lt(), lt_loss(), long tail distribution loss, :param logits: (len_resolu, ang_resolu, bs, h, w)     :param labels: (len_resolu, Soft-label cross entropy with Gaussian target distribution.     logits: (bs, C) (+2 more)
+Cohesion: 0.33
+Nodes (14): list, Mat, pair, StatusOr, string, CTCLabelDecode(), vector, AddSpecialChar() (+6 more)
 
 ### Community 235 - "Community 235"
 Cohesion: 0.11
@@ -2323,8 +2344,8 @@ Cohesion: 0.11
 Nodes (18): 1.1 Data Preparation, 1.2 Download Pre-trained Model, 1. Data and Weights Preparation, 2.1 Start Training, 2.2 Load Trained Model and Continue Training, 2.3 Training with New Backbone, 2.4 Mixed Precision Training, 2.5 Distributed Training (+10 more)
 
 ### Community 237 - "Community 237"
-Cohesion: 0.19
-Nodes (9): check_result_item_keys(), test_predict(), test_predict(), table_structure_recognition_predictor(), test_predict(), test_predict_params(), test_predict(), test_predict() (+1 more)
+Cohesion: 0.21
+Nodes (8): check_result_item_keys(), test_predict(), test_predict(), test_predict(), test_predict_params(), test_predict(), test_predict(), check_simple_inference_result()
 
 ### Community 238 - "Community 238"
 Cohesion: 0.13
@@ -2391,8 +2412,8 @@ Cohesion: 0.11
 Nodes (17): additional_special_tokens, bos_token, clean_up_tokenization_spaces, eos_token, max_length, model_max_length, pad_to_multiple_of, pad_token (+9 more)
 
 ### Community 254 - "Community 254"
-Cohesion: 0.18
-Nodes (11): main(), save_structure_res(), StructureSystem, cal_ocr_word_box(), init_args(), parse_args(), Calculate the detection frame for each word based on the results of recognition, draw_box_txt() (+3 more)
+Cohesion: 0.17
+Nodes (12): main(), save_structure_res(), StructureSystem, cal_ocr_word_box(), draw_structure_result(), init_args(), parse_args(), Calculate the detection frame for each word based on the results of recognition (+4 more)
 
 ### Community 255 - "Community 255"
 Cohesion: 0.17
@@ -2451,8 +2472,8 @@ Cohesion: 0.12
 Nodes (16): 1. 准备 Serving 环境, 1. 启动服务端程序, 1. 确认工作目录下文件结构, 2. 发送服务请求, 2. 启动服务, 2. 启动服务, 3. 发送服务请求, 3. 发送服务请求 (+8 more)
 
 ### Community 271 - "Community 271"
-Cohesion: 0.15
-Nodes (12): doc_vlm_predictor(), test_predict(), test_predict_params(), formula_recognition_predictor(), test_predict(), test_predict_params(), seal_text_detection_predictor(), test_predict() (+4 more)
+Cohesion: 0.16
+Nodes (11): doc_vlm_predictor(), test_predict(), test_predict_params(), test_predict(), test_predict_params(), seal_text_detection_predictor(), test_predict(), test_predict_params() (+3 more)
 
 ### Community 272 - "Community 272"
 Cohesion: 0.16
@@ -2479,8 +2500,8 @@ Cohesion: 0.18
 Nodes (11): area_of(), calculate_containment(), hard_nms(), iou_of(), PicoDetPostProcess, Args:         input_shape (int): network input image size         ori_shape (int, Apply transform to boxes, Args:         box_scores (N, 5): boxes in corner-form and probabilities. (+3 more)
 
 ### Community 278 - "Community 278"
-Cohesion: 0.16
-Nodes (10): compute_iou(), distance(), computing IoU     :param rec1: (y0, x0, y1, x1), which reflects             (top, TableMatch, deal_bb(), deal_duplicate_bb(), deal_isolate_span(), Deal with isolate span cases in this function.     It causes by wrong prediction (+2 more)
+Cohesion: 0.29
+Nodes (4): compute_iou(), distance(), computing IoU     :param rec1: (y0, x0, y1, x1), which reflects             (top, TableMatch
 
 ### Community 279 - "Community 279"
 Cohesion: 0.17
@@ -2501,10 +2522,6 @@ Nodes (11): BaseBatchSampler(), input(), BaseCVResult(), ImageWriter(), BasePipe
 ### Community 283 - "Community 283"
 Cohesion: 0.12
 Nodes (15): （1）DF：数据挖掘方案, （1）PFhead：多分支融合Head结构, 1. 简介, （2）DSR: 收缩比例动态调整策略, （2）PP-LCNetV3：精度更优的骨干网络, 2. 检测优化, （3）Lite-Neck：精简参数的Neck结构, (3) PP-LCNetV3：精度更高的骨干网络 (+7 more)
-
-### Community 284 - "Community 284"
-Cohesion: 0.20
-Nodes (11): _dump_fclip_trace(), main(), build_infer_model(), draw_count_pair(), get_count_pred(), infer_heatmaps(), parse_lines_1d(), preprocess_gray_image() (+3 more)
 
 ### Community 285 - "Community 285"
 Cohesion: 0.12
@@ -2671,8 +2688,8 @@ Cohesion: 0.13
 Nodes (14): build_server.sh script, CUDA_CUDART_LIBRARY, CUDA_PATH, CUDNN_LIBRARY, GOPATH, GOROOT, OPENCV_DIR, PATH (+6 more)
 
 ### Community 327 - "Community 327"
-Cohesion: 0.24
-Nodes (13): Apply(), BaseProcessor(), Crop(), CropImage(), Process(), Topk(), Mat, StatusOr (+5 more)
+Cohesion: 0.17
+Nodes (9): clipperException, m_descr, Exception, string, HTTPException, Decode base64 image (supports data URL prefix)., int, ndarray (+1 more)
 
 ### Community 328 - "Community 328"
 Cohesion: 0.19
@@ -2835,8 +2852,8 @@ Cohesion: 0.13
 Nodes (14): 1.1 方法一：使用 Docker 镜像, 1.2 方法二：手动安装 PaddlePaddle 和 PaddleOCR, 1. 环境准备, 2. 快速开始, 3.1 启动 VLM 推理服务, 3.2 客户端使用方法, 3.3 性能调优, 3. 使用推理加速框架提升 VLM 推理性能 (+6 more)
 
 ### Community 370 - "Community 370"
-Cohesion: 0.22
-Nodes (6): DBPostProcess, _bitmap: single map with shape (1, H, W),                 whose values are binar, box_score_fast: use bbox mean score as the mean score, box_score_slow: use polyon mean score as the mean score, The post process for Differentiable Binarization (DB)., _bitmap: single map with shape (1, H, W),             whose values are binarized
+Cohesion: 0.18
+Nodes (7): DBPostProcess, DistillationDBPostProcess, _bitmap: single map with shape (1, H, W),                 whose values are binar, box_score_fast: use bbox mean score as the mean score, box_score_slow: use polyon mean score as the mean score, The post process for Differentiable Binarization (DB)., _bitmap: single map with shape (1, H, W),             whose values are binarized
 
 ### Community 371 - "Community 371"
 Cohesion: 0.21
@@ -2859,8 +2876,8 @@ Cohesion: 0.14
 Nodes (13): 1.1 New Features for PaddleOCR, 1.2 Bug Fixes, 1.3 Documentation Improvements and Translations, 1.4 Multilingual Corpora, 1. Community Contributions, 2.1 New Features, 2.2 Code Optimization, 2.3 Documentation Improvements (+5 more)
 
 ### Community 376 - "Community 376"
-Cohesion: 0.22
-Nodes (9): dict, ArgsParser, AttrDict, load_config(), merge_config(), preprocess(), Single level attribute dict, NOT recursive, Load config from yml/yaml file.     Args:         file_path (str): Path of the c (+1 more)
+Cohesion: 0.15
+Nodes (11): AttributeError, dict, __getattr__(), ArgsParser, AttrDict, load_config(), merge_config(), preprocess() (+3 more)
 
 ### Community 377 - "Community 377"
 Cohesion: 0.21
@@ -2915,8 +2932,8 @@ Cohesion: 0.33
 Nodes (13): bool, Path, str, append_jsonl(), _clean_token(), ensure_dir(), getenv_path(), load_label_tsv() (+5 more)
 
 ### Community 390 - "Community 390"
-Cohesion: 0.25
-Nodes (4): _bitmap: single map with shape (H, W),             whose values are binarized as, batch: (image, polygons, ignore_tags         batch: a dict produced by dataloade, _bitmap: single map with shape (H, W),             whose values are binarized as, SegDetectorRepresenter
+Cohesion: 0.23
+Nodes (5): get_post_processing(), _bitmap: single map with shape (H, W),             whose values are binarized as, batch: (image, polygons, ignore_tags         batch: a dict produced by dataloade, _bitmap: single map with shape (H, W),             whose values are binarized as, SegDetectorRepresenter
 
 ### Community 391 - "Community 391"
 Cohesion: 0.14
@@ -2943,8 +2960,8 @@ Cohesion: 0.14
 Nodes (13): 1. PP-StructureV3 产线介绍, 2.1 命令行方式体验, 2.2 Python脚本方式集成, 2. 快速开始, 3. 开发集成/部署, 4.1 模型微调, 4.2 模型应用, 4. 二次开发 (+5 more)
 
 ### Community 397 - "Community 397"
-Cohesion: 0.16
-Nodes (5): AverageMeter, _check_image_file(), get_image_file_list(), print_dict(), Recursively visualize a dict and     indenting acrrording by the relationship of
+Cohesion: 0.22
+Nodes (4): _check_image_file(), get_image_file_list(), print_dict(), Recursively visualize a dict and     indenting acrrording by the relationship of
 
 ### Community 398 - "Community 398"
 Cohesion: 0.24
@@ -3135,7 +3152,7 @@ Cohesion: 0.27
 Nodes (4): Utils, Bitmap, Context, String
 
 ### Community 445 - "Community 445"
-Cohesion: 0.18
+Cohesion: 0.20
 Nodes (3): Trainer, Polynomial, Polynomial learning rate decay     Args:         learning_rate (float): The init
 
 ### Community 446 - "Community 446"
@@ -3334,6 +3351,10 @@ Nodes (11): 1. Introduction to Seal Text Recognition Pipeline, 2.1 Command Line 
 Cohesion: 0.17
 Nodes (11): 1. 印章文本识别产线介绍, 2.1 命令行方式体验, 2.2 Python脚本方式集成, 2. 快速开始, 3. 开发集成/部署, 4.1 模型微调, 4.2.1 通过参数指定本地模型路径, 4.2.2 通过配置文件指定本地模型路径 (+3 more)
 
+### Community 497 - "Community 497"
+Cohesion: 0.19
+Nodes (3): PaddleOCR, PaddleOCRCLISubcommandExecutor, warn_deprecated_param()
+
 ### Community 498 - "Community 498"
 Cohesion: 0.24
 Nodes (3): Track a series of values and provide access to smoothed values over a     window, SmoothedValue, TrainingStats
@@ -3503,8 +3524,8 @@ Cohesion: 0.20
 Nodes (9): 1.1 Text Detection Algorithms, 1.2 Text Recognition Algorithms, 1.3 Text Super-Resolution Algorithms, 1.4 Formula Recognition Algorithm, 1. Two-stage OCR Algorithms, 2. End-to-end OCR Algorithms, 3. Table Recognition Algorithms, 4. Key Information Extraction Algorithms (+1 more)
 
 ### Community 542 - "Community 542"
-Cohesion: 0.20
-Nodes (9): IQIdet 架构说明, 推理主流程, 核心模块职责, 目录与代码边界, 训练与数据生产链路, 设计约束与注意点, 运行资产与输出形态, 顶层架构 (+1 more)
+Cohesion: 0.11
+Nodes (17): IQIdet 架构说明, 业务逻辑与算法, 其他边界, 异常处理, 推理主流程, 日志, 核心模块职责, 目录与代码边界 (+9 more)
 
 ### Community 543 - "Community 543"
 Cohesion: 0.29
@@ -3559,8 +3580,8 @@ Cohesion: 0.27
 Nodes (7): Apply(), Process(), Mat, StatusOr, vector, class, DocTrPostProcess()
 
 ### Community 556 - "Community 556"
-Cohesion: 0.27
-Nodes (4): base64_to_cv2(), KIESer, Get the chinese texts in the predicted images.         Args:             images, initialize with the necessary elements
+Cohesion: 0.31
+Nodes (3): KIESer, Get the chinese texts in the predicted images.         Args:             images, initialize with the necessary elements
 
 ### Community 557 - "Community 557"
 Cohesion: 0.20
@@ -3599,12 +3620,12 @@ Cohesion: 0.20
 Nodes (9): 1. pipeline, 2. Performance, 3. Result, 4.1 Quick start, 4.2 Training, Evaluation and Inference, 4.3 Calculate TEDS, 4. How to use, 5. Reference (+1 more)
 
 ### Community 566 - "Community 566"
-Cohesion: 0.24
-Nodes (3): LCNNHead, LineHead, MultitaskHead
+Cohesion: 0.19
+Nodes (7): FastAPI, _lifespan(), Manage application lifecycle:     - Initialize Triton client and semaphores on s, Semaphore, BaseRegionService, Base for region processing services with shared base64 decode + thread pool., T
 
 ### Community 567 - "Community 567"
-Cohesion: 0.24
-Nodes (7): check_result_item_keys(), layout_detection_predictor(), test_predict(), test_predict_params(), table_cells_detection_predictor(), test_predict(), test_predict_params()
+Cohesion: 0.32
+Nodes (5): check_result_item_keys(), test_predict(), test_predict_params(), test_predict(), test_predict_params()
 
 ### Community 569 - "Community 569"
 Cohesion: 0.29
@@ -3658,6 +3679,10 @@ Nodes (9): 1. Introduction to PP-DocTranslation Pipeline, 2.1 Experience via Com
 Cohesion: 0.20
 Nodes (9): 1. PP-DocTranslation 产线介绍, 2.1 命令行方式体验, 2.2 Python脚本方式集成, 2. 快速开始, 3. 开发集成/部署, 4.1 模型微调, 4.2 模型应用, 4. 二次开发 (+1 more)
 
+### Community 582 - "Community 582"
+Cohesion: 0.17
+Nodes (11): Use Case 1: 分辨率计算流程, 分辨率与双丝识别逻辑, 判定算法（波峰两波谷法）, 双丝像质计：分辨率计算流程, 双丝像质计：分辨率计算逻辑, 图像标识, 基本流程, 异常流 (+3 more)
+
 ### Community 583 - "Community 583"
 Cohesion: 0.20
 Nodes (9): 1. 表格识别 pipeline, 2. 性能, 3. 效果演示, 4.1 快速开始, 4.2 模型训练、评估与推理, 4.3 计算TEDS, 4. 使用, 5. Reference (+1 more)
@@ -3707,12 +3732,12 @@ Cohesion: 0.22
 Nodes (8): 1.1 layout analysis + table recognition, 1.2 layout analysis, 1.3 table recognition, 1. Layout Structured Analysis, 2.1 SER, 2.2 RE+SER, 2. Key Information Extraction, Python Inference
 
 ### Community 599 - "Community 599"
-Cohesion: 0.36
-Nodes (8): _get_rel_path(), main(), parse_args(), _to_jsonable(), tqdm(), Any, Namespace, Path
+Cohesion: 0.15
+Nodes (15): JSON-lines formatter for machine-parseable logs., setup_logging(), StructuredFormatter, _get_rel_path(), main(), parse_args(), _to_jsonable(), tqdm() (+7 more)
 
 ### Community 600 - "Community 600"
-Cohesion: 0.31
-Nodes (3): KIESerRE, Get the chinese texts in the predicted images.         Args:             images, initialize with the necessary elements
+Cohesion: 0.14
+Nodes (7): base64_to_cv2(), KIESerRE, Get the chinese texts in the predicted images.         Args:             images, initialize with the necessary elements, Get the chinese texts in the predicted images.         Args:             images, initialize with the necessary elements, StructureSystem
 
 ### Community 601 - "Community 601"
 Cohesion: 0.22
@@ -3731,8 +3756,8 @@ Cohesion: 0.25
 Nodes (3): 对框进行缩放，返回去的比例为1/shrink_ratio 即可, shrink_polygon_py(), PSERandomCrop
 
 ### Community 605 - "Community 605"
-Cohesion: 0.28
-Nodes (3): ArgsParser, merge_config(), Merge config into global config.     Args:         config (dict): Config to be m
+Cohesion: 0.18
+Nodes (5): ArgumentParser, ArgsParser, merge_config(), Merge config into global config.     Args:         config (dict): Config to be m, ArgsParser
 
 ### Community 606 - "Community 606"
 Cohesion: 0.28
@@ -3743,16 +3768,16 @@ Cohesion: 0.33
 Nodes (8): Any, Namespace, Path, str, deep_set(), find_base_config(), main(), parse_args()
 
 ### Community 609 - "Community 609"
-Cohesion: 0.25
-Nodes (5): int, str, PaddleModel, 对传入的图像进行预测，支持图像地址,opencv 读取图片，偏慢         :param img_path: 图像地址         :param is, resize_image()
+Cohesion: 0.20
+Nodes (6): int, str, PaddleModel, 初始化模型         :param model_path: 模型地址(可以是模型的参数或者参数和计算图一起保存的文件)         :param gp, 对传入的图像进行预测，支持图像地址,opencv 读取图片，偏慢         :param img_path: 图像地址         :param is, resize_image()
 
 ### Community 610 - "Community 610"
 Cohesion: 0.31
 Nodes (3): LayoutPredictor, initialize with the necessary elements, Get the chinese texts in the predicted images.         Args:             images
 
 ### Community 611 - "Community 611"
-Cohesion: 0.31
-Nodes (3): Get the chinese texts in the predicted images.         Args:             images, initialize with the necessary elements, StructureSystem
+Cohesion: 0.27
+Nodes (10): Any, bool, int, ndarray, str, parse_allowed_numbers(), _project_ocr_items_to_image(), _project_roi_box_to_image() (+2 more)
 
 ### Community 612 - "Community 612"
 Cohesion: 0.31
@@ -3807,8 +3832,8 @@ Cohesion: 0.22
 Nodes (8): 1. 简介, 2. 汇总信息, 3. 测试工具简介, 4. 开始测试, 测试流程概述, 目录介绍, 配置文件命名规范, 飞桨训推一体全流程（TIPC）
 
 ### Community 625 - "Community 625"
-Cohesion: 0.25
-Nodes (3): ParseQLabelDecode, Convert between text-label and text-index, convert text-index into text-label.
+Cohesion: 0.09
+Nodes (10): ParseQLabelDecode, Convert between text-label and text-index, convert text-index into text-label., convert text-index into text-label., Convert between text-label and text-index, convert text-index into text-label., Convert between text-label and text-index, convert text-index into text-label. (+2 more)
 
 ### Community 626 - "Community 626"
 Cohesion: 0.25
@@ -6122,6 +6147,10 @@ Nodes (5): 一、PP-OCRv5多语种文字识别介绍, 三、指标对比, 二、
 Cohesion: 0.33
 Nodes (4): int, object, get_str_with_max_len(), Initialize the pipeline handler.          Args:             pipeline: Pipeline n
 
+### Community 1223 - "Community 1223"
+Cohesion: 0.15
+Nodes (12): BaseSettings, Config, CorrectionConfig, EnhanceConfig, FClipConfig, GaugeConfig, OCRConfig, PipelineConfig (+4 more)
+
 ### Community 1224 - "Community 1224"
 Cohesion: 0.50
 Nodes (4): gcc_arm_url, PATH, show_usage(), configure_avh.sh script
@@ -6179,8 +6208,8 @@ Cohesion: 0.50
 Nodes (4): DocUnderstanding, ocr_engine(), Test PaddleOCR's doc understanding functionality.      Args:         ocr_engine:, test_predict()
 
 ### Community 1239 - "Community 1239"
-Cohesion: 0.40
-Nodes (4): _HealthEndpointFilter, Filter out health check endpoints from access logs., LogRecord, bool
+Cohesion: 0.25
+Nodes (7): _check_vlm_ready(), _HealthEndpointFilter, Check if the VLM server is ready by querying its health endpoint., Filter out health check endpoints from access logs., LogRecord, bool, LogRecord
 
 ### Community 1241 - "Community 1241"
 Cohesion: 0.50
@@ -6342,6 +6371,10 @@ Nodes (3): 1、更换骨干网络, 2、长中文文本识别, 3、空格识别
 Cohesion: 0.50
 Nodes (3): 1. Replace Backbone Network, 2. Long Chinese Text Recognition, 3. Space Recognition
 
+### Community 1291 - "Community 1291"
+Cohesion: 0.22
+Nodes (4): get_score_C(), get score for CentripetalText (CT) prediction., # NOTE: source code use 'orin' to indicate '#', here we use 'anno',, check_install()
+
 ### Community 1292 - "Community 1292"
 Cohesion: 0.50
 Nodes (3): NoReturn, Exception, OutputMode
@@ -6374,25 +6407,89 @@ Nodes (3): positionalencoding2d(), :param d_model: dimension of the model     :p
 Cohesion: 1.00
 Nodes (3): tuple, hsv2bgr(), random_color()
 
+### Community 1441 - "Community 1441"
+Cohesion: 0.42
+Nodes (3): Split to two transformer header at the last layer.     Cls_layer is used to stru, Make mask for self attention.         :param src: [b, c, h, l_src]         :para, TableMasterHead
+
+### Community 1442 - "Community 1442"
+Cohesion: 0.31
+Nodes (4): EASTPostProcess, The post process for EAST., Restore rectangle from quadrangle., restore text boxes from score map and geo map
+
+### Community 1443 - "Community 1443"
+Cohesion: 0.22
+Nodes (4): Convert between text-label and text-index, convert text-index into text-label., text = self.decode(text)         if label is None:             return text, SEEDLabelDecode
+
+### Community 1444 - "Community 1444"
+Cohesion: 0.25
+Nodes (3): Returns accuracy score evaluation result.         - overall accuracy         - m, runningScore, cal_text_score()
+
+### Community 1446 - "Community 1446"
+Cohesion: 0.33
+Nodes (3): FCEHead, multi_apply(), The class for implementing FCENet head.     FCENet(CVPR2021): Fourier Contour Em
+
+### Community 1448 - "Community 1448"
+Cohesion: 0.29
+Nodes (6): 下一阶段, 已完成的前置工作, 已知问题 / 待修复, 当前阶段, 文件定位速查, 项目进度
+
+### Community 1449 - "Community 1449"
+Cohesion: 0.33
+Nodes (4): PPHGNetV2_B4_Formula, PPHGNetV2_B4_Formula     Args:         in_channels (int): Number of input channe, Test PP-FormulaNet-S backbone.      Args:         sample_image_ppformulanet_s: s, test_ppformulanet_s_backbone()
+
+### Community 1450 - "Community 1450"
+Cohesion: 0.53
+Nodes (4): getAdaptiveFontScale(), SaveToImg(), SaveToJson(), string
+
+### Community 1451 - "Community 1451"
+Cohesion: 0.60
+Nodes (4): string, AdjustFontSize(), SaveToImg(), SaveToJson()
+
+### Community 1452 - "Community 1452"
+Cohesion: 0.33
+Nodes (6): deal_bb(), deal_duplicate_bb(), deal_isolate_span(), Deal with isolate span cases in this function.     It causes by wrong prediction, Deal duplicate <b> or </b> after replace.     Keep one <b></b> in a <td></td> to, In our opinion, <b></b> always occurs in <thead></thead> text's context.     Thi
+
+### Community 1453 - "Community 1453"
+Cohesion: 0.33
+Nodes (6): deal_eb_token(), insert_text_to_token(), merge_span_token(), Merge the span style token (row span or col span).     :param master_token_list:, post process with <eb></eb>, <eb1></eb1>, ...     emptyBboxTokenDict = {, Insert OCR text result to structure token.     :param master_token_list:     :pa
+
+### Community 1454 - "Community 1454"
+Cohesion: 0.50
+Nodes (3): eval_function(), main(), reader_wrapper()
+
+### Community 1455 - "Community 1455"
+Cohesion: 0.60
+Nodes (4): class, CTCLabelDecode(), OCRReisizeNormImg(), ToBatchUniform()
+
+### Community 1456 - "Community 1456"
+Cohesion: 0.40
+Nodes (5): cal_iou(), convert_coord(), iou_rule_match(), Convert two points format to four points format.     :param xyxy:     :return:, Use iou to find matching list.     choose max iou value bbox as match pair.
+
+### Community 1457 - "Community 1457"
+Cohesion: 0.40
+Nodes (5): get_bboxes_list(), This function is use to convert end2end results and structure master results to, remove [0., 0., 0., 0.] in structure master bboxes.     len(bboxes.shape) must b, remove_empty_bboxes(), xyxy2xywh()
+
+### Community 1459 - "Community 1459"
+Cohesion: 0.50
+Nodes (4): center_rule_match(), is_inside(), Find if center_point inside the bbox(corner_point) or not.     :param center_poi, Judge end2end Bbox's center point is inside structure master Bbox or not,     if
+
 ## Knowledge Gaps
-- **7857 isolated node(s):** `Namespace`, `str`, `Path`, `Namespace`, `bool` (+7852 more)
+- **7891 isolated node(s):** `Namespace`, `str`, `Path`, `Namespace`, `bool` (+7886 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **132 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **134 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `L2Decay` connect `Community 99` to `Community 197`, `Community 166`, `Community 71`, `Community 108`, `Community 111`, `Community 404`, `Community 628`, `Community 118`, `Community 182`, `Community 315`, `Community 61`, `Community 606`?**
+- **Why does `L2Decay` connect `Community 99` to `Community 197`, `Community 166`, `Community 71`, `Community 1449`, `Community 111`, `Community 404`, `Community 118`, `Community 182`, `Community 315`, `Community 61`, `Community 606`?**
+  _High betweenness centrality (0.026) - this node is a cross-community bridge._
+- **Why does `VisualizeResults` connect `Community 45` to `FClip Box Collections`, `Community 61`, `Community 1445`, `FClip Box Accessors`?**
+  _High betweenness centrality (0.026) - this node is a cross-community bridge._
+- **Why does `OneStageLineParsing` connect `FClip Box Collections` to `FClip Inference Utils`, `Loss Functions`, `Community 45`?**
   _High betweenness centrality (0.024) - this node is a cross-community bridge._
-- **Why does `OneStageLineParsing` connect `FClip Line Parsing` to `FClip Box Collections`, `Loss Functions`, `Community 284`, `Community 45`?**
-  _High betweenness centrality (0.019) - this node is a cross-community bridge._
-- **Why does `VisualizeResults` connect `Community 45` to `Community 61`, `Adaptive Image Processing`, `FClip Line Parsing`?**
-  _High betweenness centrality (0.019) - this node is a cross-community bridge._
 - **Are the 59 inferred relationships involving `L2Decay` (e.g. with `ConvBNLayer` and `DepthwiseSeparable`) actually correct?**
   _`L2Decay` has 59 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `Namespace`, `str`, `Path` to the rest of the system?**
-  _8670 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _8756 weakly-connected nodes found - possible documentation gaps or missing edges._
+- **Should `IQI Inferencer Core` be split into smaller, more focused modules?**
+  _Cohesion score 0.13142857142857142 - nodes in this community are weakly interconnected._
 - **Should `OCR Subprocess Pipeline` be split into smaller, more focused modules?**
-  _Cohesion score 0.10448979591836735 - nodes in this community are weakly interconnected._
-- **Should `Adaptive Image Processing` be split into smaller, more focused modules?**
-  _Cohesion score 0.08484848484848485 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.05744888023369036 - nodes in this community are weakly interconnected._

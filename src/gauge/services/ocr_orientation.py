@@ -73,7 +73,7 @@ class OCRTextOrientationCorrector(BaseOrientationCorrector):
         )
 
     def _prepare_pil_image(self, image: np.ndarray) -> Image.Image:
-        from gauge.adaptive_image_processor import AdaptiveImageProcessor
+        from gauge.services.adaptive_image_processor import AdaptiveImageProcessor
 
         processor = AdaptiveImageProcessor(use_negative=False)
         processed = processor.process_image(image)

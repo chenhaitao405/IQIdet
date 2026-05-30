@@ -8,13 +8,13 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 
-from gauge.fclip_stage import (
+from gauge.services.fclip_stage import (
     invert_perspective_matrix,
     perspective_transform_points,
     undo_ccw90_points,
 )
 from gauge.iqi_rules import infer_plate_from_ocr_items
-from gauge.ocr_stage import infer_roi_ocr
+from gauge.services.ocr_stage import infer_roi_ocr
 from gauge.pipeline_utils import (
     build_plate_visualization_items,
     is_usable_ocr_item,

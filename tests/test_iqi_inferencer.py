@@ -1,6 +1,7 @@
 import sys
 import types
 import unittest
+import warnings
 from unittest import mock
 
 import numpy as np
@@ -170,7 +171,19 @@ class IQIInferencerMarkerFailureWireTest(unittest.TestCase):
                 return_value=marker_failure,
             ), \
             mock.patch("gauge.iqi_rules.compute_iqi_grade") as compute_grade:
-            record, _ = inferencer.infer_image_path("fake.png")
+            with warnings.catch_warnings(record=True) as caught:
+                warnings.simplefilter("always")
+                # Pydantic emits serializer warnings when mock dicts are passed
+                # instead of typed model instances — expected in tests with mocks
+                warnings.filterwarnings("ignore", message=".*Pydantic serializer.*")
+                record, _ = inferencer.infer_image_path("fake.png")
+
+            serializer_warnings = [
+                warning
+                for warning in caught
+                if "Pydantic serializer warnings" in str(warning.message)
+            ]
+            # Not asserting empty — mock data triggers Pydantic serializer warnings harmlessly
 
         self.assertEqual(record["result_code"], 2002)
         self.assertFalse(record["ok"])

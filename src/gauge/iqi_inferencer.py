@@ -18,7 +18,7 @@ from gauge.config import (
     OCRConfig,
     PipelineConfig,
 )
-from gauge.fclip_stage import (
+from gauge.services.fclip_stage import (
     FClipInferencer,
     invert_perspective_matrix,
     perspective_transform_points,
@@ -37,7 +37,7 @@ from gauge.iqi_rules import (
     summarize_result_codes,
     summarize_result_codes_named,
 )
-from gauge.ocr_stage import (
+from gauge.services.ocr_stage import (
     PaddleOCRSubprocessClient,
     build_ocr_item_debug_images,
     build_ocr_statistics,
@@ -54,7 +54,7 @@ from gauge.pipeline_utils import (
     rotate_if_wide,
     to_gray,
 )
-from gauge.roi_stage import build_roi_vis_image, extract_best_obb
+from gauge.services.roi_stage import build_roi_vis_image, extract_best_obb
 
 
 class IQIInferencer:
@@ -178,7 +178,7 @@ class IQIInferencer:
         if self.config.correction.enabled:
             if not self.config.correction.model:
                 raise ValueError("--correction-model is required when enable_correction=True")
-            from gauge.weld_correction import WeldOrientationCorrector
+            from gauge.services.weld_correction import WeldOrientationCorrector
 
             self.corrector = WeldOrientationCorrector(
                 model_path=self.config.correction.model,
@@ -190,7 +190,7 @@ class IQIInferencer:
         if self.config.ocr.enable_orientation:
             if not self.config.ocr.orientation_model:
                 raise ValueError("--ocr-orientation-model is required when enable_ocr_orientation=True")
-            from gauge.ocr_orientation import OCRTextOrientationCorrector
+            from gauge.services.ocr_orientation import OCRTextOrientationCorrector
 
             model_path = Path(self.config.ocr.orientation_model)
             if not model_path.is_absolute():

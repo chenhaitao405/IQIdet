@@ -9,7 +9,7 @@ from typing import Any, Dict, Optional
 import cv2
 import numpy as np
 
-from gauge.region_ocr_service import RegionOCRService
+from gauge.services.region_ocr_service import RegionOCRService
 from gauge.services.base import BaseRegionService
 
 try:  # pragma: no cover

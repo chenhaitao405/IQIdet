@@ -724,7 +724,7 @@ def build_ocr_item_debug_images(roi_image: np.ndarray, ocr_result: Dict[str, Any
         orientation = item.get("orientation") or {}
         label = orientation.get("label")
         if label is not None and orientation.get("status") != "disabled":
-            from gauge.ocr_orientation import OCRTextOrientationCorrector
+            from gauge.services.ocr_orientation import OCRTextOrientationCorrector
 
             rec_input, _ = OCRTextOrientationCorrector.restore_image(crop, int(label))
 
