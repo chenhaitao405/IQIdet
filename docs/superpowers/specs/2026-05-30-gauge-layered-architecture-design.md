@@ -8,10 +8,11 @@
 
 对 `src/gauge` 做第二轮结构整理，把根目录散落的不同职责文件迁入明确子包，使维护者能够从目录层级直接判断模块责任、依赖方向和可测试边界。
 
-本次重排采用“职责分层 + 兼容导入”策略：
+本次重排采用“职责分层 + 直接迁移”策略：
 
 - 新代码使用新的分层路径。
-- 旧路径保留薄转发，避免交付入口、历史脚本和外部集成一次性破坏。
+- 包内旧路径不保留 compatibility shim；实施时同步更新所有内部 import、测试和文档。
+- 根目录交付入口保留，但入口内部 import 改到新路径。
 - 不改变交付 JSON 字段、CLI 参数含义、推理算法和模型文件。
 
 ## 非目标
@@ -23,7 +24,7 @@
   - `region_SNR_api.py`
 - 不移动 `models/`、`OCRtrain/`、`src/FClip/`、`src/dataset/`。
 - 不把训练链路做大规模重构。
-- 不删除旧 import 路径；旧路径只降级为 compatibility shim。
+- 不保留包内旧 import 路径；迁移完成后旧模块文件应删除或改名为新路径实现文件。
 
 ## 当前问题
 
@@ -107,20 +108,9 @@ src/gauge/
   models/
   config/
   training/
-
-  # compatibility shims
-  iqi_inferencer.py
-  pipeline.py
-  iqi_rules.py
-  record_builders.py
-  geometry.py
-  pipeline_utils.py
-  visualization.py
-  ocr_runtime.py
-  region_runtime.py
-  exceptions.py
-  logging_setup.py
 ```
+
+迁移完成后，`src/gauge` 根目录不再保留 `iqi_rules.py`、`pipeline.py`、`pipeline_utils.py`、`ocr_runtime.py` 等旧实现或 shim。根目录只保留包初始化文件和确有包级意义的说明文件。
 
 ## 分层职责
 
@@ -135,7 +125,8 @@ src/gauge/
 初始迁移：
 
 - `gauge.iqi_inferencer.IQIInferencer` 实现迁到 `gauge.app.iqi_inferencer.IQIInferencer`。
-- 旧 `gauge.iqi_inferencer` 保留兼容导出。
+- 根目录 `run_iqi_grade_infer.py` 改为直接从 `gauge.app.iqi_inferencer` 导入。
+- 删除旧 `gauge.iqi_inferencer` 模块，不保留兼容导出。
 
 依赖允许：
 
@@ -196,7 +187,7 @@ src/gauge/
 
 边界说明：
 
-- `collect_images()` 这类路径收集工具不属于 imaging，可迁到 `app/inputs.py` 或保留兼容 shim。
+- `collect_images()` 这类路径收集工具不属于 imaging，应迁到 `app/inputs.py` 或 `app/io.py`。
 - `build_skipped_ocr()`、`build_skipped_wire()` 如果属于业务状态构建，应迁到 `domain/record_builders.py` 或 `domain/status.py`。
 
 依赖允许：
@@ -235,31 +226,42 @@ src/gauge/
 - 只放 runtime adapter 或服务实现。
 - 通用图像工具、业务规则、record 构建不应放入 `services/`。
 
-## 兼容导入策略
+## 直接迁移策略
 
-旧路径必须保留一轮：
+旧路径不保留 shim。每迁移一个层时，同一个提交内必须完成三件事：
 
-```python
-# src/gauge/iqi_rules.py
-from gauge.domain.iqi_rules import *  # noqa
-```
+- 移动实现文件到新目录。
+- 更新所有调用点和测试 import。
+- 删除旧路径文件，避免后续代码继续引用旧边界。
 
-兼容 shim 原则：
+实施期间允许分阶段提交，但每个提交完成后仓库必须保持可导入、可测试状态。不得提交“新旧路径同时长期存在”的中间形态。
 
-- shim 只做 import/export，不保留业务实现。
-- shim 文件顶部注释写清新路径。
-- 新代码和新测试一律 import 新路径。
-- 旧路径 compatibility 测试覆盖关键入口：
-  - `from gauge.iqi_rules import compute_iqi_grade`
-  - `from gauge.pipeline import PipelineRunner`
-  - `from gauge.iqi_inferencer import IQIInferencer`
-  - `from gauge.ocr_runtime import PaddleOCRSubprocessClient`
+包内旧路径删除范围包括：
+
+- `gauge.iqi_rules`
+- `gauge.record_builders`
+- `gauge.geometry`
+- `gauge.pipeline_utils`
+- `gauge.visualization`
+- `gauge.ocr_runtime`
+- `gauge.region_runtime`
+- `gauge.pipeline`
+- `gauge.stages`
+- `gauge.iqi_inferencer`
+
+外部交付入口保留：
+
+- `run_iqi_grade_infer.py`
+- `region_ocr_api.py`
+- `region_SNR_api.py`
+
+这些入口内部 import 必须直接指向新路径。
 
 ## 迁移顺序
 
 按低风险到高风险迁移：
 
-1. 建立新目录和 compatibility shim 测试。
+1. 建立新目录和新路径导入测试。
 2. 迁移 `domain/`：
    - `iqi_rules.py`
    - `record_builders.py`
@@ -293,7 +295,8 @@ from gauge.domain.iqi_rules import *  # noqa
 - `import gauge.domain.iqi_rules` 不得导入 OpenCV、Torch、PaddleOCR、Ultralytics。
 - `import gauge.imaging.geometry` 不得导入 Torch、PaddleOCR、Ultralytics。
 - `import gauge.pipeline.runner` 不得构造模型，不得导入 Torch/FClip/PaddleOCR。
-- 旧路径 shim 可导入，并返回同一对象或兼容对象。
+- 关键调用点必须使用新路径 import。
+- 旧路径模块文件应不存在；测试不再验证旧路径可用。
 
 ### 行为回归测试
 
@@ -331,7 +334,7 @@ ALL MATCH — 8 image(s), 0 differences.
 - `ARCHITECTURE.md`
   - 新目录图。
   - 新依赖方向。
-  - compatibility shim 说明。
+  - 直接迁移说明。
 - `src/gauge/README.md`
   - 简短说明当前 `src/gauge` 分层。
 - 如交付 JSON 字段未变化，则无需修改交付 JSON 文档。
@@ -344,7 +347,7 @@ ALL MATCH — 8 image(s), 0 differences.
 
 - 分阶段提交。
 - 每次只迁移一个层。
-- 旧路径 shim 先建立，调用点逐步改新路径。
+- 每个迁移提交内同时更新 import 并删除旧路径，避免双路径长期共存。
 
 ### 风险：循环导入
 
@@ -367,14 +370,15 @@ ALL MATCH — 8 image(s), 0 differences.
 控制：
 
 - 根目录入口不改调用方式。
-- 旧 `gauge.*` import 路径保留 shim。
+- 根目录入口内部 import 更新到新路径。
+- 包内旧路径不保证兼容。
 - `tests/test_script_layout.py` 增加 root entrypoint import 检查。
 
 ## 验收标准
 
-- `src/gauge` 根目录只保留门面 shim、基础设施 shim 和包说明文件；主要实现迁入清晰子包。
+- `src/gauge` 根目录不保留门面 shim 或旧路径 shim；主要实现迁入清晰子包。
 - 新代码 import 使用新路径。
-- 旧路径 import 仍兼容。
+- 包内旧路径 import 已清理；仓库内不再引用旧路径。
 - 轻量测试全部通过。
 - `python scripts/compare_results.py` 输出：
 
