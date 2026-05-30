@@ -4,15 +4,13 @@
 from __future__ import annotations
 
 import asyncio
-import atexit
-import base64
-from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Dict, Optional
 
 import cv2
 import numpy as np
 
 from gauge.region_ocr_service import RegionOCRService
+from gauge.services.base import BaseRegionService
 
 try:  # pragma: no cover
     from fastapi import HTTPException
@@ -56,7 +54,6 @@ class RecognizeResponse(BaseModel):
 
 
 _region_ocr_service: Optional[RegionOCRService] = None
-executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="region-ocr")
 
 
 def init_region_ocr_api(
@@ -101,34 +98,6 @@ def close_region_ocr_api() -> None:
         _region_ocr_service = None
 
 
-def _shutdown_executor() -> None:
-    try:
-        executor.shutdown(wait=False, cancel_futures=True)
-    except TypeError:  # pragma: no cover
-        executor.shutdown(wait=False)
-
-
-atexit.register(close_region_ocr_api)
-atexit.register(_shutdown_executor)
-
-
-def _decode_base64_image(image_base64: str) -> np.ndarray:
-    b64_data = str(image_base64 or "")
-    if "," in b64_data:
-        b64_data = b64_data.split(",", 1)[1]
-    try:
-        img_bytes = base64.b64decode(b64_data)
-        nparr = np.frombuffer(img_bytes, np.uint8)
-        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        if img is None:
-            raise HTTPException(status_code=400, detail="无法解码图片")
-        return img
-    except HTTPException:
-        raise
-    except Exception as exc:
-        raise HTTPException(status_code=400, detail=f"图片解码失败: {str(exc)}")
-
-
 def _sync_ocr_recognize(img: np.ndarray) -> Dict[str, Any]:
     service = get_region_ocr_service()
     return service.recognize_image(img)
@@ -136,10 +105,10 @@ def _sync_ocr_recognize(img: np.ndarray) -> Dict[str, Any]:
 
 async def recognize_region(request: RecognizeRequest) -> RecognizeResponse:
     """同步识别单张图片区域（base64 输入），用于前端实时 OCR 框选功能。"""
-    img = _decode_base64_image(request.image_base64)
+    img = BaseRegionService.decode_base64(request.image_base64)
     loop = asyncio.get_running_loop()
     try:
-        result = await loop.run_in_executor(executor, _sync_ocr_recognize, img)
+        result = await loop.run_in_executor(BaseRegionService._executor, _sync_ocr_recognize, img)
         return RecognizeResponse(**result)
     except HTTPException:
         raise
