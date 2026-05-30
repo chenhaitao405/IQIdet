@@ -3,14 +3,9 @@
 
 from __future__ import annotations
 
-import base64
 from collections import Counter
 import inspect
-import json
 import os
-from pathlib import Path
-import subprocess
-import sys
 import time
 from typing import Any, Dict, List, Optional
 
@@ -18,147 +13,7 @@ import cv2
 import numpy as np
 
 from gauge.models.ocr import OCRItem, OCRResult, OCRTimings, OrientationInfo
-
-
-class PaddleOCRSubprocessClient:
-    """Persistent PaddleOCR worker running in a separate process."""
-
-    def __init__(
-        self,
-        device: str = "gpu",
-        det_model_name: str = "PP-OCRv5_server_det",
-        det_model_dir: Optional[str] = None,
-        rec_model_name: str = "en_PP-OCRv5_mobile_rec",
-        rec_model_dir: Optional[str] = None,
-        python_bin: Optional[str] = None,
-        det_limit_side_len: Optional[int] = None,
-        det_limit_type: Optional[str] = None,
-    ):
-        self.device = str(device)
-        self.det_model_name = det_model_name
-        self.det_model_dir = det_model_dir
-        self.rec_model_name = rec_model_name
-        self.rec_model_dir = rec_model_dir
-        self.python_bin = python_bin or sys.executable
-        self.det_limit_side_len = int(det_limit_side_len) if det_limit_side_len is not None else None
-        self.det_limit_type = str(det_limit_type) if det_limit_type else None
-        self.repo_root = Path(__file__).resolve().parents[3]  # src/gauge/services/ocr_stage.py → repo root
-        self.worker_script = Path(__file__).with_name("ocr_paddle_worker.py")
-        self.process: Optional[subprocess.Popen[str]] = None
-        self._start()
-
-    def _start(self) -> None:
-        cmd = [
-            self.python_bin,
-            str(self.worker_script),
-            "--device",
-            self.device,
-            "--det-model-name",
-            self.det_model_name,
-            "--rec-model-name",
-            self.rec_model_name,
-        ]
-        if self.det_model_dir:
-            cmd.extend(["--det-model-dir", str(self.det_model_dir)])
-        if self.rec_model_dir:
-            cmd.extend(["--rec-model-dir", str(self.rec_model_dir)])
-        if self.det_limit_side_len is not None:
-            cmd.extend(["--det-limit-side-len", str(self.det_limit_side_len)])
-        if self.det_limit_type:
-            cmd.extend(["--det-limit-type", str(self.det_limit_type)])
-
-        self.process = subprocess.Popen(
-            cmd,
-            cwd=str(self.repo_root),
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=None,
-            text=True,
-            bufsize=1,
-        )
-        ready = self._read_response()
-        if not ready.get("ok"):
-            raise RuntimeError(f"OCR worker failed to start: {ready.get('error', 'unknown error')}")
-
-    def _read_response(self) -> Dict[str, Any]:
-        if self.process is None or self.process.stdout is None:
-            raise RuntimeError("OCR worker stdout is not available.")
-        line = self.process.stdout.readline()
-        if not line:
-            returncode = self.process.poll() if self.process is not None else None
-            raise RuntimeError(f"OCR worker exited unexpectedly with code {returncode}.")
-        try:
-            return json.loads(line)
-        except json.JSONDecodeError as exc:
-            raise RuntimeError(f"Failed to parse OCR worker response: {line.strip()}") from exc
-
-    def _request(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        if self.process is None or self.process.stdin is None:
-            raise RuntimeError("OCR worker stdin is not available.")
-        if self.process.poll() is not None:
-            raise RuntimeError(f"OCR worker has already exited with code {self.process.returncode}.")
-        self.process.stdin.write(json.dumps(payload, ensure_ascii=False) + "\n")
-        self.process.stdin.flush()
-        response = self._read_response()
-        if not response.get("ok"):
-            raise RuntimeError(response.get("error", "OCR worker request failed."))
-        return response
-
-    @staticmethod
-    def _encode_image(image: np.ndarray) -> Dict[str, Any]:
-        ok, buffer = cv2.imencode(".png", image)
-        if not ok:
-            raise ValueError("Failed to encode image for OCR worker.")
-        return {
-            "format": "png_base64",
-            "data": base64.b64encode(buffer.tobytes()).decode("ascii"),
-        }
-
-    def detect(self, image: np.ndarray) -> Dict[str, Any]:
-        response = self._request({"op": "detect", "image": self._encode_image(image)})
-        return response.get("result", {})
-
-    def recognize(self, image: np.ndarray) -> Dict[str, Any]:
-        response = self._request({"op": "recognize", "image": self._encode_image(image)})
-        return response.get("result", {})
-
-    def close(self) -> None:
-        if self.process is None:
-            return
-        proc = self.process
-        self.process = None
-        try:
-            if proc.poll() is None and proc.stdin is not None:
-                proc.stdin.write(json.dumps({"op": "close"}) + "\n")
-                proc.stdin.flush()
-        except Exception:
-            pass
-        try:
-            if proc.stdin is not None:
-                proc.stdin.close()
-        except Exception:
-            pass
-        try:
-            proc.wait(timeout=2.0)
-        except subprocess.TimeoutExpired:
-            proc.terminate()
-            try:
-                proc.wait(timeout=2.0)
-            except subprocess.TimeoutExpired:
-                proc.kill()
-                proc.wait(timeout=2.0)
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc, tb) -> None:
-        self.close()
-
-    def __del__(self):
-        try:
-            self.close()
-        except Exception:
-            pass
+from gauge.ocr_runtime import PaddleOCRSubprocessClient
 
 
 def _configure_paddle_runtime(device: str) -> str:
