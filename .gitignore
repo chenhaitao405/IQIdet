@@ -17,4 +17,5 @@ cache/
 __pycache__/
 !/models/
 !/models/**
-TODO.mdgraphify-out/
+TODO.md
+graphify-out/
