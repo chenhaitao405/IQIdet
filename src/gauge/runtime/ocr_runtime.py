@@ -42,7 +42,7 @@ class PaddleOCRSubprocessClient:
         self.det_limit_type = str(det_limit_type) if det_limit_type else None
         self.startup_timeout_s = float(startup_timeout_s)
         self.request_timeout_s = float(request_timeout_s)
-        self.repo_root = Path(__file__).resolve().parents[2]
+        self.repo_root = Path(__file__).resolve().parents[3]
         self.worker_script = Path(__file__).resolve().parent / "ocr_paddle_worker.py"
         self.process: Optional[subprocess.Popen[str]] = None
         self._lock = threading.Lock()
