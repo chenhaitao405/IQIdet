@@ -8,7 +8,7 @@ from typing import Any, Dict, Optional
 
 import numpy as np
 
-from gauge.services.fclip_stage import invert_perspective_matrix
+from gauge.geometry import invert_perspective_matrix
 from gauge.pipeline_utils import (
     build_skipped_ocr,
     crop_rotated_polygon,

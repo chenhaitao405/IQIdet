@@ -4,26 +4,22 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence
 
 import cv2
 import numpy as np
-import torch
 
-from FClip.config import M
-from FClip.infer_utils import (
-    build_infer_model,
-    get_count_pred,
-    infer_heatmaps,
-    load_config_from_yaml,
-    parse_lines_1d,
-    preprocess_gray_image,
-    scale_lines,
+from gauge.geometry import (
+    invert_perspective_matrix,
+    perspective_transform_points,
+    undo_ccw90_points,
 )
 from gauge.models.wire import LineRecord, WireResult
 
 
-def resolve_torch_device(device: Optional[str]) -> torch.device:
+def resolve_torch_device(device: Optional[str]):
+    import torch
+
     if device:
         return torch.device(device)
     return torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -35,32 +31,6 @@ def _ensure_gray(image: np.ndarray) -> np.ndarray:
     if image.ndim == 3 and image.shape[2] == 1:
         return image[:, :, 0]
     return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-
-def _ensure_float32_matrix(matrix: Any) -> np.ndarray:
-    arr = np.asarray(matrix, dtype=np.float32)
-    return arr.reshape(3, 3)
-
-
-def invert_perspective_matrix(matrix: Any) -> np.ndarray:
-    mat = _ensure_float32_matrix(matrix)
-    return np.linalg.inv(mat)
-
-
-def undo_ccw90_points(points_xy: np.ndarray, pre_rotate_size: Sequence[int]) -> np.ndarray:
-    width = float(pre_rotate_size[0])
-    out = points_xy.astype(np.float32, copy=True)
-    x_rot = out[:, 0].copy()
-    y_rot = out[:, 1].copy()
-    out[:, 0] = width - 1.0 - y_rot
-    out[:, 1] = x_rot
-    return out
-
-
-def perspective_transform_points(points_xy: np.ndarray, matrix: Any) -> np.ndarray:
-    pts = np.asarray(points_xy, dtype=np.float32).reshape(-1, 1, 2)
-    transformed = cv2.perspectiveTransform(pts, _ensure_float32_matrix(matrix))
-    return transformed.reshape(-1, 2)
 
 
 def lines_yx_to_xy(lines: np.ndarray) -> np.ndarray:
@@ -119,6 +89,24 @@ class FClipInferencer:
         params_file: str = "params.yaml",
         threshold: Optional[float] = None,
     ):
+        import torch
+        from FClip.config import M
+        from FClip.infer_utils import (
+            build_infer_model,
+            get_count_pred,
+            infer_heatmaps,
+            load_config_from_yaml,
+            parse_lines_1d,
+            preprocess_gray_image,
+            scale_lines,
+        )
+
+        self._torch = torch
+        self._get_count_pred = get_count_pred
+        self._infer_heatmaps = infer_heatmaps
+        self._parse_lines_1d = parse_lines_1d
+        self._preprocess_gray_image = preprocess_gray_image
+        self._scale_lines = scale_lines
         self.ckpt_path = str(Path(ckpt_path).resolve())
         self.model_config = str(Path(model_config).resolve())
         self.params_file = str(Path(params_file).resolve())
@@ -146,15 +134,15 @@ class FClipInferencer:
     ) -> Dict[str, Any]:
         try:
             roi_gray = _ensure_gray(roi_image)
-            image_tensor = preprocess_gray_image(
+            image_tensor = self._preprocess_gray_image(
                 roi_gray,
                 input_resolution=self.input_resolution,
                 mean=self.mean,
                 std=self.std,
                 device=self.device,
             )
-            heatmaps = infer_heatmaps(self.model, image_tensor)
-            count_pred = get_count_pred(heatmaps)
+            heatmaps = self._infer_heatmaps(self.model, image_tensor)
+            count_pred = self._get_count_pred(heatmaps)
             if count_pred is None:
                 return WireResult(
                     status="error",
@@ -165,7 +153,7 @@ class FClipInferencer:
             lcmap = heatmaps["lcmap"][0]
             lcoff = heatmaps["lcoff"][0]
             angle = heatmaps["angle"][0]
-            lines_t, scores_t = parse_lines_1d(
+            lines_t, scores_t = self._parse_lines_1d(
                 lcmap=lcmap,
                 lcoff=lcoff,
                 angle=angle,
@@ -175,13 +163,13 @@ class FClipInferencer:
                 ang_type=self.ang_type,
                 count_pred=wire_count,
             )
-            if isinstance(lines_t, torch.Tensor):
+            if isinstance(lines_t, self._torch.Tensor):
                 lines_scaled = lines_t.clone()
             else:
-                lines_scaled = torch.as_tensor(lines_t).clone()
-            lines_scaled = scale_lines(lines_scaled, self.resolution, roi_gray.shape)
-            lines_np = lines_scaled.detach().cpu().numpy() if isinstance(lines_scaled, torch.Tensor) else np.asarray(lines_scaled)
-            scores_np = scores_t.detach().cpu().numpy() if isinstance(scores_t, torch.Tensor) else np.asarray(scores_t)
+                lines_scaled = self._torch.as_tensor(lines_t).clone()
+            lines_scaled = self._scale_lines(lines_scaled, self.resolution, roi_gray.shape)
+            lines_np = lines_scaled.detach().cpu().numpy() if isinstance(lines_scaled, self._torch.Tensor) else np.asarray(lines_scaled)
+            scores_np = scores_t.detach().cpu().numpy() if isinstance(scores_t, self._torch.Tensor) else np.asarray(scores_t)
             line_records = build_line_records(
                 lines_yx=lines_np,
                 scores=scores_np.tolist(),

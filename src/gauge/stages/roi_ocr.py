@@ -4,81 +4,21 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, List, Optional
 
 import numpy as np
 
-from gauge.services.fclip_stage import (
-    invert_perspective_matrix,
-    perspective_transform_points,
-    undo_ccw90_points,
-)
+from gauge.geometry import project_ocr_items_to_image
 from gauge.iqi_rules import infer_plate_from_ocr_items
 from gauge.services.ocr_stage import infer_roi_ocr
 from gauge.pipeline_utils import (
     build_plate_visualization_items,
     is_usable_ocr_item,
     merge_prefixed_ocr_timings,
-    scale_box_points,
 )
 from gauge.stages.base import PipelineStage, StageContext
 
 logger = logging.getLogger(__name__)
-
-
-def _project_roi_box_to_image(
-    box: Any,
-    crop_inverse_matrix: Optional[np.ndarray],
-    pre_rotate_size: Optional[Sequence[int]],
-    rotated: bool,
-) -> Tuple[Any, Any]:
-    """Project a box from ROI coordinates back to original image coordinates."""
-    if box is None:
-        return None, None
-    try:
-        roi_points = np.asarray(box, dtype=np.float32).reshape(-1, 2)
-    except Exception:
-        return None, None
-    if roi_points.size == 0:
-        return None, None
-
-    roi_unrotated = roi_points
-    if rotated:
-        if pre_rotate_size is None:
-            return roi_points.tolist(), None
-        roi_unrotated = undo_ccw90_points(
-            roi_points, pre_rotate_size=pre_rotate_size
-        )
-
-    if crop_inverse_matrix is None:
-        return roi_points.tolist(), roi_unrotated.tolist()
-
-    image_points = perspective_transform_points(
-        roi_unrotated, crop_inverse_matrix
-    )
-    return image_points.tolist(), roi_unrotated.tolist()
-
-
-def _project_ocr_items_to_image(
-    items: Sequence[Dict[str, Any]],
-    crop_inverse_matrix: Optional[np.ndarray],
-    pre_rotate_size: Optional[Sequence[int]],
-    rotated: bool,
-) -> List[Dict[str, Any]]:
-    """Project OCR items from ROI coordinates back to original image."""
-    projected_items: List[Dict[str, Any]] = []
-    for item in items:
-        projected = dict(item)
-        box_image, box_unrotated = _project_roi_box_to_image(
-            item.get("box"),
-            crop_inverse_matrix=crop_inverse_matrix,
-            pre_rotate_size=pre_rotate_size,
-            rotated=rotated,
-        )
-        projected["box_image"] = box_image
-        projected["box_roi_unrotated"] = box_unrotated
-        projected_items.append(projected)
-    return projected_items
 
 
 class ROIOCRStage(PipelineStage):
@@ -121,7 +61,7 @@ class ROIOCRStage(PipelineStage):
             if ctx.roi_info and ctx.roi_info.get("crop_inverse_matrix")
             else None
         )
-        roi_projected_items = _project_ocr_items_to_image(
+        roi_projected_items = project_ocr_items_to_image(
             roi_ocr_result.get("all_items") or [],
             crop_inverse_matrix=crop_inverse_matrix,
             pre_rotate_size=ctx.pre_rotate_size,
