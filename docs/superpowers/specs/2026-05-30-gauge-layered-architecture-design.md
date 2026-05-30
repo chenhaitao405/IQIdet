@@ -59,6 +59,9 @@ src/gauge/
   app/
     __init__.py
     iqi_inferencer.py
+    inputs.py
+    region_ocr_api.py
+    region_snr_api.py
 
   pipeline/
     __init__.py
@@ -78,9 +81,11 @@ src/gauge/
     __init__.py
     iqi_rules.py
     record_builders.py
+    statistics.py
 
   imaging/
     __init__.py
+    adaptive.py
     geometry.py
     preprocess.py
     visualization.py
@@ -88,22 +93,33 @@ src/gauge/
   runtime/
     __init__.py
     ocr_runtime.py
+    ocr_paddle_worker.py
     region_runtime.py
 
   services/
     __init__.py
-    fclip_stage.py
-    ocr_stage.py
-    roi_stage.py
-    correction.py
-    ocr_orientation.py
-    weld_correction.py
-    adaptive_image_processor.py
-    region_ocr_service.py
-    region_snr_service.py
-    region_ocr_api.py
-    region_snr_api.py
-    ocr_paddle_worker.py
+    fclip/
+      __init__.py
+      inferencer.py
+      line_records.py
+    ocr/
+      __init__.py
+      factory.py
+      infer.py
+      normalize.py
+      debug.py
+    roi/
+      __init__.py
+      yolo_obb.py
+    orientation/
+      __init__.py
+      base.py
+      ocr_text.py
+      weld.py
+    region/
+      __init__.py
+      ocr_service.py
+      snr_service.py
 
   models/
   config/
@@ -218,13 +234,43 @@ src/gauge/
 
 - 外部模型和第三方库适配。
 - 服务类封装。
-- API request/response wrappers。
+- 模型输出归一化。
+- 与模型强相关的 infer helper。
 
 保留原则：
 
 - 当前 `services/` 不再继续扩大为“所有工具目录”。
 - 只放 runtime adapter 或服务实现。
 - 通用图像工具、业务规则、record 构建不应放入 `services/`。
+
+### `services/` 现状与优化
+
+当前 `src/gauge/services` 下文件职责如下：
+
+| 当前文件 | 当前职责 | 目标处理 |
+| --- | --- | --- |
+| `adaptive_image_processor.py` | 方向矫正前的窗宽窗位/负片自适应预处理 | 迁到 `imaging/adaptive.py`，由 orientation service 调用 |
+| `base.py` | 旧的区域服务 base64/threadpool/lifecycle 基类 | 删除；功能已由 `runtime/region_runtime.py` 承担 |
+| `correction.py` | 8 类方向矫正 Torch 基类 | 迁到 `services/orientation/base.py` |
+| `ocr_orientation.py` | OCR 文本 crop 方向矫正模型 | 迁到 `services/orientation/ocr_text.py` |
+| `weld_correction.py` | 焊缝整图方向矫正模型 | 迁到 `services/orientation/weld.py` |
+| `fclip_stage.py` | FClip 模型加载、丝数推理、线段坐标记录 | 拆到 `services/fclip/inferencer.py` 和 `services/fclip/line_records.py` |
+| `ocr_stage.py` | PaddleOCR 组件构造、OCR 推理、输出归一化、debug 绘制、统计 | 拆到 `services/ocr/factory.py`、`services/ocr/infer.py`、`services/ocr/normalize.py`、`services/ocr/debug.py`；统计迁到 `domain/statistics.py` |
+| `ocr_paddle_worker.py` | OCR 子进程协议入口 | 迁到 `runtime/ocr_paddle_worker.py` |
+| `roi_stage.py` | YOLO-OBB 输出解析、ROI 可视化、ROI crop helper | YOLO 解析迁到 `services/roi/yolo_obb.py`；可视化/crop 迁到 `imaging/` |
+| `region_ocr_service.py` | 前端框选区域 OCR service | 迁到 `services/region/ocr_service.py` |
+| `region_snr_service.py` | 前端框选区域归一化 SNR service | 迁到 `services/region/snr_service.py` |
+| `region_ocr_api.py` | FastAPI 风格 request/response + async wrapper | 迁到 `app/region_ocr_api.py` |
+| `region_snr_api.py` | FastAPI 风格 request/response + async wrapper | 迁到 `app/region_snr_api.py` |
+| `__init__.py` | 旧 service base re-export | 简化为空包初始化；不再 re-export 已删除 base |
+
+优化目标：
+
+- `services/ocr_stage.py` 不能继续作为 500+ 行混合模块存在。
+- `services/` 只保留“模型/服务适配”职责，不再承载图像通用工具、runtime worker、API wrapper 或业务统计。
+- `record_builders.py` 不应依赖 `services.ocr_stage.build_ocr_statistics`；统计逻辑应迁入 `domain/statistics.py`。
+- `visualization.py` 不应从 `services.roi_stage` 取 ROI 可视化；ROI 可视化应归入 `imaging/visualization.py`。
+- `region_ocr_api.py` 和 `region_snr_api.py` 是应用边界，不是 service 实现，迁到 `app/` 后根目录门面直接导入 `gauge.app.region_ocr_api` / `gauge.app.region_snr_api`。
 
 ## 直接迁移策略
 
@@ -248,6 +294,17 @@ src/gauge/
 - `gauge.pipeline`
 - `gauge.stages`
 - `gauge.iqi_inferencer`
+- `gauge.services.ocr_stage`
+- `gauge.services.fclip_stage`
+- `gauge.services.roi_stage`
+- `gauge.services.correction`
+- `gauge.services.ocr_orientation`
+- `gauge.services.weld_correction`
+- `gauge.services.region_ocr_api`
+- `gauge.services.region_snr_api`
+- `gauge.services.region_ocr_service`
+- `gauge.services.region_snr_service`
+- `gauge.services.base`
 
 外部交付入口保留：
 
@@ -272,17 +329,28 @@ src/gauge/
 4. 迁移 `runtime/`：
    - `ocr_runtime.py`
    - `region_runtime.py`
-5. 迁移 `pipeline/`：
+   - `ocr_paddle_worker.py`
+5. 拆分 `services/`：
+   - `services/ocr_stage.py`
+   - `services/fclip_stage.py`
+   - `services/roi_stage.py`
+   - `services/correction.py`
+   - `services/ocr_orientation.py`
+   - `services/weld_correction.py`
+   - `services/region_*`
+   - 删除 `services/base.py`
+6. 迁移 `pipeline/`：
    - `PipelineRunner`
    - `StageContext`
    - `stages/`
-6. 迁移 `app/`：
+7. 迁移 `app/`：
    - `IQIInferencer`
    - 输入收集、delivery-facing helpers。
-7. 更新文档：
+   - 区域 API wrapper。
+8. 更新文档：
    - `ARCHITECTURE.md`
    - `src/gauge/README.md`
-8. 运行输出回归：
+9. 运行输出回归：
    - `python scripts/compare_results.py`
    - 必须输出 `ALL MATCH — 8 image(s), 0 differences.`
 
