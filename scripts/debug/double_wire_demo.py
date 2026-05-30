@@ -86,10 +86,14 @@ class DoubleWireDemo:
         # Image data
         self.image_raw: Optional[np.ndarray] = None
         self.image_display: Optional[np.ndarray] = None
+        self.display_scale_x: float = 1.0
+        self.display_scale_y: float = 1.0
 
         # Interaction state
         self.state: str = self.STATE_IDLE
         self.obb_points: list = []
+        self.mouse_x: Optional[int] = None
+        self.mouse_y: Optional[int] = None
 
         # Profile parameters
         self.profile_offset_pct: int = 50
@@ -116,7 +120,7 @@ class DoubleWireDemo:
             raise FileNotFoundError(f"Failed to read image: {self.image_path}")
         if raw.ndim == 3:
             raw = cv2.cvtColor(raw, cv2.COLOR_BGR2GRAY)
-        self.image_raw = raw
+        self.image_raw = raw  # NEVER resize -- keep original resolution
         # Build 8-bit display image
         if self.image_raw.dtype == np.uint16:
             disp = cv2.normalize(self.image_raw, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
@@ -124,22 +128,26 @@ class DoubleWireDemo:
             disp = self.image_raw.copy()
         else:
             disp = cv2.normalize(self.image_raw, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
-        # Resize for display
-        h, w = disp.shape[:2]
-        long_side = max(h, w)
+        h_raw, w_raw = self.image_raw.shape[:2]
+        # Resize only the display copy
+        long_side = max(disp.shape[0], disp.shape[1])
         if long_side > self.window_size:
             scale = self.window_size / long_side
-            new_w = max(1, int(w * scale))
-            new_h = max(1, int(h * scale))
-            # Also scale raw image so coordinates match
-            self.image_raw = cv2.resize(self.image_raw, (new_w, new_h))
+            new_w = max(1, int(disp.shape[1] * scale))
+            new_h = max(1, int(disp.shape[0] * scale))
             disp = cv2.resize(disp, (new_w, new_h))
         self.image_display = cv2.cvtColor(disp, cv2.COLOR_GRAY2BGR)
+        # Scale factor: raw -> display
+        self.display_scale_x = self.image_display.shape[1] / w_raw
+        self.display_scale_y = self.image_display.shape[0] / h_raw
 
     # ── Mouse Callback ──
 
     def mouse_callback(self, event: int, x: int, y: int, flags: int, param) -> None:
-        if event == cv2.EVENT_LBUTTONDOWN:
+        if event == cv2.EVENT_MOUSEMOVE:
+            self.mouse_x = x
+            self.mouse_y = y
+        elif event == cv2.EVENT_LBUTTONDOWN:
             if self.state in (self.STATE_IDLE, self.STATE_COLLECTING):
                 self.obb_points.append((float(x), float(y)))
                 if self.state == self.STATE_IDLE:
@@ -165,7 +173,12 @@ class DoubleWireDemo:
     def update_profile(self) -> None:
         if len(self.obb_points) < 4:
             return
-        obb = np.array(self.obb_points, dtype=np.float32)
+        # Convert display coordinates to raw coordinates for accurate profile extraction
+        raw_points = [
+            (x / self.display_scale_x, y / self.display_scale_y)
+            for x, y in self.obb_points
+        ]
+        obb = np.array(raw_points, dtype=np.float32)
         midline = get_obb_long_edge_midline(obb)
         start, end = midline
         sx, sy = start
@@ -201,6 +214,14 @@ class DoubleWireDemo:
 
     def draw_overlay(self) -> np.ndarray:
         vis = self.image_display.copy()
+        # Crosshair in IDLE/COLLECTING states
+        if self.state in (self.STATE_IDLE, self.STATE_COLLECTING):
+            if self.mouse_x is not None and self.mouse_y is not None:
+                h_img, w_img = vis.shape[:2]
+                cv2.line(vis, (self.mouse_x, 0), (self.mouse_x, h_img - 1),
+                         COLOR_YELLOW, 1, cv2.LINE_AA)
+                cv2.line(vis, (0, self.mouse_y), (w_img - 1, self.mouse_y),
+                         COLOR_YELLOW, 1, cv2.LINE_AA)
         if len(self.obb_points) >= 1:
             pts_int = [(int(x), int(y)) for x, y in self.obb_points]
             for pt in pts_int:
@@ -213,25 +234,30 @@ class DoubleWireDemo:
                           thickness=2, lineType=cv2.LINE_AA)
             if self.profile_line is not None:
                 (sx, sy), (ex, ey) = self.profile_line
-                ddx = ex - sx
-                ddy = ey - sy
+                # Convert raw coords to display coords for drawing
+                sx_d = sx * self.display_scale_x
+                sy_d = sy * self.display_scale_y
+                ex_d = ex * self.display_scale_x
+                ey_d = ey * self.display_scale_y
+                ddx = ex_d - sx_d
+                ddy = ey_d - sy_d
                 plen = np.hypot(ddx, ddy)
                 if plen > 1e-6:
                     ppx = -ddy / plen
                     ppy = ddx / plen
                     half_band = (self.band_width - 1) / 2.0
-                    s1 = (int(sx + half_band * ppx), int(sy + half_band * ppy))
-                    e1 = (int(ex + half_band * ppx), int(ey + half_band * ppy))
-                    s2 = (int(sx - half_band * ppx), int(sy - half_band * ppy))
-                    e2 = (int(ex - half_band * ppx), int(ey - half_band * ppy))
+                    s1 = (int(sx_d + half_band * ppx), int(sy_d + half_band * ppy))
+                    e1 = (int(ex_d + half_band * ppx), int(ey_d + half_band * ppy))
+                    s2 = (int(sx_d - half_band * ppx), int(sy_d - half_band * ppy))
+                    e2 = (int(ex_d - half_band * ppx), int(ey_d - half_band * ppy))
                     overlay = vis.copy()
                     band_pts = np.array([s1, e1, e2, s2], dtype=np.int32)
                     cv2.fillPoly(overlay, [band_pts], (0, 0, 255))
                     vis = cv2.addWeighted(overlay, 0.2, vis, 0.8, 0)
                     cv2.line(vis, s1, e1, COLOR_RED, 1, cv2.LINE_AA)
                     cv2.line(vis, s2, e2, COLOR_RED, 1, cv2.LINE_AA)
-                    mid_s = (int(sx), int(sy))
-                    mid_e = (int(ex), int(ey))
+                    mid_s = (int(sx_d), int(sy_d))
+                    mid_e = (int(ex_d), int(ey_d))
                     cv2.line(vis, mid_s, mid_e, COLOR_RED, 1, cv2.LINE_AA)
         # Status text
         status_map = {
@@ -303,7 +329,7 @@ class DoubleWireDemo:
             w, h, angle = 0, 0, 0.0
         stem = self.image_path.stem
         title = (
-            f"{stem} | OBB: {w:.0f}x{h:.0f} @ {angle:.1f}deg"
+            f"{stem} | OBB: {w:.0f}x{h:.0f} @ {angle:.1f}°"
             f" | offset:{self.profile_offset_pct}%"
             f" | band:{self.band_width} | {self.film_type}"
         )
