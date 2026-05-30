@@ -8,6 +8,10 @@ from dataclasses import dataclass
 import re
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
+from gauge.models.plate import PlateResult
+from gauge.models.grade import GradeResult
+from gauge.models.fields import GeneralFields, FieldStatistics
+
 DEFAULT_ALLOWED_NUMBERS = frozenset(range(1, 20))
 DEFAULT_ALLOWED_NUMBERS_SPEC = "1-19"
 
@@ -285,24 +289,31 @@ def extract_general_fields_from_ocr_items(items: Sequence[Dict[str, Any]]) -> Di
     component_codes = extract_component_codes_from_ocr_items(items)
     weld_film = extract_weld_film_from_ocr_items(items)
     pipe_specs = extract_pipe_specs_from_ocr_items(items)
-    fields = {
+    fields_data = {
         "component_codes": component_codes,
         "weld_film_pairs": weld_film["weld_film_pairs"],
         "weld_numbers": weld_film["weld_numbers"],
         "film_numbers": weld_film["film_numbers"],
         "pipe_specs": pipe_specs,
     }
-    field_statistics = {
-        "component_code_count": len(component_codes),
-        "weld_film_pair_count": len(weld_film["weld_film_pairs"]),
-        "weld_number_count": len(weld_film["weld_numbers"]),
-        "film_number_count": len(weld_film["film_numbers"]),
-        "pipe_spec_count": len(pipe_specs),
-        "general_fields_found": any(len(value) > 0 for value in fields.values()),
-    }
+    general_fields = GeneralFields(
+        component_codes=component_codes,
+        weld_film_pairs=weld_film["weld_film_pairs"],
+        weld_numbers=weld_film["weld_numbers"],
+        film_numbers=weld_film["film_numbers"],
+        pipe_specs=pipe_specs,
+    )
+    field_stats = FieldStatistics(
+        component_code_count=len(component_codes),
+        weld_film_pair_count=len(weld_film["weld_film_pairs"]),
+        weld_number_count=len(weld_film["weld_numbers"]),
+        film_number_count=len(weld_film["film_numbers"]),
+        pipe_spec_count=len(pipe_specs),
+        general_fields_found=any(len(value) > 0 for value in fields_data.values()),
+    )
     return {
-        "fields": fields,
-        "field_statistics": field_statistics,
+        "fields": general_fields.model_dump(),
+        "field_statistics": field_stats.model_dump(),
     }
 
 
@@ -444,16 +455,15 @@ def infer_plate_from_texts(
     normalized_texts = [text for text in normalized_texts if text]
 
     if not normalized_texts:
-        return {
-            **build_result_status(2001),
-            "iqi_type": None,
-            "number": None,
-            "plate_code": None,
-            "raw_texts": raw_texts,
-            "normalized_texts": normalized_texts,
-            "candidate_codes": [],
-            "corrections": [],
-        }
+        status = build_result_status(2001)
+        return PlateResult(
+            ok=status.get("ok", False),
+            result_code=status.get("result_code", 2001),
+            result_name=status.get("result_name", ""),
+            result_message=status.get("result_message", ""),
+            raw_texts=raw_texts,
+            normalized_texts=normalized_texts,
+        ).model_dump()
 
     sequences = _build_text_sequences(normalized_texts)
     all_candidates: List[PlateCandidate] = []
@@ -478,41 +488,45 @@ def infer_plate_from_texts(
             code = 2005
         else:
             code = 2003
-        return {
-            **build_result_status(code),
-            "iqi_type": None,
-            "number": None,
-            "plate_code": None,
-            "raw_texts": raw_texts,
-            "normalized_texts": normalized_texts,
-            "candidate_codes": [],
-            "corrections": [],
-        }
+        status = build_result_status(code)
+        return PlateResult(
+            ok=status.get("ok", False),
+            result_code=status.get("result_code", code),
+            result_name=status.get("result_name", ""),
+            result_message=status.get("result_message", ""),
+            raw_texts=raw_texts,
+            normalized_texts=normalized_texts,
+        ).model_dump()
 
     unique_codes = _dedupe_preserve(candidate.code for candidate in all_candidates)
     if len(unique_codes) > 1:
-        return {
-            **build_result_status(2006),
-            "iqi_type": None,
-            "number": None,
-            "plate_code": None,
-            "raw_texts": raw_texts,
-            "normalized_texts": normalized_texts,
-            "candidate_codes": unique_codes,
-            "corrections": sorted({corr for candidate in all_candidates for corr in candidate.corrections}),
-        }
+        status = build_result_status(2006)
+        return PlateResult(
+            ok=status.get("ok", False),
+            result_code=status.get("result_code", 2006),
+            result_name=status.get("result_name", ""),
+            result_message=status.get("result_message", ""),
+            raw_texts=raw_texts,
+            normalized_texts=normalized_texts,
+            candidate_codes=unique_codes,
+            corrections=sorted({corr for candidate in all_candidates for corr in candidate.corrections}),
+        ).model_dump()
 
     chosen = next(candidate for candidate in all_candidates if candidate.code == unique_codes[0])
-    return {
-        **build_result_status(0),
-        "iqi_type": chosen.iqi_type,
-        "number": chosen.number,
-        "plate_code": chosen.code,
-        "raw_texts": raw_texts,
-        "normalized_texts": normalized_texts,
-        "candidate_codes": unique_codes,
-        "corrections": list(chosen.corrections),
-    }
+    status = build_result_status(0)
+    return PlateResult(
+        ok=status.get("ok", False),
+        result_code=status.get("result_code", 0),
+        result_name=status.get("result_name", ""),
+        result_message=status.get("result_message", ""),
+        iqi_type=chosen.iqi_type,
+        number=chosen.number,
+        plate_code=chosen.code,
+        raw_texts=raw_texts,
+        normalized_texts=normalized_texts,
+        candidate_codes=unique_codes,
+        corrections=list(chosen.corrections),
+    ).model_dump()
 
 
 def infer_plate_from_ocr_items(
@@ -606,33 +620,50 @@ def compute_iqi_grade(
     allowed_numbers: Optional[Sequence[int]] = None,
 ) -> Dict[str, Any]:
     if iqi_type not in {"general", "special"} or number is None:
-        return {
-            **build_result_status(2003 if number is not None else 2005),
-            "grade": 0,
-            "wire_count": wire_count,
-        }
+        code = 2003 if number is not None else 2005
+        status = build_result_status(code)
+        return GradeResult(
+            ok=status.get("ok", False),
+            result_code=status.get("result_code", code),
+            result_name=status.get("result_name", ""),
+            result_message=status.get("result_message", ""),
+            grade=0,
+            wire_count=wire_count,
+        ).model_dump()
 
     if not is_allowed_number(int(number), allowed_numbers):
-        return {
-            **build_result_status(2007),
-            "grade": 0,
-            "wire_count": wire_count,
-        }
+        status = build_result_status(2007)
+        return GradeResult(
+            ok=status.get("ok", False),
+            result_code=status.get("result_code", 2007),
+            result_name=status.get("result_name", ""),
+            result_message=status.get("result_message", ""),
+            grade=0,
+            wire_count=wire_count,
+        ).model_dump()
 
     if wire_count is None:
-        return {
-            **build_result_status(3002),
-            "grade": 0,
-            "wire_count": None,
-        }
+        status = build_result_status(3002)
+        return GradeResult(
+            ok=status.get("ok", False),
+            result_code=status.get("result_code", 3002),
+            result_name=status.get("result_name", ""),
+            result_message=status.get("result_message", ""),
+            grade=0,
+            wire_count=None,
+        ).model_dump()
 
     if iqi_type == "general":
         if int(number) not in GENERAL_MARKER_NUMBERS:
-            return {
-                **build_result_status(2007),
-                "grade": 0,
-                "wire_count": int(wire_count),
-            }
+            status = build_result_status(2007)
+            return GradeResult(
+                ok=status.get("ok", False),
+                result_code=status.get("result_code", 2007),
+                result_name=status.get("result_name", ""),
+                result_message=status.get("result_message", ""),
+                grade=0,
+                wire_count=int(wire_count),
+            ).model_dump()
         if 1 <= int(wire_count) <= 7:
             grade = int(number) + int(wire_count) - 1
             code = 0
@@ -648,17 +679,25 @@ def compute_iqi_grade(
             code = 3004
 
     if code == 0 and not (0 <= int(grade) <= 99):
-        return {
-            **build_result_status(3005),
-            "grade": 0,
-            "wire_count": int(wire_count),
-        }
+        status = build_result_status(3005)
+        return GradeResult(
+            ok=status.get("ok", False),
+            result_code=status.get("result_code", 3005),
+            result_name=status.get("result_name", ""),
+            result_message=status.get("result_message", ""),
+            grade=0,
+            wire_count=int(wire_count),
+        ).model_dump()
 
-    return {
-        **build_result_status(code),
-        "grade": int(grade),
-        "wire_count": int(wire_count),
-    }
+    status = build_result_status(code)
+    return GradeResult(
+        ok=status.get("ok", False),
+        result_code=status.get("result_code", code),
+        result_name=status.get("result_name", ""),
+        result_message=status.get("result_message", ""),
+        grade=int(grade),
+        wire_count=int(wire_count),
+    ).model_dump()
 
 
 def choose_primary_result_code(codes: Sequence[int]) -> int:
