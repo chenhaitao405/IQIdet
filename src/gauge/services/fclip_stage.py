@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional, Sequence
 import cv2
 import numpy as np
 
-from gauge.geometry import (
+from gauge.imaging.geometry import (
     invert_perspective_matrix,
     perspective_transform_points,
     undo_ccw90_points,

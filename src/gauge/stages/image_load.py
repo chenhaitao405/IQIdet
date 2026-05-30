@@ -7,7 +7,7 @@ import logging
 from pathlib import Path
 from typing import Any, Dict
 
-from gauge.pipeline_utils import load_image
+from gauge.imaging.preprocess import load_image
 from gauge.stages.base import PipelineStage, StageContext
 
 logger = logging.getLogger(__name__)

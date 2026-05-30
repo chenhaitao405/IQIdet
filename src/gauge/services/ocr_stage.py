@@ -308,7 +308,7 @@ def infer_roi_ocr(
     text_orientation_verbose: bool = False,
 ) -> Dict[str, Any]:
     """Run OCR on an image via text detection, per-crop correction and text recognition."""
-    from gauge.pipeline_utils import crop_rotated_polygon
+    from gauge.imaging.preprocess import crop_rotated_polygon
 
     pipeline_start = time.perf_counter()
     det_ms = 0.0
@@ -559,7 +559,7 @@ def draw_recognition_result(crop_image: np.ndarray, item: Dict[str, Any]) -> np.
 
 def build_ocr_item_debug_images(roi_image: np.ndarray, ocr_result: Dict[str, Any]) -> List[Dict[str, Any]]:
     """Rebuild crop / corrected crop / rec vis images from OCR result metadata."""
-    from gauge.pipeline_utils import crop_rotated_polygon
+    from gauge.imaging.preprocess import crop_rotated_polygon
 
     debug_rows: List[Dict[str, Any]] = []
     items = ocr_result.get("all_items", []) or []

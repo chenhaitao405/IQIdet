@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-from gauge.geometry import project_ocr_items_to_image, project_roi_box_to_image
+from gauge.imaging.geometry import project_ocr_items_to_image, project_roi_box_to_image
 
 
 class GeometryProjectionTest(unittest.TestCase):

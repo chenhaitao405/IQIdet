@@ -36,7 +36,7 @@ from gauge.domain.iqi_rules import (
 from gauge.domain.record_builders import build_delivery_record, build_iqi_statistics
 from gauge.ocr_runtime import PaddleOCRSubprocessClient
 from gauge.services.ocr_stage import infer_roi_ocr
-from gauge.pipeline_utils import (
+from gauge.imaging.preprocess import (
     collect_images,
     crop_rotated_polygon,
     enhance_windowing_gray,
@@ -46,7 +46,7 @@ from gauge.pipeline_utils import (
     to_gray,
 )
 from gauge.services.roi_stage import extract_best_obb
-from gauge.visualization import (
+from gauge.imaging.visualization import (
     build_final_result_vis_image,
     build_wire_vis_image,
     save_debug_visualizations,

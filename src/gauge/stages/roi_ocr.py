@@ -8,7 +8,7 @@ from typing import Any, List, Optional
 
 import numpy as np
 
-from gauge.geometry import project_ocr_items_to_image
+from gauge.imaging.geometry import project_ocr_items_to_image
 from gauge.domain.iqi_rules import infer_plate_from_ocr_items
 from gauge.services.ocr_stage import infer_roi_ocr
 from gauge.pipeline_utils import (

@@ -13,7 +13,7 @@ import numpy as np
 
 from gauge.domain.iqi_rules import normalize_text
 from gauge.ocr_runtime import PaddleOCRSubprocessClient
-from gauge.pipeline_utils import enhance_windowing_gray, to_gray
+from gauge.imaging.preprocess import enhance_windowing_gray, to_gray
 
 
 class RegionOCRService:

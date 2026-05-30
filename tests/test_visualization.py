@@ -1,7 +1,7 @@
 import unittest
 
 import gauge.iqi_inferencer as inferencer
-from gauge.visualization import (
+from gauge.imaging.visualization import (
     build_final_result_vis_image,
     build_wire_vis_image,
     save_debug_visualizations,

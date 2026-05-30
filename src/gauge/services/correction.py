@@ -42,7 +42,7 @@ class BaseOrientationCorrector(ABC):
             if device
             else torch.device("cuda" if torch.cuda.is_available() else "cpu")
         )
-        from gauge.services.adaptive_image_processor import AdaptiveImageProcessor
+        from gauge.imaging.adaptive import AdaptiveImageProcessor
         self.adaptive_processor = (
             AdaptiveImageProcessor(use_negative=True) if use_adaptive_processor else None
         )

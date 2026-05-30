@@ -11,12 +11,14 @@ from gauge.domain.iqi_rules import (
     infer_plate_from_ocr_items,
 )
 from gauge.services.ocr_stage import infer_roi_ocr
+from gauge.imaging.preprocess import (
+    enhance_windowing_gray,
+    resize_long_side,
+)
 from gauge.pipeline_utils import (
     build_plate_visualization_items,
-    enhance_windowing_gray,
     is_usable_ocr_item,
     merge_prefixed_ocr_timings,
-    resize_long_side,
     scale_ocr_items_to_original,
 )
 from gauge.stages.base import PipelineStage, StageContext

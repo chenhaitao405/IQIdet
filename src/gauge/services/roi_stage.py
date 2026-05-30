@@ -8,7 +8,7 @@ from typing import Any, Dict, Optional, Tuple
 import cv2
 import numpy as np
 
-from gauge.pipeline_utils import format_polygon
+from gauge.imaging.preprocess import format_polygon
 from gauge.models.roi import ROIInfo
 
 
@@ -69,6 +69,6 @@ def build_roi_vis_image(image: np.ndarray, roi_info: Dict[str, Any]) -> np.ndarr
 
 
 def crop_polygon_region(image: np.ndarray, polygon: np.ndarray) -> Tuple[Optional[np.ndarray], Optional[np.ndarray]]:
-    from gauge.pipeline_utils import crop_rotated_polygon
+    from gauge.imaging.preprocess import crop_rotated_polygon
 
     return crop_rotated_polygon(image, polygon)

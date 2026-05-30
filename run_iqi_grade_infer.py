@@ -22,7 +22,7 @@ from gauge.iqi_inferencer import (
     save_debug_visualizations,
 )
 from gauge.domain.iqi_rules import DEFAULT_ALLOWED_NUMBERS_SPEC
-from gauge.pipeline_utils import SUPPORTED_IMAGE_EXTS, ensure_dir
+from gauge.imaging.preprocess import SUPPORTED_IMAGE_EXTS, ensure_dir
 import logging
 from gauge.logging_setup import setup_logging
 
