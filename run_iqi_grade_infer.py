@@ -23,6 +23,10 @@ from gauge.iqi_inferencer import (
 )
 from gauge.iqi_rules import DEFAULT_ALLOWED_NUMBERS_SPEC
 from gauge.pipeline_utils import SUPPORTED_IMAGE_EXTS, ensure_dir
+import logging
+from gauge.logging_setup import setup_logging
+
+logger = logging.getLogger(__name__)
 
 try:  # pragma: no cover
     from tqdm import tqdm
@@ -94,6 +98,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--enable-ocr-orientation", action="store_true", help="Enable text-crop orientation correction before OCR recognition.")
     parser.add_argument("--ocr-orientation-model", default="models/ocr_orientation_model.pth", help="Text-crop orientation correction model weights (.pth).")
     parser.add_argument("--ocr-orientation-device", help="Text-crop orientation correction device, e.g. cuda:0/cpu.")
+    parser.add_argument("--log-level", default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"],
+                        help="Logging level.")
+    parser.add_argument("--log-json", action="store_true", help="Output JSON-line logs.")
     return parser.parse_args()
 
 
@@ -175,12 +182,39 @@ def main() -> None:
         fclip_threshold=args.fclip_threshold,
     )
 
+    setup_logging(
+        level=getattr(logging, args.log_level),
+        json_output=args.log_json,
+    )
+
     full_results = []
     delivery_results = []
     try:
         for image_path in tqdm(image_paths, desc="IQI Grade"):
             want_vis = vis_dir is not None
-            full_record, artifacts = inferencer.infer_image_path(image_path, return_debug_artifacts=want_vis)
+            try:
+                full_record, artifacts = inferencer.infer_image_path(image_path, return_debug_artifacts=want_vis)
+            except Exception as exc:
+                logger.error("image_failed", extra={"image": str(image_path), "error": str(exc)})
+                full_record = {
+                    "image_path": str(image_path),
+                    "ok": False,
+                    "status": "error",
+                    "result_code": 9001,
+                    "result_name": "internal_error",
+                    "result_message": str(exc),
+                    "grade": None,
+                    "iqi_type": None,
+                    "plate_code": None,
+                    "plate_number": None,
+                    "plate_source": None,
+                    "wire_count": None,
+                    "fields": {"component_codes": [], "weld_film_pairs": [], "weld_numbers": [], "film_numbers": [], "pipe_specs": []},
+                    "field_statistics": {"general_fields_found": False, "iqi_marker_found": False},
+                    "warnings": [],
+                    "errors": [{"stage": "pipeline", "result_code": 9001, "result_name": "internal_error", "result_message": str(exc)}],
+                }
+                artifacts = None
             full_results.append(full_record)
 
             if want_vis and artifacts is not None and artifacts.get("image") is not None:
