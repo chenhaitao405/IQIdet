@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-from collections import Counter
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
@@ -34,13 +33,11 @@ from gauge.iqi_rules import (
     infer_plate_from_texts,
     normalize_text,
     parse_allowed_numbers_spec,
-    summarize_result_codes,
-    summarize_result_codes_named,
 )
+from gauge.record_builders import build_delivery_record, build_iqi_statistics
 from gauge.services.ocr_stage import (
     PaddleOCRSubprocessClient,
     build_ocr_item_debug_images,
-    build_ocr_statistics,
     draw_ocr_on_roi,
     infer_roi_ocr,
 )
@@ -793,103 +790,6 @@ def save_debug_visualizations(
         cv2.imwrite(str(final_result_path), final_result_vis)
         payload["final_result_vis_path"] = str(final_result_path.relative_to(output_dir))
 
-    return payload
-
-
-def build_iqi_statistics(results: Sequence[Dict[str, Any]], topk: int = 200) -> Dict[str, Any]:
-    ocr_stats = build_ocr_statistics(list(results), topk=topk)
-    grade_counter = Counter()
-    type_counter = Counter()
-    field_totals = Counter()
-    ok_total = 0
-    failure_total = 0
-    images_with_general_fields = 0
-    images_with_iqi_marker = 0
-
-    for record in results:
-        if record.get("ok"):
-            ok_total += 1
-            if record.get("grade") is not None:
-                grade_counter[str(int(record["grade"]))] += 1
-        else:
-            failure_total += 1
-        if record.get("iqi_type"):
-            type_counter[str(record["iqi_type"])] += 1
-
-        field_stats = record.get("field_statistics") or {}
-        if field_stats.get("general_fields_found"):
-            images_with_general_fields += 1
-        if field_stats.get("iqi_marker_found"):
-            images_with_iqi_marker += 1
-
-        fields = record.get("fields") or {}
-        field_totals["component_codes"] += len(fields.get("component_codes") or [])
-        field_totals["weld_film_pairs"] += len(fields.get("weld_film_pairs") or [])
-        field_totals["weld_numbers"] += len(fields.get("weld_numbers") or [])
-        field_totals["film_numbers"] += len(fields.get("film_numbers") or [])
-        field_totals["pipe_specs"] += len(fields.get("pipe_specs") or [])
-
-    return {
-        "images_total": len(results),
-        "success_total": int(ok_total),
-        "failure_total": int(failure_total),
-        "result_code_hist": summarize_result_codes(results),
-        "result_code_hist_named": summarize_result_codes_named(results),
-        "iqi_type_hist": {key: int(value) for key, value in sorted(type_counter.items())},
-        "grade_hist": {key: int(value) for key, value in sorted(grade_counter.items(), key=lambda item: int(item[0]))},
-        "field_totals": {key: int(value) for key, value in sorted(field_totals.items())},
-        "images_with_general_fields": int(images_with_general_fields),
-        "images_with_iqi_marker": int(images_with_iqi_marker),
-        "ocr_stats": ocr_stats,
-    }
-
-
-def build_delivery_record(record: Dict[str, Any]) -> Dict[str, Any]:
-    visualization = record.get("visualization") or {}
-    fields = record.get("fields") or {}
-    plate_text_items_selected = []
-    for item in visualization.get("plate_text_items_selected") or []:
-        plate_text_items_selected.append(
-            {
-                "text": item.get("text"),
-                "score": item.get("score"),
-                "box_image_xy": item.get("box_image_xy"),
-            }
-        )
-    payload = {
-        "image_path": record.get("image_path"),
-        "ok": bool(record.get("ok", False)),
-        "result_code": int(record.get("result_code", 9001)),
-        "result_name": record.get("result_name"),
-        "result_message": record.get("result_message"),
-        "grade": record.get("grade"),
-        "iqi_type": record.get("iqi_type"),
-        "plate_code": record.get("plate_code"),
-        "plate_number": record.get("plate_number"),
-        "plate_source": record.get("plate_source"),
-        "wire_count": record.get("wire_count"),
-        "general_fields_found": bool(record.get("general_fields_found", False)),
-        "iqi_marker_found": bool(record.get("iqi_marker_found", False)),
-        "visualization": {
-            "roi_polygon_xy": visualization.get("roi_polygon_xy"),
-            "plate_text_items_selected": plate_text_items_selected,
-            "wire_lines": visualization.get("wire_lines") or [],
-        },
-        "fields": {
-            "component_codes": fields.get("component_codes") or [],
-            "weld_film_pairs": fields.get("weld_film_pairs") or [],
-            "weld_numbers": fields.get("weld_numbers") or [],
-            "film_numbers": fields.get("film_numbers") or [],
-            "pipe_specs": fields.get("pipe_specs") or [],
-        },
-        "field_statistics": record.get("field_statistics") or {},
-        "warnings": record.get("warnings") or [],
-        "errors": record.get("errors") or [],
-    }
-    if record.get("final_result_vis_path"):
-        payload["final_result_vis_path"] = record.get("final_result_vis_path")
-    if record.get("status_vis_dir"):
-        payload["status_vis_dir"] = record.get("status_vis_dir")
     return payload
 
 
