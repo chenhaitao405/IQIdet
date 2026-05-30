@@ -6,11 +6,10 @@ from __future__ import annotations
 import asyncio
 from typing import Any, Dict, Optional
 
-import cv2
 import numpy as np
 
+from gauge.region_runtime import decode_base64, executor, register_region_service_shutdown
 from gauge.services.region_snr_service import RegionSNRService
-from gauge.services.base import BaseRegionService
 
 try:  # pragma: no cover
     from fastapi import HTTPException
@@ -90,6 +89,9 @@ def close_region_snr_api() -> None:
         _region_snr_service = None
 
 
+register_region_service_shutdown(close_region_snr_api)
+
+
 def _sync_compute_region_snr(img: np.ndarray) -> Dict[str, Any]:
     service = get_region_snr_service()
     return service.compute_image(img)
@@ -97,10 +99,10 @@ def _sync_compute_region_snr(img: np.ndarray) -> Dict[str, Any]:
 
 async def compute_region_snr(request: SNRRequest) -> SNRResponse:
     """计算单个区域的归一化信噪比（base64 输入）。"""
-    img = BaseRegionService.decode_base64(request.image_base64)
+    img = decode_base64(request.image_base64)
     loop = asyncio.get_running_loop()
     try:
-        result = await loop.run_in_executor(BaseRegionService._executor, _sync_compute_region_snr, img)
+        result = await loop.run_in_executor(executor, _sync_compute_region_snr, img)
         return SNRResponse(**result)
     except HTTPException:
         raise

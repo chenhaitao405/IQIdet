@@ -6,7 +6,6 @@ import atexit
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Dict, Generic, Optional, TypeVar
-import cv2
 import numpy as np
 
 try:
@@ -34,15 +33,9 @@ class BaseRegionService(Generic[T]):
     @staticmethod
     def decode_base64(image_base64: str) -> np.ndarray:
         """Decode base64 image (supports data URL prefix)."""
-        b64_data = str(image_base64 or "")
-        if "," in b64_data:
-            b64_data = b64_data.split(",", 1)[1]
-        img_bytes = base64.b64decode(b64_data)
-        nparr = np.frombuffer(img_bytes, np.uint8)
-        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        if img is None:
-            raise HTTPException(status_code=400, detail="无法解码图片")
-        return img
+        from gauge.region_runtime import decode_base64
+
+        return decode_base64(image_base64)
 
     @classmethod
     def get_service(cls) -> T:

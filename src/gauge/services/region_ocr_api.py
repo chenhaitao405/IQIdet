@@ -6,11 +6,10 @@ from __future__ import annotations
 import asyncio
 from typing import Any, Dict, Optional
 
-import cv2
 import numpy as np
 
+from gauge.region_runtime import decode_base64, executor, register_region_service_shutdown
 from gauge.services.region_ocr_service import RegionOCRService
-from gauge.services.base import BaseRegionService
 
 try:  # pragma: no cover
     from fastapi import HTTPException
@@ -98,6 +97,9 @@ def close_region_ocr_api() -> None:
         _region_ocr_service = None
 
 
+register_region_service_shutdown(close_region_ocr_api)
+
+
 def _sync_ocr_recognize(img: np.ndarray) -> Dict[str, Any]:
     service = get_region_ocr_service()
     return service.recognize_image(img)
@@ -105,10 +107,10 @@ def _sync_ocr_recognize(img: np.ndarray) -> Dict[str, Any]:
 
 async def recognize_region(request: RecognizeRequest) -> RecognizeResponse:
     """同步识别单张图片区域（base64 输入），用于前端实时 OCR 框选功能。"""
-    img = BaseRegionService.decode_base64(request.image_base64)
+    img = decode_base64(request.image_base64)
     loop = asyncio.get_running_loop()
     try:
-        result = await loop.run_in_executor(BaseRegionService._executor, _sync_ocr_recognize, img)
+        result = await loop.run_in_executor(executor, _sync_ocr_recognize, img)
         return RecognizeResponse(**result)
     except HTTPException:
         raise
