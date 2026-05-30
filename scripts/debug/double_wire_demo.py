@@ -45,7 +45,8 @@ for p in (str(REPO_ROOT), str(SRC_ROOT)):
 
 from gauge.imaging.profile import (
     extract_profile_band,
-    get_obb_long_edge_midline,
+    fit_obb_and_midline,
+    unwarp_obb_region,
     detect_peaks_valleys,
 )
 
@@ -62,11 +63,12 @@ PROFILE_COLOR = "#4C78A8"
 class DoubleWireDemo:
     """Interactive double-wire IQI profile band visualization tool.
 
-    State machine: IDLE -> COLLECTING -> LOCKED -> (R key) -> IDLE
+    State machine: IDLE -> COLLECTING -> CONFIRM -> LOCKED -> (R key) -> IDLE
     """
 
     STATE_IDLE = "idle"
     STATE_COLLECTING = "collecting"
+    STATE_CONFIRM = "confirm"
     STATE_LOCKED = "locked"
 
     def __init__(
@@ -97,8 +99,12 @@ class DoubleWireDemo:
 
         # Profile parameters
         self.profile_offset_pct: int = 50
-        self.film_type: str = "positive"
         self.show_help: bool = False
+
+        # OBB fitted data (raw image coords)
+        self.obb_corners_raw: Optional[np.ndarray] = None
+        self.obb_midline_raw: Optional[Tuple[Tuple[float, float], Tuple[float, float]]] = None
+        self.obb_corners_disp: Optional[list] = None
 
         # Profile data
         self.profile_line: Optional[Tuple[Tuple[float, float], Tuple[float, float]]] = None
@@ -153,13 +159,33 @@ class DoubleWireDemo:
                 if self.state == self.STATE_IDLE:
                     self.state = self.STATE_COLLECTING
                 if len(self.obb_points) >= 4:
-                    self.state = self.STATE_LOCKED
-                    self.update_profile()
+                    self.state = self.STATE_CONFIRM
+                    self._fit_obb()
         elif event == cv2.EVENT_RBUTTONDOWN:
             if self.state == self.STATE_COLLECTING and self.obb_points:
                 self.obb_points.pop()
                 if not self.obb_points:
                     self.state = self.STATE_IDLE
+            elif self.state == self.STATE_CONFIRM:
+                # Undo last point and go back to COLLECTING
+                self.obb_points.pop()
+                self.obb_corners_raw = None
+                self.obb_midline_raw = None
+                self.obb_corners_disp = None
+                self.state = self.STATE_COLLECTING if self.obb_points else self.STATE_IDLE
+
+    # ── OBB Fitting ──
+
+    def _fit_obb(self) -> None:
+        """Fit OBB from clicked points and compute fitted corners + midline."""
+        raw_pts = [(x / self.display_scale_x, y / self.display_scale_y) for x, y in self.obb_points]
+        pts = np.array(raw_pts, dtype=np.float32)
+        self.obb_corners_raw, self.obb_midline_raw = fit_obb_and_midline(pts)
+        # Convert fitted corners back to display for overlay drawing
+        self.obb_corners_disp = [
+            (x * self.display_scale_x, y * self.display_scale_y)
+            for x, y in self.obb_corners_raw
+        ]
 
     # ── Trackbar Callback ──
 
@@ -171,15 +197,10 @@ class DoubleWireDemo:
     # ── Profile Update ──
 
     def update_profile(self) -> None:
-        if len(self.obb_points) < 4:
+        if self.obb_corners_raw is None or self.obb_midline_raw is None:
             return
-        # Convert display coordinates to raw coordinates for accurate profile extraction
-        raw_points = [
-            (x / self.display_scale_x, y / self.display_scale_y)
-            for x, y in self.obb_points
-        ]
-        obb = np.array(raw_points, dtype=np.float32)
-        midline = get_obb_long_edge_midline(obb)
+        obb = self.obb_corners_raw
+        midline = self.obb_midline_raw
         start, end = midline
         sx, sy = start
         ex, ey = end
@@ -190,7 +211,7 @@ class DoubleWireDemo:
             return
         px = -dy / length
         py = dx / length
-        # Estimate short edge length
+        # Compute OBB short edge from fitted corners
         short_e0 = float(np.linalg.norm(obb[0] - obb[3]))
         short_e1 = float(np.linalg.norm(obb[1] - obb[2]))
         short_side = (short_e0 + short_e1) / 2.0
@@ -201,9 +222,11 @@ class DoubleWireDemo:
         ex_off = ex + offset_amount * px
         ey_off = ey + offset_amount * py
         self.profile_line = ((sx_off, sy_off), (ex_off, ey_off))
+        # Get unwarped width for 1:1 alignment
+        _, (uw, uh) = unwarp_obb_region(self.image_raw, obb)
         self.profile = extract_profile_band(
             self.image_raw, self.profile_line[0], self.profile_line[1],
-            band_width=self.band_width,
+            band_width=self.band_width, num_samples=uw,
         )
         self.peak_indices, self.valley_indices = detect_peaks_valleys(
             self.profile, min_distance=10, prominence=0.05,
@@ -228,45 +251,49 @@ class DoubleWireDemo:
                 cv2.circle(vis, pt, 5, COLOR_YELLOW, -1, cv2.LINE_AA)
             for i in range(len(pts_int) - 1):
                 cv2.line(vis, pts_int[i], pts_int[i + 1], COLOR_YELLOW, 1, cv2.LINE_AA)
-        if self.state == self.STATE_LOCKED and len(self.obb_points) >= 4:
-            pts_int = [(int(x), int(y)) for x, y in self.obb_points]
+
+        # Fitted OBB overlay for CONFIRM and LOCKED states
+        if self.state in (self.STATE_CONFIRM, self.STATE_LOCKED) and self.obb_corners_disp:
+            pts_int = [(int(x), int(y)) for x, y in self.obb_corners_disp]
             cv2.polylines(vis, [np.array(pts_int)], isClosed=True, color=COLOR_GREEN,
                           thickness=2, lineType=cv2.LINE_AA)
-            if self.profile_line is not None:
-                (sx, sy), (ex, ey) = self.profile_line
-                # Convert raw coords to display coords for drawing
-                sx_d = sx * self.display_scale_x
-                sy_d = sy * self.display_scale_y
-                ex_d = ex * self.display_scale_x
-                ey_d = ey * self.display_scale_y
-                ddx = ex_d - sx_d
-                ddy = ey_d - sy_d
-                plen = np.hypot(ddx, ddy)
-                if plen > 1e-6:
-                    ppx = -ddy / plen
-                    ppy = ddx / plen
-                    half_band = (self.band_width - 1) / 2.0
-                    s1 = (int(sx_d + half_band * ppx), int(sy_d + half_band * ppy))
-                    e1 = (int(ex_d + half_band * ppx), int(ey_d + half_band * ppy))
-                    s2 = (int(sx_d - half_band * ppx), int(sy_d - half_band * ppy))
-                    e2 = (int(ex_d - half_band * ppx), int(ey_d - half_band * ppy))
-                    overlay = vis.copy()
-                    band_pts = np.array([s1, e1, e2, s2], dtype=np.int32)
-                    cv2.fillPoly(overlay, [band_pts], (0, 0, 255))
-                    vis = cv2.addWeighted(overlay, 0.2, vis, 0.8, 0)
-                    cv2.line(vis, s1, e1, COLOR_RED, 1, cv2.LINE_AA)
-                    cv2.line(vis, s2, e2, COLOR_RED, 1, cv2.LINE_AA)
-                    mid_s = (int(sx_d), int(sy_d))
-                    mid_e = (int(ex_d), int(ey_d))
-                    cv2.line(vis, mid_s, mid_e, COLOR_RED, 1, cv2.LINE_AA)
+            # Draw original clicked points as small yellow dots
+            for x, y in self.obb_points:
+                cv2.circle(vis, (int(x), int(y)), 3, COLOR_YELLOW, -1, cv2.LINE_AA)
+
+        # Profile midline and band (CONFIRM and LOCKED)
+        if self.state in (self.STATE_CONFIRM, self.STATE_LOCKED) and self.obb_midline_raw is not None:
+            (sx, sy), (ex, ey) = self.obb_midline_raw
+            sx_d = sx * self.display_scale_x
+            sy_d = sy * self.display_scale_y
+            ex_d = ex * self.display_scale_x
+            ey_d = ey * self.display_scale_y
+            ddx = ex_d - sx_d
+            ddy = ey_d - sy_d
+            plen = np.hypot(ddx, ddy)
+            if plen > 1e-6:
+                ppx = -ddy / plen
+                ppy = ddx / plen
+                half_band = (self.band_width - 1) / 2.0
+                s1 = (int(sx_d + half_band * ppx), int(sy_d + half_band * ppy))
+                e1 = (int(ex_d + half_band * ppx), int(ey_d + half_band * ppy))
+                s2 = (int(sx_d - half_band * ppx), int(sy_d - half_band * ppy))
+                e2 = (int(ex_d - half_band * ppx), int(ey_d - half_band * ppy))
+                overlay = vis.copy()
+                band_pts = np.array([s1, e1, e2, s2], dtype=np.int32)
+                cv2.fillPoly(overlay, [band_pts], (0, 0, 255))
+                vis = cv2.addWeighted(overlay, 0.2, vis, 0.8, 0)
+                cv2.line(vis, s1, e1, COLOR_RED, 1, cv2.LINE_AA)
+                cv2.line(vis, s2, e2, COLOR_RED, 1, cv2.LINE_AA)
+                mid_s = (int(sx_d), int(sy_d))
+                mid_e = (int(ex_d), int(ey_d))
+                cv2.line(vis, mid_s, mid_e, COLOR_RED, 1, cv2.LINE_AA)
         # Status text
         status_map = {
             self.STATE_IDLE: "Ready",
             self.STATE_COLLECTING: f"Points {len(self.obb_points)}/4",
-            self.STATE_LOCKED: (
-                f"Locked | offset={self.profile_offset_pct}%"
-                f" | band={self.band_width} | {self.film_type}"
-            ),
+            self.STATE_CONFIRM: "CONFIRM — Enter to accept, R to retry, RMB to undo",
+            self.STATE_LOCKED: f"Locked | offset={self.profile_offset_pct}% | band={self.band_width}",
         }
         status = status_map.get(self.state, "")
         cv2.putText(vis, status, (10, vis.shape[0] - 12),
@@ -274,10 +301,10 @@ class DoubleWireDemo:
         # Help overlay
         if self.show_help:
             help_lines = [
-                "L-click: add OBB vertex (4 to lock)",
+                "L-click: add OBB vertex (4 to confirm)",
                 "R-click: undo last vertex",
                 "R: reset OBB   S: save   Q/ESC: quit",
-                "F: toggle pos/neg film   H: hide help",
+                "H: hide help",
                 f"Trackbar: adjust offset | band_width={self.band_width}",
             ]
             overlay = vis.copy()
@@ -294,50 +321,64 @@ class DoubleWireDemo:
     # ── Matplotlib Plot ──
 
     def plot_profile(self) -> None:
-        if self.profile is None:
+        if self.profile is None or self.obb_corners_raw is None:
             return
-        self.ax.clear()
+
+        if self.fig is None:
+            self.fig = plt.figure(figsize=(10, 6))
+
+        self.fig.clear()
+        self.ax_top = self.fig.add_subplot(2, 1, 1)
+        self.ax_bottom = self.fig.add_subplot(2, 1, 2, sharex=self.ax_top)
+
+        # Top: unwarped OBB band image
+        unwarped, (uw, uh) = unwarp_obb_region(self.image_raw, self.obb_corners_raw)
+        self.ax_top.imshow(unwarped, cmap='gray', aspect='auto')
+
+        # Draw profile band indicators on unwarped image
+        # Profile midline in unwarped coords: y = uh/2 (center by default)
+        # Trackbar offset: map 0-100% to Y position in unwarped image
+        band_y = uh / 2 + (self.profile_offset_pct - 50) / 50.0 * uh * 0.45
+        half_band = (self.band_width - 1) / 2.0
+        self.ax_top.axhline(y=band_y, color='red', linewidth=1.0)
+        self.ax_top.axhline(y=band_y - half_band, color='red', linewidth=0.5, linestyle='--')
+        self.ax_top.axhline(y=band_y + half_band, color='red', linewidth=0.5, linestyle='--')
+        self.ax_top.set_ylabel("Across wires (px)")
+
+        # Bottom: profile curve
         x = np.arange(len(self.profile))
-        self.ax.plot(x, self.profile, color=PROFILE_COLOR, linewidth=1.2, label="Profile")
+        self.ax_bottom.plot(x, self.profile, color=PROFILE_COLOR, linewidth=1.2, label="Profile")
+
         prof_range = max(self.profile.max() - self.profile.min(), 1.0)
         y_min = self.profile.min() - 0.05 * prof_range
         y_max = self.profile.max() + 0.05 * prof_range
+
+        # Peak and valley markers
         if self.peak_indices is not None and len(self.peak_indices) > 0:
             peaks = self.peak_indices
-            self.ax.plot(peaks, self.profile[peaks], "r^", markersize=8, label="Peaks")
+            self.ax_bottom.plot(peaks, self.profile[peaks], "r^", markersize=8, label="Peaks")
             for p in peaks:
                 val = self.profile[p]
-                self.ax.annotate(f"{val:.2f}", (p, val), textcoords="offset points",
-                                 xytext=(0, 8), fontsize=7, color="red", ha="center")
+                self.ax_bottom.annotate(f"{val:.2f}", (p, val), textcoords="offset points",
+                                        xytext=(0, 8), fontsize=7, color="red", ha="center")
         if self.valley_indices is not None and len(self.valley_indices) > 0:
             valleys = self.valley_indices
-            self.ax.plot(valleys, self.profile[valleys], "bv", markersize=8, label="Valleys")
+            self.ax_bottom.plot(valleys, self.profile[valleys], "bv", markersize=8, label="Valleys")
             for v in valleys:
                 val = self.profile[v]
-                self.ax.annotate(f"{val:.2f}", (v, val), textcoords="offset points",
-                                 xytext=(0, -12), fontsize=7, color="blue", ha="center")
-        if len(self.obb_points) >= 4:
-            obb = np.array(self.obb_points, dtype=np.float32)
-            e0 = float(np.linalg.norm(obb[0] - obb[1]))
-            e1 = float(np.linalg.norm(obb[1] - obb[2]))
-            w, h = (e0, e1) if e0 >= e1 else (e1, e0)
-            if e0 >= e1:
-                angle = np.degrees(np.arctan2(obb[1][1] - obb[0][1], obb[1][0] - obb[0][0]))
-            else:
-                angle = np.degrees(np.arctan2(obb[2][1] - obb[1][1], obb[2][0] - obb[1][0]))
-        else:
-            w, h, angle = 0, 0, 0.0
+                self.ax_bottom.annotate(f"{val:.2f}", (v, val), textcoords="offset points",
+                                        xytext=(0, -12), fontsize=7, color="blue", ha="center")
+
+        self.ax_bottom.set_ylim(y_min, y_max)
+        self.ax_bottom.set_xlabel("Profile position (px) — aligned with image above")
+        self.ax_bottom.set_ylabel("Gray value")
+        self.ax_bottom.legend(fontsize=7, loc="upper right")
+
+        # Title
         stem = self.image_path.stem
-        title = (
-            f"{stem} | OBB: {w:.0f}x{h:.0f} @ {angle:.1f}°"
-            f" | offset:{self.profile_offset_pct}%"
-            f" | band:{self.band_width} | {self.film_type}"
-        )
-        self.ax.set_title(title, fontsize=9)
-        self.ax.set_xlabel("Pixel position along profile")
-        self.ax.set_ylabel("Gray value (raw)")
-        self.ax.set_ylim(y_min, y_max)
-        self.ax.legend(fontsize=7, loc="upper right")
+        title = (f"{stem} | OBB: {uw}x{uh} | offset:{self.profile_offset_pct}%"
+                 f" | band:{self.band_width}")
+        self.fig.suptitle(title, fontsize=9)
         self.fig.tight_layout()
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
@@ -364,7 +405,6 @@ class DoubleWireDemo:
             },
             "band_width": self.band_width,
             "profile_offset_pct": self.profile_offset_pct,
-            "film_type": self.film_type,
             "profile_values": self.profile.tolist() if self.profile is not None else [],
             "peak_indices": self.peak_indices.tolist() if self.peak_indices is not None else [],
             "valley_indices": self.valley_indices.tolist() if self.valley_indices is not None else [],
@@ -380,30 +420,33 @@ class DoubleWireDemo:
         cv2.setMouseCallback(self.window_name, self.mouse_callback)
         cv2.createTrackbar(self.trackbar_name, self.window_name, 50, 100, self.on_trackbar)
         plt.ion()
-        self.fig, self.ax = plt.subplots(figsize=(8, 4))
-        self.ax.set_xlabel("Pixel position along profile")
-        self.ax.set_ylabel("Gray value (raw)")
-        self.fig.tight_layout()
+        self.fig = plt.figure(figsize=(10, 6))
         print(f"[demo] Loaded: {self.image_path.name}")
         print(f"[demo] Shape: {self.image_raw.shape}, dtype: {self.image_raw.dtype}")
         print(f"[demo] band_width: {self.band_width}")
-        print("[demo] Keys: L-click=add point, R-click=undo, R=reset, S=save, Q=quit, F=flip film, H=help")
+        print("[demo] Keys: L-click=add point, R-click=undo, R=reset, Enter/Space=confirm, S=save, Q=quit, H=help")
         while True:
             overlay = self.draw_overlay()
             cv2.imshow(self.window_name, overlay)
             key = cv2.waitKey(30) & 0xFF
-            if key == ord("r"):
+            if key == 13 or key == 32:  # Enter or Space
+                if self.state == self.STATE_CONFIRM:
+                    self.state = self.STATE_LOCKED
+                    self.update_profile()
+            elif key == ord("r"):
                 self.state = self.STATE_IDLE
                 self.obb_points.clear()
+                self.obb_corners_raw = None
+                self.obb_midline_raw = None
+                self.obb_corners_disp = None
                 self.profile_line = None
                 self.profile = None
                 self.peak_indices = None
                 self.valley_indices = None
                 cv2.setTrackbarPos(self.trackbar_name, self.window_name, 50)
                 self.profile_offset_pct = 50
-                if self.ax is not None:
-                    self.ax.clear()
-                    self.fig.canvas.draw()
+                self.fig.clear()
+                self.fig.canvas.draw()
                 print("[demo] Reset")
             elif key == ord("s"):
                 if self.state == self.STATE_LOCKED:
@@ -415,11 +458,6 @@ class DoubleWireDemo:
                 break
             elif key == ord("h"):
                 self.show_help = not self.show_help
-            elif key == ord("f"):
-                if self.state == self.STATE_LOCKED:
-                    self.film_type = "negative" if self.film_type == "positive" else "positive"
-                    self.update_profile()
-                    print(f"[demo] Film type: {self.film_type}")
         cv2.destroyAllWindows()
         plt.close("all")
 
