@@ -243,6 +243,14 @@ src/gauge/
 - 只放 runtime adapter 或服务实现。
 - 通用图像工具、业务规则、record 构建不应放入 `services/`。
 
+边界判定：
+
+- `services/` 是能力适配层，不是 API/controller 层。它对 `app/` 或 `pipeline/` 暴露 Python service 类或 infer 函数，但不定义 FastAPI/Pydantic request-response、async endpoint、base64 传输包装或全局入口门面。
+- 与某个 service 实现强绑定、且没有通用价值的私有 helper 可以保留在对应 service 子包内。例如模型输出归一化、模型专用 debug 绘制、模型结果对象到内部字段的转换。
+- 一旦 helper 可被多个 service 或 pipeline 复用，应迁出 `services/`：图像处理进 `imaging/`，纯业务规则和状态构建进 `domain/`，进程/线程/超时/关闭逻辑进 `runtime/`，输入收集和 API wrapper 进 `app/`。
+- `region_ocr_service.py`、`region_snr_service.py` 属于区域能力实现，可以进入 `services/region/`。`region_ocr_api.py`、`region_snr_api.py` 即使会初始化并调用这些 service，也属于 `app/`，不属于 `services/`。
+- `RegionSNRService` 这种无模型但对外表现为可调用能力的类可以作为 service 壳保留；通用灰度转换和像素统计拆到 `imaging/metrics.py`，只接收 mean/std/area 等纯数值输入的 SNR 公式可放到 `domain/statistics.py`，service 只负责编排和响应 payload。
+
 ### `services/` 现状与优化
 
 当前 `src/gauge/services` 下文件职责如下：
@@ -259,15 +267,15 @@ src/gauge/
 | `ocr_paddle_worker.py` | OCR 子进程协议入口 | 迁到 `runtime/ocr_paddle_worker.py` |
 | `roi_stage.py` | YOLO-OBB 输出解析、ROI 可视化、ROI crop helper | YOLO 解析迁到 `services/roi/yolo_obb.py`；可视化/crop 迁到 `imaging/` |
 | `region_ocr_service.py` | 前端框选区域 OCR service | 迁到 `services/region/ocr_service.py` |
-| `region_snr_service.py` | 前端框选区域归一化 SNR service | 迁到 `services/region/snr_service.py` |
-| `region_ocr_api.py` | FastAPI 风格 request/response + async wrapper | 迁到 `app/region_ocr_api.py` |
-| `region_snr_api.py` | FastAPI 风格 request/response + async wrapper | 迁到 `app/region_snr_api.py` |
+| `region_snr_service.py` | 前端框选区域归一化 SNR service | 服务壳迁到 `services/region/snr_service.py`；通用灰度/统计 helper 如需复用则拆到 `imaging/metrics.py` |
+| `region_ocr_api.py` | FastAPI 风格 request/response + async wrapper | 迁到 `app/region_ocr_api.py`；不得作为 service 子模块保留 |
+| `region_snr_api.py` | FastAPI 风格 request/response + async wrapper | 迁到 `app/region_snr_api.py`；不得作为 service 子模块保留 |
 | `__init__.py` | 旧 service base re-export | 简化为空包初始化；不再 re-export 已删除 base |
 
 优化目标：
 
 - `services/ocr_stage.py` 不能继续作为 500+ 行混合模块存在。
-- `services/` 只保留“模型/服务适配”职责，不再承载图像通用工具、runtime worker、API wrapper 或业务统计。
+- `services/` 只保留“模型/服务适配”职责，不再承载图像通用工具、runtime worker、API wrapper、输入传输包装或业务统计。
 - `record_builders.py` 不应依赖 `services.ocr_stage.build_ocr_statistics`；统计逻辑应迁入 `domain/statistics.py`。
 - `visualization.py` 不应从 `services.roi_stage` 取 ROI 可视化；ROI 可视化应归入 `imaging/visualization.py`。
 - `region_ocr_api.py` 和 `region_snr_api.py` 是应用边界，不是 service 实现，迁到 `app/` 后根目录门面直接导入 `gauge.app.region_ocr_api` / `gauge.app.region_snr_api`。
