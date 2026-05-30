@@ -15,7 +15,8 @@ for p in (str(REPO_ROOT), str(SRC_ROOT)):
 
 from gauge.imaging.profile import (
     extract_profile_band,
-    get_obb_long_edge_midline,
+    fit_obb_and_midline,
+    unwarp_obb_region,
     detect_peaks_valleys,
 )
 
@@ -131,67 +132,129 @@ class TestExtractProfileBand(unittest.TestCase):
         self.assertGreater(len(profile_default), 200)
 
 
-class TestGetOBBLongEdgeMidline(unittest.TestCase):
-    """Tests for get_obb_long_edge_midline()."""
+class TestFitOBBAndMidline(unittest.TestCase):
+    """Tests for fit_obb_and_midline()."""
 
     def test_axis_aligned_rectangle(self):
-        """Axis-aligned rectangle with known long edge."""
-        obb = np.array([
-            [0, 0],     # p0: top-left
-            [0, 100],   # p1: bottom-left
-            [300, 100], # p2: bottom-right
-            [300, 0],   # p3: top-right
+        """Axis-aligned rectangle: OBB should match input, midline along long edge."""
+        pts = np.array([
+            [0, 0],     # TL
+            [300, 0],   # TR
+            [300, 100], # BR
+            [0, 100],   # BL
         ], dtype=np.float32)
 
-        (start, end) = get_obb_long_edge_midline(obb)
+        corners, (start, end) = fit_obb_and_midline(pts)
 
-        dx = end[0] - start[0]
-        dy = end[1] - start[1]
-        mid_dist = (dx**2 + dy**2)**0.5
-        self.assertAlmostEqual(mid_dist, 100.0, delta=1.0)
-        # Both x-coordinates should be ~150 (the midline is vertical at x=150)
-        self.assertAlmostEqual(start[0], 150.0, delta=1.0)
-        self.assertAlmostEqual(end[0], 150.0, delta=1.0)
+        # Should return 4 corners in TL-TR-BR-BL order
+        self.assertEqual(corners.shape, (4, 2))
+        # Midline should run along long edge (width=300 direction)
+        # It connects midpoints of the two short edges (the vertical 100-px edges)
+        # Short edges are left (y:0->100 at x=0) and right (y:0->100 at x=300)
+        # Midpoints: (0, 50) and (300, 50)
+        dx = abs(end[0] - start[0])
+        dy = abs(end[1] - start[1])
+        self.assertGreater(dx, dy, "Midline should run along long-edge direction (horizontal)")
+        self.assertAlmostEqual(dx, 300.0, delta=5.0)
+
+    def test_irregular_quadrilateral(self):
+        """Non-rectangular 4 points: should fit a true rectangle."""
+        pts = np.array([
+            [10, 5],
+            [290, 0],
+            [305, 95],
+            [5, 105],
+        ], dtype=np.float32)
+
+        corners, (start, end) = fit_obb_and_midline(pts)
+
+        self.assertEqual(corners.shape, (4, 2))
+        self.assertIsInstance(start, tuple)
+        self.assertIsInstance(end, tuple)
+        # Fitted corners should form a rectangle: all angles ~90deg
+        for i in range(4):
+            a = corners[i]
+            b = corners[(i + 1) % 4]
+            c = corners[(i + 2) % 4]
+            v1 = b - a
+            v2 = c - b
+            dot = np.dot(v1, v2)
+            self.assertAlmostEqual(dot, 0.0, delta=50.0,
+                msg=f"Corner {i} not ~90 degrees")
 
     def test_rotated_rectangle(self):
         """45-degree rotated rectangle."""
+        import math
         angle = math.radians(45)
         c, s = math.cos(angle), math.sin(angle)
         w, h = 200.0, 50.0
 
-        corners = np.array([
+        corners_raw = np.array([
             [-w/2 * c + h/2 * s,  -w/2 * s - h/2 * c],
             [ w/2 * c + h/2 * s,   w/2 * s - h/2 * c],
             [ w/2 * c - h/2 * s,   w/2 * s + h/2 * c],
             [-w/2 * c - h/2 * s,  -w/2 * s + h/2 * c],
         ], dtype=np.float32)
-        corners += np.array([500, 400], dtype=np.float32)
+        pts = corners_raw + np.array([500, 400], dtype=np.float32)
 
-        (start, end) = get_obb_long_edge_midline(corners)
+        corners, (start, end) = fit_obb_and_midline(pts)
 
-        self.assertIsInstance(start, tuple)
-        self.assertIsInstance(end, tuple)
-        self.assertEqual(len(start), 2)
-        self.assertEqual(len(end), 2)
-
-        dx = end[0] - start[0]
-        dy = end[1] - start[1]
-        mid_dist = math.hypot(dx, dy)
-        self.assertAlmostEqual(mid_dist, h, delta=5.0)
+        self.assertEqual(corners.shape, (4, 2))
+        # Midline length should be approximately w (200) -- the long edge direction
+        mid_dist = math.hypot(end[0] - start[0], end[1] - start[1])
+        self.assertAlmostEqual(mid_dist, w, delta=10.0)
 
     def test_square(self):
-        """Square should not crash (all edges equal, picks first longest pair)."""
-        obb = np.array([
-            [0, 0],     # top-left
-            [0, 100],   # bottom-left
-            [100, 100], # bottom-right
-            [100, 0],   # top-right
+        """Square: midline should still work."""
+        pts = np.array([
+            [0, 0],
+            [100, 0],
+            [100, 100],
+            [0, 100],
         ], dtype=np.float32)
 
-        (start, end) = get_obb_long_edge_midline(obb)
+        corners, (start, end) = fit_obb_and_midline(pts)
         self.assertIsInstance(start, tuple)
         self.assertIsInstance(end, tuple)
         self.assertNotEqual(start, end)
+
+
+class TestUnwarpOBBRegion(unittest.TestCase):
+    """Tests for unwarp_obb_region()."""
+
+    def setUp(self):
+        h, w = 100, 300
+        y_coords, x_coords = np.mgrid[0:h, 0:w]
+        self.img = (x_coords.astype(np.float64) / (w - 1) * 255).astype(np.uint8)
+
+    def test_simple_rectangle(self):
+        """Unwarp a simple axis-aligned rectangle."""
+        corners = np.array([
+            [50, 0],
+            [250, 0],
+            [250, 100],
+            [50, 100],
+        ], dtype=np.float32)
+
+        unwarped, (uw, uh) = unwarp_obb_region(self.img, corners)
+
+        self.assertEqual(unwarped.ndim, 2)
+        self.assertEqual(uw, 200)  # width = 250-50
+        self.assertEqual(uh, 100)  # height = 100-0
+        # Left side should be dark, right side light (horizontal ramp)
+        self.assertLess(unwarped[50, 0], unwarped[50, -1])
+
+    def test_dimensions_wider_than_tall(self):
+        """Width should be the longer dimension."""
+        corners = np.array([
+            [0, 0],
+            [400, 0],
+            [400, 50],
+            [0, 50],
+        ], dtype=np.float32)
+
+        unwarped, (uw, uh) = unwarp_obb_region(self.img, corners)
+        self.assertGreaterEqual(uw, uh)
 
 
 class TestDetectPeaksValleys(unittest.TestCase):
