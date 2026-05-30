@@ -14,13 +14,18 @@ fake_fclip_stage.perspective_transform_points = lambda points, _matrix: points
 fake_fclip_stage.undo_ccw90_points = lambda points, pre_rotate_size=None: points
 sys.modules.setdefault("gauge.fclip_stage", fake_fclip_stage)
 
-fake_ocr_stage = types.ModuleType("gauge.ocr_stage")
-fake_ocr_stage.PaddleOCRSubprocessClient = object
-fake_ocr_stage.build_ocr_item_debug_images = lambda *args, **kwargs: {}
-fake_ocr_stage.build_ocr_statistics = lambda *args, **kwargs: {}
-fake_ocr_stage.draw_ocr_on_roi = lambda *args, **kwargs: None
-fake_ocr_stage.infer_roi_ocr = lambda *args, **kwargs: {}
-sys.modules.setdefault("gauge.ocr_stage", fake_ocr_stage)
+fake_ocr_infer = types.ModuleType("gauge.services.ocr.infer")
+fake_ocr_infer.infer_roi_ocr = lambda *args, **kwargs: {}
+sys.modules.setdefault("gauge.services.ocr.infer", fake_ocr_infer)
+
+fake_ocr_debug = types.ModuleType("gauge.services.ocr.debug")
+fake_ocr_debug.build_ocr_item_debug_images = lambda *args, **kwargs: {}
+fake_ocr_debug.draw_ocr_on_roi = lambda *args, **kwargs: None
+sys.modules.setdefault("gauge.services.ocr.debug", fake_ocr_debug)
+
+fake_domain_statistics = types.ModuleType("gauge.domain.statistics")
+fake_domain_statistics.build_ocr_statistics = lambda *args, **kwargs: {}
+sys.modules.setdefault("gauge.domain.statistics", fake_domain_statistics)
 
 from gauge.iqi_inferencer import IQIInferencer
 

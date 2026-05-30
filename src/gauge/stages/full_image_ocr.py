@@ -10,7 +10,7 @@ from gauge.domain.iqi_rules import (
     extract_general_fields_from_ocr_items,
     infer_plate_from_ocr_items,
 )
-from gauge.services.ocr_stage import infer_roi_ocr
+from gauge.services.ocr.infer import infer_roi_ocr
 from gauge.imaging.preprocess import (
     enhance_windowing_gray,
     resize_long_side,

@@ -10,7 +10,7 @@ import cv2
 import numpy as np
 
 from gauge.imaging.preprocess import ensure_dir
-from gauge.services.ocr_stage import build_ocr_item_debug_images, draw_ocr_on_roi
+from gauge.services.ocr.debug import build_ocr_item_debug_images, draw_ocr_on_roi
 from gauge.services.roi_stage import build_roi_vis_image
 
 

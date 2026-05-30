@@ -35,7 +35,7 @@ from gauge.domain.iqi_rules import (
 )
 from gauge.domain.record_builders import build_delivery_record, build_iqi_statistics
 from gauge.runtime.ocr_runtime import PaddleOCRSubprocessClient
-from gauge.services.ocr_stage import infer_roi_ocr
+from gauge.services.ocr.infer import infer_roi_ocr
 from gauge.imaging.preprocess import (
     collect_images,
     crop_rotated_polygon,

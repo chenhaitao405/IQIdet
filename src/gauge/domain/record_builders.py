@@ -180,7 +180,7 @@ def build_visualization(ctx: Any) -> Dict[str, Any]:
 
 
 def build_iqi_statistics(results: Sequence[Dict[str, Any]], topk: int = 200) -> Dict[str, Any]:
-    from gauge.services.ocr_stage import build_ocr_statistics
+    from gauge.domain.statistics import build_ocr_statistics
 
     ocr_stats = build_ocr_statistics(list(results), topk=topk)
     grade_counter = Counter()

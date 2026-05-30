@@ -13,7 +13,11 @@ def _run_root_module(repo_root: Path, module_name: str) -> None:
         module_name,
         "gauge",
         "gauge.fclip_stage",
-        "gauge.ocr_stage",
+        "gauge.services.ocr.factory",
+        "gauge.services.ocr.infer",
+        "gauge.services.ocr.normalize",
+        "gauge.services.ocr.debug",
+        "gauge.domain.statistics",
         "FClip",
         "dataset",
     ]
@@ -27,13 +31,18 @@ def _run_root_module(repo_root: Path, module_name: str) -> None:
             fake_fclip_stage.undo_ccw90_points = lambda points, pre_rotate_size=None: points
             sys.modules["gauge.fclip_stage"] = fake_fclip_stage
 
-            fake_ocr_stage = types.ModuleType("gauge.ocr_stage")
-            fake_ocr_stage.PaddleOCRSubprocessClient = object
-            fake_ocr_stage.build_ocr_item_debug_images = lambda *args, **kwargs: {}
-            fake_ocr_stage.build_ocr_statistics = lambda *args, **kwargs: {}
-            fake_ocr_stage.draw_ocr_on_roi = lambda *args, **kwargs: None
-            fake_ocr_stage.infer_roi_ocr = lambda *args, **kwargs: {}
-            sys.modules["gauge.ocr_stage"] = fake_ocr_stage
+            fake_ocr_infer = types.ModuleType("gauge.services.ocr.infer")
+            fake_ocr_infer.infer_roi_ocr = lambda *args, **kwargs: {}
+            sys.modules["gauge.services.ocr.infer"] = fake_ocr_infer
+
+            fake_ocr_debug = types.ModuleType("gauge.services.ocr.debug")
+            fake_ocr_debug.build_ocr_item_debug_images = lambda *args, **kwargs: {}
+            fake_ocr_debug.draw_ocr_on_roi = lambda *args, **kwargs: None
+            sys.modules["gauge.services.ocr.debug"] = fake_ocr_debug
+
+            fake_domain_statistics = types.ModuleType("gauge.domain.statistics")
+            fake_domain_statistics.build_ocr_statistics = lambda *args, **kwargs: {}
+            sys.modules["gauge.domain.statistics"] = fake_domain_statistics
 
         runpy.run_path(str(module_path), run_name=f"__test_{module_name}__")
     finally:
