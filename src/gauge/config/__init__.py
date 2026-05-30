@@ -65,7 +65,7 @@ class PipelineConfig(BaseSettings):
 
     def apply_cli_overrides(self, args) -> "PipelineConfig":
         """Apply argparse Namespace overrides. CLI args take precedence over defaults/env."""
-        overrides: dict = {}
+        updates: dict = {}
         mapping = {
             "gauge_weights": ("gauge", "weights"),
             "gauge_conf": ("gauge", "conf"),
@@ -100,16 +100,18 @@ class PipelineConfig(BaseSettings):
         }
         for attr_name, config_path in mapping.items():
             value = getattr(args, attr_name, None)
-            if value is not None and value is not False:
-                section, key = config_path
-                if section not in overrides:
-                    overrides[section] = {}
-                if attr_name == "no_rotate" and value:
-                    overrides[section][key] = False
-                else:
-                    overrides[section][key] = value
+            if value is None or value is False:
+                continue
+            section, key = config_path
+            updates.setdefault(section, {})
+            updates[section][key] = False if attr_name == "no_rotate" else value
         if getattr(args, "ocr_orientation_verbose", False):
-            overrides.setdefault("ocr", {})["orientation_verbose"] = True
-        if overrides:
-            return self.model_copy(update=overrides, deep=True)
-        return self
+            updates.setdefault("ocr", {})["orientation_verbose"] = True
+        if not updates:
+            return self
+
+        data = self.model_dump()
+        for section, section_updates in updates.items():
+            data.setdefault(section, {})
+            data[section].update(section_updates)
+        return PipelineConfig.model_validate(data)
