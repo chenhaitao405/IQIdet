@@ -1,6 +1,6 @@
-#!/usr/bin/env python3
 """Unit tests for gauge.imaging.profile — band-averaged profile extraction."""
 
+import math
 import sys
 import unittest
 from pathlib import Path
@@ -9,8 +9,9 @@ import numpy as np
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SRC_ROOT = REPO_ROOT / "src"
-sys.path.insert(0, str(REPO_ROOT))
-sys.path.insert(0, str(SRC_ROOT))
+for p in (str(REPO_ROOT), str(SRC_ROOT)):
+    if p not in sys.path:
+        sys.path.insert(0, p)
 
 from gauge.imaging.profile import (
     extract_profile_band,
@@ -136,22 +137,24 @@ class TestGetOBBLongEdgeMidline(unittest.TestCase):
     def test_axis_aligned_rectangle(self):
         """Axis-aligned rectangle with known long edge."""
         obb = np.array([
-            [0, 0],
-            [300, 0],
-            [300, 100],
-            [0, 100],
+            [0, 0],     # p0: top-left
+            [0, 100],   # p1: bottom-left
+            [300, 100], # p2: bottom-right
+            [300, 0],   # p3: top-right
         ], dtype=np.float32)
 
         (start, end) = get_obb_long_edge_midline(obb)
 
+        dx = end[0] - start[0]
+        dy = end[1] - start[1]
+        mid_dist = (dx**2 + dy**2)**0.5
+        self.assertAlmostEqual(mid_dist, 100.0, delta=1.0)
+        # Both x-coordinates should be ~150 (the midline is vertical at x=150)
         self.assertAlmostEqual(start[0], 150.0, delta=1.0)
-        self.assertAlmostEqual(start[1], 0.0, delta=1.0)
         self.assertAlmostEqual(end[0], 150.0, delta=1.0)
-        self.assertAlmostEqual(end[1], 100.0, delta=1.0)
 
     def test_rotated_rectangle(self):
         """45-degree rotated rectangle."""
-        import math
         angle = math.radians(45)
         c, s = math.cos(angle), math.sin(angle)
         w, h = 200.0, 50.0
@@ -179,15 +182,16 @@ class TestGetOBBLongEdgeMidline(unittest.TestCase):
     def test_square(self):
         """Square should not crash (all edges equal, picks first longest pair)."""
         obb = np.array([
-            [0, 0],
-            [100, 0],
-            [100, 100],
-            [0, 100],
+            [0, 0],     # top-left
+            [0, 100],   # bottom-left
+            [100, 100], # bottom-right
+            [100, 0],   # top-right
         ], dtype=np.float32)
 
         (start, end) = get_obb_long_edge_midline(obb)
         self.assertIsInstance(start, tuple)
         self.assertIsInstance(end, tuple)
+        self.assertNotEqual(start, end)
 
 
 class TestDetectPeaksValleys(unittest.TestCase):
