@@ -168,7 +168,7 @@ class IQIInferencer:
         self.ocr_min_score = float(self.config.ocr.min_score)
         self.ocr_orientation_verbose = bool(self.config.ocr.orientation_verbose)
         self.ocr_allowed_numbers = parse_allowed_numbers_spec(self.config.ocr.number_range)
-        self.ocr_number_range = format_allowed_numbers_spec(self.config.ocr.allowed_numbers)
+        self.ocr_number_range = format_allowed_numbers_spec(self.ocr_allowed_numbers)
         self.fclip_model_config = str(self.config.fclip.fclip_model_config)
         self.fclip_params = str(self.config.fclip.params)
         self.fclip_threshold = self.config.fclip.threshold
