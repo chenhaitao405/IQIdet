@@ -20,6 +20,7 @@ from FClip.infer_utils import (
     preprocess_gray_image,
     scale_lines,
 )
+from gauge.models.wire import LineRecord, WireResult
 
 
 def resolve_torch_device(device: Optional[str]) -> torch.device:
@@ -94,7 +95,7 @@ def build_line_records(
         score = None
         if index < len(scores):
             score = float(scores[index])
-        record = {
+        record_data = {
             "index": int(index),
             "score": score,
             "roi_xy": [[float(pt[0]), float(pt[1])] for pt in roi_points],
@@ -102,8 +103,8 @@ def build_line_records(
             "image_xy": None,
         }
         if image_points is not None:
-            record["image_xy"] = [[float(pt[0]), float(pt[1])] for pt in image_points]
-        records.append(record)
+            record_data["image_xy"] = [[float(pt[0]), float(pt[1])] for pt in image_points]
+        records.append(LineRecord(**record_data).model_dump())
     return records
 
 
@@ -155,14 +156,10 @@ class FClipInferencer:
             heatmaps = infer_heatmaps(self.model, image_tensor)
             count_pred = get_count_pred(heatmaps)
             if count_pred is None:
-                return {
-                    "status": "error",
-                    "error": "FClip outputs missing count head.",
-                    "wire_count": None,
-                    "parsed_line_count": 0,
-                    "lines": [],
-                    "warnings": [],
-                }
+                return WireResult(
+                    status="error",
+                    error="FClip outputs missing count head.",
+                ).model_dump()
 
             wire_count = int(count_pred[0].item())
             lcmap = heatmaps["lcmap"][0]
@@ -197,19 +194,15 @@ class FClipInferencer:
                 warnings.append(
                     f"wire_count={wire_count} 与 parsed_line_count={len(line_records)} 不一致，等级计算以 wire_count 为准"
                 )
-            return {
-                "status": "ok",
-                "wire_count": wire_count,
-                "parsed_line_count": int(len(line_records)),
-                "lines": line_records,
-                "warnings": warnings,
-            }
+            return WireResult(
+                status="ok",
+                wire_count=wire_count,
+                parsed_line_count=int(len(line_records)),
+                lines=line_records,
+                warnings=warnings,
+            ).model_dump()
         except Exception as exc:
-            return {
-                "status": "error",
-                "error": str(exc),
-                "wire_count": None,
-                "parsed_line_count": 0,
-                "lines": [],
-                "warnings": [],
-            }
+            return WireResult(
+                status="error",
+                error=str(exc),
+            ).model_dump()

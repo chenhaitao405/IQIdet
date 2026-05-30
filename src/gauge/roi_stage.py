@@ -9,6 +9,7 @@ import cv2
 import numpy as np
 
 from gauge.pipeline_utils import format_polygon
+from gauge.models.roi import ROIInfo
 
 
 def extract_best_obb(result: Any, select: str, class_filter: Optional[int]) -> Optional[Dict[str, Any]]:
@@ -50,12 +51,12 @@ def extract_best_obb(result: Any, select: str, class_filter: Optional[int]) -> O
     y_min = float(np.min(poly[:, 1]))
     x_max = float(np.max(poly[:, 0]))
     y_max = float(np.max(poly[:, 1]))
-    return {
-        "polygon": format_polygon(poly),
-        "bbox": [x_min, y_min, x_max, y_max],
-        "conf": conf,
-        "class_id": cls_id,
-    }
+    return ROIInfo(
+        polygon=format_polygon(poly),
+        bbox=[x_min, y_min, x_max, y_max],
+        conf=conf,
+        class_id=cls_id,
+    ).model_dump()
 
 
 def build_roi_vis_image(image: np.ndarray, roi_info: Dict[str, Any]) -> np.ndarray:
