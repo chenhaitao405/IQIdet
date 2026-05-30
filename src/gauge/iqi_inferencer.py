@@ -16,12 +16,8 @@ from gauge.config import (
     OCRConfig,
     PipelineConfig,
 )
-from gauge.services.fclip_stage import (
-    FClipInferencer,
-    invert_perspective_matrix,
-    perspective_transform_points,
-    undo_ccw90_points,
-)
+from gauge.services.fclip.inferencer import FClipInferencer
+from gauge.imaging.geometry import invert_perspective_matrix, perspective_transform_points, undo_ccw90_points
 from gauge.domain.iqi_rules import (
     build_result_status,
     choose_primary_result_code,

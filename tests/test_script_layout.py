@@ -12,7 +12,6 @@ def _run_root_module(repo_root: Path, module_name: str) -> None:
     watched_modules = [
         module_name,
         "gauge",
-        "gauge.fclip_stage",
         "gauge.services.ocr.factory",
         "gauge.services.ocr.infer",
         "gauge.services.ocr.normalize",
@@ -24,12 +23,9 @@ def _run_root_module(repo_root: Path, module_name: str) -> None:
     before_modules = {name: sys.modules.get(name) for name in watched_modules}
     try:
         if module_name == "run_iqi_grade_infer":
-            fake_fclip_stage = types.ModuleType("gauge.fclip_stage")
-            fake_fclip_stage.FClipInferencer = object
-            fake_fclip_stage.invert_perspective_matrix = lambda matrix: matrix
-            fake_fclip_stage.perspective_transform_points = lambda points, _matrix: points
-            fake_fclip_stage.undo_ccw90_points = lambda points, pre_rotate_size=None: points
-            sys.modules["gauge.fclip_stage"] = fake_fclip_stage
+            fake_fclip_inferencer = types.ModuleType("gauge.services.fclip.inferencer")
+            fake_fclip_inferencer.FClipInferencer = object
+            sys.modules["gauge.services.fclip.inferencer"] = fake_fclip_inferencer
 
             fake_ocr_infer = types.ModuleType("gauge.services.ocr.infer")
             fake_ocr_infer.infer_roi_ocr = lambda *args, **kwargs: {}
