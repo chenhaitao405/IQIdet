@@ -275,8 +275,8 @@
     "semantic_hash": ""
   },
   "/home/cht/code/IQIdet/scripts/tool/filter_nocrack_no_roi.py": {
-    "mtime": 1780113596.8897996,
-    "ast_hash": "b6be69b49baef3f0a2f1a2455c28313c",
+    "mtime": 1780113737.15067,
+    "ast_hash": "d5265e19bd4e0f35b3c4b0a0205b71a3",
     "semantic_hash": ""
   },
   "/home/cht/code/IQIdet/scripts/debug/dump_iqi_fclip_trace.py": {
@@ -70257,6 +70257,26 @@
   "/home/cht/code/IQIdet/IQIdata/OCRdata/0320/all/images/train/labeled1__det_crops_all_images__bde9ea_1120_D1_RD8-19-1_images__bde9ea__1120_D1_RD8-19-1__det_001__6837592d147b__1061ad72e9d8.png": {
     "mtime": 1773800822.0,
     "ast_hash": "c1d83c233ca13ed4a6f2ef0a9b62c78b",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/CLAUDE.md": {
+    "mtime": 1780115097.1868649,
+    "ast_hash": "e1ebaafa822fa31993312bae9d8ed164",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/.claude/settings.json": {
+    "mtime": 1780115097.1868649,
+    "ast_hash": "87f0d903477984d0587a02f8fe185263",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/docs/superpowers/specs/2026-05-30-iqidet-refactor-design.md": {
+    "mtime": 1780116063.274937,
+    "ast_hash": "cef3f0adfb6267984a732d22f8b8fd5a",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/docs/superpowers/plans/2026-05-30-iqidet-refactor-plan.md": {
+    "mtime": 1780116648.8935823,
+    "ast_hash": "dede2b02295af721f331472cfcd28375",
     "semantic_hash": ""
   }
 }
