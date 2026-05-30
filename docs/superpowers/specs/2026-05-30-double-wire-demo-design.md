@@ -22,14 +22,14 @@
 2. 鼠标左键逆时针点击 OBB 四个顶点（p0→p1→p2→p3），框选整个双丝像质计
    - 右键可撤销最后一个顶点
    - 第 4 点点击后自动闭合 OBB
-3. 系统沿 OBB 长边中点画一条剖面线（横穿所有线对），弹出 matplotlib 灰度曲线图
+3. 系统沿 OBB 长边中点画一条剖面中线，在短边方向采样 `band_width`（默认 21）条平行线，逐列平均后弹出 matplotlib 灰度曲线图
 4. 拖动 Trackbar 滑块调节剖面线位置（0%~100%），曲线实时更新
 5. 按 F 键切换正/负片模式（适配不同成像类型）
 6. 按 S 键保存结果（叠加图 + 剖面数据 JSON）
 7. 按 R 键重置，重新框选下一张图
 ```
 
-## OBB 与剖面线的几何关系
+## OBB 与剖面带的几何关系
 
 ```
        短边（沿丝方向）
@@ -37,14 +37,17 @@
   │  ═══  ═══    ← D1   │  ↑
   │  ═══  ═══    ← D2   │  长
   │  ═══  ═══    ← ...  │  边
-  │  ═══  ═══    ← Dn   │  │   剖面线沿长边方向 →
+  │  ═══  ═══    ← Dn   │  │   剖面方向沿长边 →
   └──────────────────────┘  ↓
+       ← 短边方向采样 band_width 条平行线 →
+       ┊━━━━━━━━━┊ ← 剖面带（中线 ± band_width/2）
 ```
 
 - 金属丝与 OBB **短边**平行。
 - OBB **长边**垂直于金属丝，横跨 D1 → Dn 所有线对。
-- 在长边方向取一条直线，即为**剖面线**。
-- 剖面线一次性切过所有线对的"两根丝+间隙"结构，灰度曲线呈现一串"峰-谷-峰"序列。
+- 沿长边方向取一条直线为**剖面中线**；以中线为基准，沿短边方向上下各取 `band_width / 2` 条平行线，构成**剖面带**。
+- 剖面带内所有平行线逐列平均，得到一条平滑的灰度剖面曲线，呈现一串"峰-谷-峰"序列。
+- **测量规范要求**（JBT 7902-2025）：不少于 21 行或列像素叠加平均。`band_width` 默认值 21，可配置。
 
 ## 交互设计
 
@@ -111,12 +114,19 @@
 - **完成条件**：点击第 4 个点后自动闭合 OBB，触发剖面线计算
 - **适用角度**：天然支持 OBB 旋转任意角度，无需额外旋转控件
 
-### 剖面线位置
+### 剖面带位置与宽度
 
-- **默认位置**：OBB 长边中点（垂直于金属丝方向，对应 Trackbar 50%）
-- **调整方式**：OpenCV `createTrackbar("偏移%", ...)` 滑块，沿短边方向 0% ~ 100% 连续调节
-- **实时更新**：拖动 Trackbar 时自动重提取剖面线并更新 matplotlib 曲线图
+- **默认位置**：OBB 长边中点（垂直于金属丝方向，对应 Trackbar 50%），剖面带以此中线为对称中心
+- **调整方式**：OpenCV `createTrackbar("偏移%", ...)` 滑块，沿短边方向 0% ~ 100% 连续调节带中心位置
+- **实时更新**：拖动 Trackbar 时自动重提取剖面带（`band_width` 条平行线平均）并更新 matplotlib 曲线图
 - **用途**：验证不同位置的信号一致性、寻找最佳信号区域
+
+**剖面带宽度（`band_width`）**：
+
+- **默认值**：21（符合 JBT 7902-2025 不少于 21 行/列的要求）
+- **配置方式**：CLI 参数 `--band-width`（可配置，≥1）
+- **采样方式**：以剖面中线为对称中心，沿 OBB 短边方向均匀分布 `band_width` 条平行线，逐列灰度平均
+- **极端值**：`band_width=1` 退化为单线剖面（用于对比验证带状平均的去噪效果）
 
 ### 双窗口布局
 
@@ -127,7 +137,9 @@
 | OBB 已点击顶点 | 🟡 黄色圆点（r=5px） | COLLECTING |
 | OBB 顶点连线 | 黄色虚线（1px） | COLLECTING |
 | OBB 边框 | 🟢 绿色实线（2px） | LOCKED |
-| 剖面线 | 🔴 红色实线（1px），沿长边方向 | LOCKED |
+| 剖面带中线 | 🔴 红色实线（1px），沿长边方向 | LOCKED |
+| 剖面带边界 | 🔴 红色虚线（1px），中线上下各 band_width/2 条平行线 | LOCKED |
+| 剖面带填充 | 半透明红色填充（中线 → 边界之间） | LOCKED |
 | 当前鼠标位置 | ➕ 十字准星 | IDLE / COLLECTING |
 | 状态指示文字 | 左下角："就绪" / "点 N/4" / "已锁定" | 所有状态 |
 | 帮助覆盖层 | 半透明黑色背景 + 白色按键说明 | H 键触发 |
@@ -140,7 +152,7 @@
 - 自动检测标注：
   - 波峰：红色 ▲ 标记 + 数值标签（如 `a=0.72`）
   - 波谷：蓝色 ▼ 标记 + 数值标签（如 `c=0.32`）
-- 标题（纯英文/数字，无需中文字体）：`{stem} | OBB: {w}x{h} @ {angle:.1f}° | offset:{pct}% | {film_type}`
+- 标题（纯英文/数字，无需中文字体）：`{stem} | OBB: {w}x{h} @ {angle:.1f}° | offset:{pct}% | band:{N} | {film_type}`
 - 支持缩放和平移（matplotlib 内置工具栏）
 - 更新策略：`ax.clear()` + 重绘（清空重绘，简单可靠，10ms 内完成）
 
@@ -156,8 +168,8 @@ if image.dtype == np.uint16:
     # 显示用：归一化到 8-bit（窗宽窗位调整）
     display_image = cv2.normalize(image, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
     
-    # 剖面提取用：保持 16-bit 精度
-    profile = extract_profile_16bit(image, line_coords)
+    # 剖面带提取用：保持 16-bit 精度，band_width≥21 条平行线平均
+    profile = extract_profile_band(image, midline_start, midline_end, band_width=21)
 ```
 
 ## 接口预留
@@ -182,58 +194,71 @@ def find_first_unresolved_group(
 
 ```
 scripts/debug/double_wire_demo.py          # 主脚本（交互入口）
-src/gauge/imaging/profile.py              # 剖面线提取工具函数（可复用）
+src/gauge/imaging/profile.py              # 剖面带提取工具函数（可复用）
 tests/test_double_wire_profile.py         # 单元测试（可选）
 ```
 
 ### 核心模块职责
 
-#### 1. `src/gauge/imaging/profile.py` - 剖面线提取（可复用层）
+#### 1. `src/gauge/imaging/profile.py` - 剖面带提取（可复用层）
 
 纯函数工具模块，不依赖交互逻辑，便于后续集成到自动化管线。
 
 **核心函数**：
 
 ```python
-def extract_profile_along_line(
+def extract_profile_band(
     image: np.ndarray,
     start_point: Tuple[float, float],
     end_point: Tuple[float, float],
-    num_samples: Optional[int] = None
+    band_width: int = 21,
+    num_samples: Optional[int] = None,
 ) -> np.ndarray:
     """
-    沿直线提取灰度剖面，支持亚像素插值。
+    沿直线提取带状灰度剖面（多条平行线平均），支持亚像素插值。
     
     Args:
         image: 输入图像（支持 8-bit 或 16-bit）
-        start_point: 起点坐标 (x, y)
-        end_point: 终点坐标 (x, y)
-        num_samples: 采样点数（None 则按像素距离自动计算）
+        start_point: 剖面中线起点坐标 (x, y)
+        end_point: 剖面中线终点坐标 (x, y)
+        band_width: 带状宽度（平行线数量），默认 21（符合 JBT 7902-2025 要求）
+        num_samples: 沿中线方向的采样点数（None 则按像素距离自动计算）
         
     Returns:
-        一维灰度剖面数组
+        一维灰度剖面数组（band_width 条平行线的逐列平均值）
         
     Implementation:
-        使用 cv2.remap() 或 scipy.ndimage.map_coordinates() 进行亚像素插值
+        1. 计算剖面方向向量 v_long = end - start，单位化
+        2. 计算垂直方向向量 v_short = rotate90(v_long)
+        3. 生成 band_width 条平行线：line_i 偏移量为 (i - (band_width-1)/2) * v_short
+        4. 每条线用 scipy.ndimage.map_coordinates() 进行亚像素采样
+        5. 所有线逐列平均，返回 1D 数组
+        
+    Edge cases:
+        - band_width=1 退化为单线剖面
+        - band_width 超出图像边界时自动裁剪
     """
     
 def get_obb_long_edge_midline(
     obb_points: np.ndarray  # shape (4, 2)
 ) -> Tuple[Tuple[float, float], Tuple[float, float]]:
     """
-    从 OBB 四点计算长边中点连线（剖面线）。
+    从 OBB 四点计算长边中点连线（剖面中线）。
     
     Args:
         obb_points: OBB 四个顶点坐标，逆时针顺序
         
     Returns:
-        (start_point, end_point): 剖面线的起点和终点
+        (start_point, end_point): 剖面中线的起点和终点（长边方向）
         
     Logic:
         1. 计算四条边的长度
         2. 找到最长的两条对边（长边）
         3. 计算两条长边的中点
-        4. 返回连接两个中点的直线
+        4. 返回连接两个中点的直线（即为剖面中线）
+        
+    Note:
+        剖面带的平行线方向垂直于此中线（即沿 OBB 短边方向）。
     """
     
 def detect_peaks_valleys(
@@ -318,9 +343,10 @@ class DoubleWireDemo:
     STATE_COLLECTING = "collecting"
     STATE_LOCKED = "locked"
     
-    def __init__(self, image_path: str, output_dir: Optional[str] = None):
+    def __init__(self, image_path: str, output_dir: Optional[str] = None, band_width: int = 21):
         self.image_path = Path(image_path)
         self.output_dir = Path(output_dir) if output_dir else None
+        self.band_width = band_width        # 剖面带平行线数量（默认 21，符合 JBT 7902-2025）
         
         # 图像数据
         self.image_raw = None       # 16-bit 原始图像（剖面提取用）
@@ -367,10 +393,10 @@ class DoubleWireDemo:
         
     def update_profile(self):
         """
-        根据当前 OBB + offset_pct 更新剖面线。
+        根据当前 OBB + offset_pct 更新剖面带。
         
-        1. 调用 get_obb_long_edge_midline() + offset 偏移计算剖面线端点
-        2. 调用 extract_profile_along_line() 在 image_raw 上提取灰度剖面
+        1. 调用 get_obb_long_edge_midline() + offset 偏移计算剖面中线端点
+        2. 调用 extract_profile_band() 在 image_raw 上提取带状灰度剖面（band_width 条平行线平均）
         3. 调用 detect_peaks_valleys() 检测波峰波谷（根据 film_type 调整方向）
         4. 调用 plot_profile() 更新 matplotlib 图窗
         """
@@ -381,7 +407,8 @@ class DoubleWireDemo:
         
         按状态绘制：
             - 顶点黄点 + 黄虚线 (COLLECTING)
-            - OBB 绿实线 + 剖面线红实线 (LOCKED)
+            - OBB 绿实线 (LOCKED)
+            - 剖面中线红实线 + 剖面带半透明填充 + 边界红虚线 (LOCKED)
             - 左下角状态文字
             - 帮助覆盖层 (show_help=True 时)
         """
@@ -394,7 +421,7 @@ class DoubleWireDemo:
         - ax.plot(profile, color='#4C78A8')
         - 波峰: ax.plot(peaks, profile[peaks], 'r^') + 数值标注
         - 波谷: ax.plot(valleys, profile[valleys], 'bv') + 数值标注
-        - 标题: f"{stem} | OBB: {w}x{h} @ {angle:.1f}° | offset:{pct}% | {film_type}"
+        - 标题: f"{stem} | OBB: {w}x{h} @ {angle:.1f}° | offset:{pct}% | band:{N} | {film_type}"
         - fig.canvas.draw()
         """
         
@@ -408,8 +435,9 @@ class DoubleWireDemo:
               {
                 "image_path": str,
                 "obb_points": [[x, y], ...],
-                "profile_line": {"start": [x, y], "end": [x, y]},
-                "profile_offset_pct": int,
+                "profile_midline": {"start": [x, y], "end": [x, y]},
+                "band_width": 21,
+                "profile_offset_pct": 50,
                 "film_type": "positive" | "negative",
                 "profile_values": [float, ...],
                 "peak_indices": [int, ...],
@@ -454,6 +482,7 @@ Options:
     -h --help                 显示帮助信息
     --output-dir <dir>        输出目录 [default: outputs/double_wire_demo]
     --window-size <size>      显示窗口最大尺寸 [default: 1200]
+    --band-width <N>          剖面带平行线数量（≥1，默认 21，符合 JBT 7902-2025） [default: 21]
 """
 ```
 
@@ -474,7 +503,7 @@ from scipy.signal import find_peaks
 from docopt import docopt
 
 from gauge.imaging.profile import (
-    extract_profile_along_line,
+    extract_profile_band,
     get_obb_long_edge_midline,
     detect_peaks_valleys,
 )
@@ -499,14 +528,16 @@ from gauge.imaging.profile import (
 - [ ] OBB 四点交互框选（鼠标左键点击，逆时针 p0→p1→p2→p3）
 - [ ] 右键撤销最后顶点
 - [ ] 第 4 点自动闭合 OBB 并触发剖面计算
-- [ ] 剖面线提取（沿 OBB 长边中点，`scipy.ndimage.map_coordinates` 亚像素插值）
-- [ ] Trackbar 滑块调节剖面线短边偏移（0% ~ 100%，实时更新）
-- [ ] matplotlib 灰度曲线可视化（清空重绘，纯英文标题）
+- [ ] 剖面带提取（沿 OBB 长边中线，短边方向采样 `band_width` 条平行线，逐列平均）
+- [ ] `--band-width` CLI 参数（默认 21，符合 JBT 7902-2025 不少于 21 行/列要求）
+- [ ] Trackbar 滑块调节剖面带中心偏移（0% ~ 100%，实时更新）
+- [ ] matplotlib 灰度曲线可视化（清空重绘，纯英文标题含 `band:N`）
 - [ ] 波峰/波谷自动标注（`scipy.signal.find_peaks`，正片：峰-谷-峰）
 - [ ] `F` 键正/负片切换（反转峰值检测方向）
 - [ ] `H` 键帮助覆盖层（半透明按键说明）
 - [ ] `R` 键重置 OBB 框选
-- [ ] `S` 键保存结果（叠加图 PNG + 剖面数据 JSON）
+- [ ] 剖面带可视化叠加（中线红实线 + 边界红虚线 + 半透明填充）
+- [ ] `S` 键保存结果（叠加图 PNG 含剖面带标记 + 剖面数据 JSON 含 `band_width`）
 - [ ] `Q` / `ESC` 退出程序
 - [ ] 状态指示文字（左下角："就绪" / "点 N/4" / "已锁定"）
 
@@ -525,28 +556,32 @@ from gauge.imaging.profile import (
 - [ ] 能正常打开 16-bit TIFF 图像（保持原始位深用于剖面提取）
 - [ ] OBB 四点框选交互流畅，顶点顺序正确（逆时针）
 - [ ] 右键撤销最后一个顶点功能正常
-- [ ] 剖面线自动计算正确（沿长边方向，垂直于金属丝）
-- [ ] Trackbar 滑块调节剖面线偏移，曲线实时更新
+- [ ] 剖面带自动计算正确（中线沿长边方向，band_width 条平行线平均）
+- [ ] `--band-width` 参数生效（band_width=1 退化为单线，band_width=21 为带状平均）
+- [ ] Trackbar 滑块调节剖面带中心偏移，曲线实时更新
 - [ ] F 键正/负片切换，峰值检测方向正确反转
 - [ ] H 键帮助覆盖层显示/隐藏正常
 - [ ] 灰度曲线与实际图像肉眼观察一致
-- [ ] 能同时看到原图（带 OBB + 剖面线叠加）和灰度曲线图
+- [ ] 剖面带可视化叠加正确（中线 + 边界虚线 + 半透明填充）
+- [ ] 能同时看到原图（带 OBB + 剖面带叠加）和灰度曲线图
 - [ ] 波峰/波谷自动检测准确（正片："峰-谷-峰"，负片："谷-峰-谷"）
-- [ ] S 键保存：叠加图 PNG 和剖面数据 JSON 均正确输出
+- [ ] S 键保存：叠加图 PNG（含剖面带）和剖面数据 JSON（含 `band_width`）均正确输出
 
 ### 数据验证
 
 使用 `outputs/候选双丝像质计/` 中的 311 张图像进行验证：
 
-- [ ] 至少在 5 张不同图像上验证剖面提取正确性
+- [ ] 至少在 5 张不同图像上验证剖面带提取正确性
+- [ ] 对比 `band_width=1`（单线）vs `band_width=21`（带状平均）的噪声差异，带状应显著平滑
 - [ ] 验证正片和负片图像的信号模式差异
-- [ ] 验证不同角度 OBB 的剖面线计算正确性
+- [ ] 验证不同角度 OBB 的剖面中线计算正确性
 - [ ] 保存的 JSON 数据可被后续脚本正确读取
 
 ### 代码质量
 
 - [ ] `src/gauge/imaging/profile.py` 中的函数有完整的 docstring
-- [ ] 剖面提取函数支持亚像素插值（避免锯齿）
+- [ ] `extract_profile_band()` 支持亚像素插值（避免锯齿）
+- [ ] `extract_profile_band()` 的 band_width 参数可配置，默认 21
 - [ ] 16-bit 图像处理全程保持精度（不提前转 8-bit）
 - [ ] 异常情况有清晰的错误提示（如图像加载失败、OBB 点数不足）
 
