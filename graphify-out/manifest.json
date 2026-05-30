@@ -1,277 +1,27 @@
 {
-  "/home/cht/code/IQIdet/src/gauge/infer.py": {
-    "mtime": 1772700272.3872228,
-    "ast_hash": "4266bdd3b33199dbdb5ff77babdc2b24",
-    "semantic_hash": "4266bdd3b33199dbdb5ff77babdc2b24"
-  },
-  "/home/cht/code/IQIdet/src/gauge/pipeline_utils.py": {
-    "mtime": 1780120515.3231697,
-    "ast_hash": "e7031c1b801926cd832f7edea51eb54c",
-    "semantic_hash": ""
-  },
-  "/home/cht/code/IQIdet/src/gauge/region_ocr_api.py": {
-    "mtime": 1780120515.3231697,
-    "ast_hash": "0503958ecc88a5697ea0c5baa5cdf5eb",
-    "semantic_hash": ""
-  },
-  "/home/cht/code/IQIdet/src/gauge/weld_correction.py": {
-    "mtime": 1780120515.3241699,
-    "ast_hash": "0aef9496403aa38d93b54e8eba82386e",
-    "semantic_hash": ""
-  },
-  "/home/cht/code/IQIdet/src/gauge/OBBtraintest.py": {
-    "mtime": 1772700272.3872228,
-    "ast_hash": "7f3d18911cb4f686b02993ec88b02f9a",
-    "semantic_hash": "7f3d18911cb4f686b02993ec88b02f9a"
-  },
-  "/home/cht/code/IQIdet/src/gauge/region_ocr_service.py": {
-    "mtime": 1778988243.9476812,
-    "ast_hash": "d5e2e4a867460767580ba8898c91e38e",
-    "semantic_hash": "d5e2e4a867460767580ba8898c91e38e"
-  },
-  "/home/cht/code/IQIdet/src/gauge/ocr_stage.py": {
-    "mtime": 1780120515.3231697,
-    "ast_hash": "897cd4b4f665578c5338acfc5f344a9e",
-    "semantic_hash": ""
-  },
-  "/home/cht/code/IQIdet/src/gauge/region_snr_api.py": {
-    "mtime": 1780120515.3231697,
-    "ast_hash": "32591bffb043de6bc8a4c0ea97b07165",
-    "semantic_hash": ""
-  },
-  "/home/cht/code/IQIdet/src/gauge/fclip_stage.py": {
-    "mtime": 1780120515.3221698,
-    "ast_hash": "d0141643eefef0c04bac6a5a8c05a712",
-    "semantic_hash": ""
-  },
-  "/home/cht/code/IQIdet/src/gauge/adaptive_image_processor.py": {
-    "mtime": 1773537823.8378623,
-    "ast_hash": "77b6a3e6d5342cee72713773ef1ced81",
-    "semantic_hash": "77b6a3e6d5342cee72713773ef1ced81"
-  },
-  "/home/cht/code/IQIdet/src/gauge/convert_to_yolo_obb.py": {
-    "mtime": 1772721224.0652678,
-    "ast_hash": "e611bf21a5c4d74c4f003e83d6a5133a",
-    "semantic_hash": "e611bf21a5c4d74c4f003e83d6a5133a"
-  },
-  "/home/cht/code/IQIdet/src/gauge/ocr_paddle_worker.py": {
-    "mtime": 1780120515.3231697,
-    "ast_hash": "60586e03fd477b85520eac4ff5706798",
-    "semantic_hash": ""
-  },
-  "/home/cht/code/IQIdet/src/gauge/valid.py": {
-    "mtime": 1772700272.3872228,
-    "ast_hash": "992357fcd0d4b61032a6e221f464cd6b",
-    "semantic_hash": "992357fcd0d4b61032a6e221f464cd6b"
-  },
-  "/home/cht/code/IQIdet/src/gauge/iqi_ocr.py": {
-    "mtime": 1774108027.5126328,
-    "ast_hash": "6d2f9dd42186a24b0e0aa21a69e62ac7",
-    "semantic_hash": "6d2f9dd42186a24b0e0aa21a69e62ac7"
-  },
-  "/home/cht/code/IQIdet/src/gauge/iqi_rules.py": {
-    "mtime": 1780120515.3221698,
-    "ast_hash": "57f0944ea53ba6e0e9d5793865836636",
-    "semantic_hash": ""
-  },
-  "/home/cht/code/IQIdet/src/gauge/region_snr_service.py": {
-    "mtime": 1775997804.4578092,
-    "ast_hash": "f8fa656555cfff1e010a65d867cd9fc5",
-    "semantic_hash": "f8fa656555cfff1e010a65d867cd9fc5"
-  },
-  "/home/cht/code/IQIdet/src/gauge/roi_stage.py": {
-    "mtime": 1780120515.3231697,
-    "ast_hash": "b2129852b3a9c1317f56346ae0f79215",
-    "semantic_hash": ""
-  },
-  "/home/cht/code/IQIdet/src/gauge/iqi_inferencer.py": {
-    "mtime": 1780120515.3221698,
-    "ast_hash": "77a0b2a7657f35f2d97ba6c5356217fd",
-    "semantic_hash": ""
-  },
-  "/home/cht/code/IQIdet/src/gauge/ocr_orientation.py": {
-    "mtime": 1780120515.3231697,
-    "ast_hash": "6e411170798cbee84d5ed621d695d973",
-    "semantic_hash": ""
-  },
-  "/home/cht/code/IQIdet/src/gauge/custom_augment.py": {
-    "mtime": 1774098172.34886,
-    "ast_hash": "4d285dd7c65c5c4eb97d0314ea1c84c1",
-    "semantic_hash": "4d285dd7c65c5c4eb97d0314ea1c84c1"
-  },
-  "/home/cht/code/IQIdet/src/gauge/train.py": {
-    "mtime": 1778988244.1066787,
-    "ast_hash": "3f8e74f547caf19c6b12f541e008b692",
-    "semantic_hash": "3f8e74f547caf19c6b12f541e008b692"
-  },
-  "/home/cht/code/IQIdet/src/dataset/input_parsing.py": {
-    "mtime": 1772700272.3872228,
-    "ast_hash": "6a9705062aa73a63089a610eef7f7fa5",
-    "semantic_hash": "6a9705062aa73a63089a610eef7f7fa5"
-  },
-  "/home/cht/code/IQIdet/src/dataset/wireframe.py": {
-    "mtime": 1772700272.3872228,
-    "ast_hash": "fae124898495a88da02830ce15ee465b",
-    "semantic_hash": "fae124898495a88da02830ce15ee465b"
-  },
-  "/home/cht/code/IQIdet/src/dataset/crop.py": {
-    "mtime": 1772700272.3872228,
-    "ast_hash": "2731211dc7ed87f4f9c5a5afec8d4ab1",
-    "semantic_hash": "2731211dc7ed87f4f9c5a5afec8d4ab1"
-  },
-  "/home/cht/code/IQIdet/src/dataset/resolution.py": {
-    "mtime": 1772639758.5675297,
-    "ast_hash": "cb8a5976589c59bec6947917e25353d4",
-    "semantic_hash": "cb8a5976589c59bec6947917e25353d4"
-  },
-  "/home/cht/code/IQIdet/src/dataset/york_line.py": {
-    "mtime": 1772639758.5685296,
-    "ast_hash": "4125e34bd69897c75cf91aaeeb8cd812",
-    "semantic_hash": "4125e34bd69897c75cf91aaeeb8cd812"
-  },
-  "/home/cht/code/IQIdet/src/dataset/wireframe_line.py": {
-    "mtime": 1772700272.3872228,
-    "ast_hash": "2d22b19eb7b66ef80f2ea3cca7a7c3f7",
-    "semantic_hash": "2d22b19eb7b66ef80f2ea3cca7a7c3f7"
-  },
-  "/home/cht/code/IQIdet/src/dataset/york.py": {
-    "mtime": 1772700272.3872228,
-    "ast_hash": "3dd8f9e09ef19539f9ca0c340b01680d",
-    "semantic_hash": "3dd8f9e09ef19539f9ca0c340b01680d"
-  },
-  "/home/cht/code/IQIdet/src/dataset/weld.py": {
-    "mtime": 1778988453.2543883,
-    "ast_hash": "e601487e957b2e7a0d909dc8083314dc",
-    "semantic_hash": "e601487e957b2e7a0d909dc8083314dc"
-  },
-  "/home/cht/code/IQIdet/src/FClip/nms.py": {
-    "mtime": 1772639758.5675297,
-    "ast_hash": "f57538052f653cef60f1a505ff4d1b9c",
-    "semantic_hash": "f57538052f653cef60f1a505ff4d1b9c"
-  },
-  "/home/cht/code/IQIdet/src/FClip/line_parsing.py": {
-    "mtime": 1772700272.385223,
-    "ast_hash": "2403147e9a4c20112df31c8e6adf7c72",
-    "semantic_hash": "2403147e9a4c20112df31c8e6adf7c72"
-  },
-  "/home/cht/code/IQIdet/src/FClip/valid_utils.py": {
-    "mtime": 1772721224.0642679,
-    "ast_hash": "17ea2b3e84ef6e89bf159af80dbf8274",
-    "semantic_hash": "17ea2b3e84ef6e89bf159af80dbf8274"
-  },
-  "/home/cht/code/IQIdet/src/FClip/box.py": {
-    "mtime": 1772639758.5665295,
-    "ast_hash": "b71621c5b238e1bbd5a08a3afbc8636e",
-    "semantic_hash": "b71621c5b238e1bbd5a08a3afbc8636e"
-  },
-  "/home/cht/code/IQIdet/src/FClip/config.py": {
-    "mtime": 1772639758.5665295,
-    "ast_hash": "4835ef06274a1a4ba1a2c75bbaaf9aab",
-    "semantic_hash": "4835ef06274a1a4ba1a2c75bbaaf9aab"
-  },
-  "/home/cht/code/IQIdet/src/FClip/metric.py": {
-    "mtime": 1772639758.5665295,
-    "ast_hash": "a34bd4682f45eeb15c2434516c262064",
-    "semantic_hash": "a34bd4682f45eeb15c2434516c262064"
-  },
-  "/home/cht/code/IQIdet/src/FClip/visualize.py": {
-    "mtime": 1772700272.3862228,
-    "ast_hash": "7b273ceb1fd9234477a4912a0e7f75f2",
-    "semantic_hash": "7b273ceb1fd9234477a4912a0e7f75f2"
-  },
-  "/home/cht/code/IQIdet/src/FClip/trainer.py": {
-    "mtime": 1772700272.3862228,
-    "ast_hash": "3e49319dba7f9911d6877e84179a7f3f",
-    "semantic_hash": "3e49319dba7f9911d6877e84179a7f3f"
-  },
-  "/home/cht/code/IQIdet/src/FClip/utils.py": {
-    "mtime": 1772700272.3862228,
-    "ast_hash": "4035d4b54c40e1052e1391adf6113e04",
-    "semantic_hash": "4035d4b54c40e1052e1391adf6113e04"
-  },
-  "/home/cht/code/IQIdet/src/FClip/config_loader.py": {
-    "mtime": 1772700272.385223,
-    "ast_hash": "f31c561a772570accb34fac14beff1b3",
-    "semantic_hash": "f31c561a772570accb34fac14beff1b3"
-  },
-  "/home/cht/code/IQIdet/src/FClip/datasets.py": {
-    "mtime": 1772700272.385223,
-    "ast_hash": "f3921425e65f9cccf7b94bf0d86d9330",
-    "semantic_hash": "f3921425e65f9cccf7b94bf0d86d9330"
-  },
-  "/home/cht/code/IQIdet/src/FClip/lr_schedulers.py": {
-    "mtime": 1772639758.5665295,
-    "ast_hash": "292aa1452bf7fceab5cd768bf00c6693",
-    "semantic_hash": "292aa1452bf7fceab5cd768bf00c6693"
-  },
-  "/home/cht/code/IQIdet/src/FClip/infer_utils.py": {
-    "mtime": 1772700272.385223,
-    "ast_hash": "61e51929bbcba9eeab33309a31ec1243",
-    "semantic_hash": "61e51929bbcba9eeab33309a31ec1243"
-  },
-  "/home/cht/code/IQIdet/src/FClip/postprocess.py": {
-    "mtime": 1772639758.5675297,
-    "ast_hash": "2559f17a577f07677ceca819f98697a8",
-    "semantic_hash": "2559f17a577f07677ceca819f98697a8"
-  },
-  "/home/cht/code/IQIdet/src/FClip/train.py": {
-    "mtime": 1772700272.3862228,
-    "ast_hash": "6b4dc104757efdc368d7506567ff79ed",
-    "semantic_hash": "6b4dc104757efdc368d7506567ff79ed"
-  },
-  "/home/cht/code/IQIdet/src/FClip/__init__.py": {
-    "mtime": 1772639758.5665295,
-    "ast_hash": "87abd045763c45d3e79beaf925a338ad",
-    "semantic_hash": "87abd045763c45d3e79beaf925a338ad"
-  },
-  "/home/cht/code/IQIdet/src/FClip/losses/__init__.py": {
-    "mtime": 1772700272.3862228,
-    "ast_hash": "84cee13651cfbea5301d928192eea687",
-    "semantic_hash": "84cee13651cfbea5301d928192eea687"
-  },
-  "/home/cht/code/IQIdet/src/FClip/models/stage_1.py": {
-    "mtime": 1772700272.3862228,
-    "ast_hash": "b4929402fee29314a71a52ecc5368a5d",
-    "semantic_hash": "b4929402fee29314a71a52ecc5368a5d"
-  },
-  "/home/cht/code/IQIdet/src/FClip/models/pose_hrnet.py": {
-    "mtime": 1772700272.3862228,
-    "ast_hash": "34f8e8528073ac20c6a680695596d82b",
-    "semantic_hash": "34f8e8528073ac20c6a680695596d82b"
-  },
-  "/home/cht/code/IQIdet/src/FClip/models/__init__.py": {
-    "mtime": 1772700272.3862228,
-    "ast_hash": "0e62f2ae359dcdc98e71ad215bc30bfa",
-    "semantic_hash": "0e62f2ae359dcdc98e71ad215bc30bfa"
-  },
-  "/home/cht/code/IQIdet/src/gauge/README.md": {
-    "mtime": 1772700272.3872228,
-    "ast_hash": "d13f8779c247e3a8e650e4d8b3dd817e",
-    "semantic_hash": "d13f8779c247e3a8e650e4d8b3dd817e"
-  },
-  "/home/cht/code/IQIdet/src/gauge/config/augment.yaml": {
-    "mtime": 1774105766.4172788,
-    "ast_hash": "fde2a8083b408b24868ea4fd5e123a8e",
-    "semantic_hash": "fde2a8083b408b24868ea4fd5e123a8e"
-  },
-  "/home/cht/code/IQIdet/src/gauge/config/README.md": {
-    "mtime": 1772700272.3872228,
-    "ast_hash": "fbe8c193c970f230d564aeca33b8b8ef",
-    "semantic_hash": "fbe8c193c970f230d564aeca33b8b8ef"
-  },
   "/home/cht/code/IQIdet/region_SNR_api.py": {
-    "mtime": 1780120515.3211699,
-    "ast_hash": "9f2195f6dc33aaf28041a06eb522548a",
+    "mtime": 1780124220.3459032,
+    "ast_hash": "0be2afb2dc6e3298b07fcfe36eae53d5",
     "semantic_hash": ""
   },
   "/home/cht/code/IQIdet/run_iqi_grade_infer.py": {
-    "mtime": 1780120515.3221698,
+    "mtime": 1780126460.3481503,
     "ast_hash": "cc1bf1867c204a1211b0ff3bac9ccb7b",
     "semantic_hash": ""
   },
   "/home/cht/code/IQIdet/region_ocr_api.py": {
-    "mtime": 1780120515.3211699,
-    "ast_hash": "2604ea48e019c4b3c88baa8f51aaef94",
+    "mtime": 1780124220.3459032,
+    "ast_hash": "ece55895ecc87121910ded8bc8c924d7",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/settings-template.json": {
+    "mtime": 1780129420.6802106,
+    "ast_hash": "b2206e2beb493f94f15d54c5ad7d335f",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/scripts/compare_results.py": {
+    "mtime": 1780133080.3921108,
+    "ast_hash": "ded6b667f832d8f8fabe29dbc7b39fa4",
     "semantic_hash": ""
   },
   "/home/cht/code/IQIdet/scripts/tool/filter_nocrack_no_roi.py": {
@@ -3525,28 +3275,63 @@
     "semantic_hash": ""
   },
   "/home/cht/code/IQIdet/tests/test_iqi_rules.py": {
-    "mtime": 1778994402.5276232,
+    "mtime": 1780121385.82652,
     "ast_hash": "43cdd871985d824df850516f7f0d7e99",
     "semantic_hash": ""
   },
   "/home/cht/code/IQIdet/tests/test_iqi_delivery_record.py": {
-    "mtime": 1778994506.5564678,
+    "mtime": 1780121385.82652,
     "ast_hash": "9b1a572e46c582ca91373bb6a8a3ec78",
     "semantic_hash": ""
   },
+  "/home/cht/code/IQIdet/tests/test_region_runtime.py": {
+    "mtime": 1780132391.5372515,
+    "ast_hash": "2a040074eca07ad616824ef807c38811",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/tests/test_visualization.py": {
+    "mtime": 1780131542.4757774,
+    "ast_hash": "f3c418a915ad8a0e13b3c8ba71cae06f",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/tests/test_ocr_runtime.py": {
+    "mtime": 1780132164.017886,
+    "ast_hash": "9b84cb6f65ea228e4e9de129a229341d",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/tests/test_geometry.py": {
+    "mtime": 1780130508.1062207,
+    "ast_hash": "38bcc6899b6bfda47c0acdad58e6f11d",
+    "semantic_hash": ""
+  },
   "/home/cht/code/IQIdet/tests/test_region_snr_service.py": {
-    "mtime": 1775997770.0214212,
-    "ast_hash": "07f8e20578f075bc4d890be3e6fd1fad",
+    "mtime": 1780124220.347903,
+    "ast_hash": "8be27d27c0db7c4503adc8a5b82f34cc",
     "semantic_hash": ""
   },
   "/home/cht/code/IQIdet/tests/test_script_layout.py": {
-    "mtime": 1778988378.388566,
-    "ast_hash": "cb6b7ddae6e56ed0975bf1bbafc22ab0",
+    "mtime": 1780132581.153185,
+    "ast_hash": "3728a82835b4929ce4311222305d65dd",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/tests/test_pipeline_config.py": {
+    "mtime": 1780130911.060817,
+    "ast_hash": "03ea380c6b1fde548c61957678ed5133",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/tests/test_record_builders.py": {
+    "mtime": 1780131789.2038507,
+    "ast_hash": "38963c97670796e141ac65cba2cc37b3",
     "semantic_hash": ""
   },
   "/home/cht/code/IQIdet/tests/test_iqi_inferencer.py": {
-    "mtime": 1780120515.3241699,
-    "ast_hash": "c8a75b2e2f7c9bafbf31c35dfccd4b20",
+    "mtime": 1780124220.347903,
+    "ast_hash": "3b0eaab2043e47dad0768e6ef62381b7",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/tests/test_import_boundaries.py": {
+    "mtime": 1780129941.2311141,
+    "ast_hash": "a6aea10f2c89b9b4ee8f37a42f9d4807",
     "semantic_hash": ""
   },
   "/home/cht/code/IQIdet/dvclive/metrics.json": {
@@ -3555,13 +3340,403 @@
     "semantic_hash": ""
   },
   "/home/cht/code/IQIdet/.vscode/launch.json": {
-    "mtime": 1778996017.4850206,
-    "ast_hash": "6c8c608dc524dcad12045c711ae47381",
+    "mtime": 1780126793.0176933,
+    "ast_hash": "ac77f639a7dc173d69e78a53bd2017ff",
     "semantic_hash": ""
   },
   "/home/cht/code/IQIdet/.dvc/tmp/exps/celery/dvc-exp-worker-1.json": {
     "mtime": 1772701257.0415592,
     "ast_hash": "e9849f6ad9f80b52ca3c871ab8438b69",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/gauge/pipeline.py": {
+    "mtime": 1780124220.346903,
+    "ast_hash": "03b6fd45ddcd3121567ca660f41102f7",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/gauge/region_runtime.py": {
+    "mtime": 1780132466.2750428,
+    "ast_hash": "bf92e05d1e75429db5ee54d326d1c15a",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/gauge/visualization.py": {
+    "mtime": 1780131639.8752272,
+    "ast_hash": "0c0b07538e5bf705481049ad9ab6cc35",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/gauge/ocr_runtime.py": {
+    "mtime": 1780132237.6237144,
+    "ast_hash": "d6ba11a95c231f290f51d787c21480a0",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/gauge/geometry.py": {
+    "mtime": 1780129973.3656144,
+    "ast_hash": "9931b59558506967f731d140ac7a802b",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/gauge/pipeline_utils.py": {
+    "mtime": 1780124220.346903,
+    "ast_hash": "e7031c1b801926cd832f7edea51eb54c",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/gauge/record_builders.py": {
+    "mtime": 1780131813.8304589,
+    "ast_hash": "020882542a0bbc5c23d49d976733c447",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/gauge/exceptions.py": {
+    "mtime": 1780124220.3459032,
+    "ast_hash": "2265bfa2bd3d634d4316f6391f860d37",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/gauge/logging_setup.py": {
+    "mtime": 1780124220.346903,
+    "ast_hash": "360c923384349ce478e839db4d807e20",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/gauge/iqi_rules.py": {
+    "mtime": 1780124220.346903,
+    "ast_hash": "57f0944ea53ba6e0e9d5793865836636",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/gauge/iqi_inferencer.py": {
+    "mtime": 1780132276.0141034,
+    "ast_hash": "6742786e071c85d2d06a3db7492681eb",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/gauge/training/OBBtraintest.py": {
+    "mtime": 1780132638.7892528,
+    "ast_hash": "6827e223c1f2410d026b709b36796144",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/gauge/training/convert_to_yolo_obb.py": {
+    "mtime": 1780124220.347903,
+    "ast_hash": "e611bf21a5c4d74c4f003e83d6a5133a",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/gauge/training/iqi_ocr.py": {
+    "mtime": 1780124220.347903,
+    "ast_hash": "6d2f9dd42186a24b0e0aa21a69e62ac7",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/gauge/training/custom_augment.py": {
+    "mtime": 1780124220.347903,
+    "ast_hash": "4d285dd7c65c5c4eb97d0314ea1c84c1",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/gauge/training/train.py": {
+    "mtime": 1780124220.347903,
+    "ast_hash": "612ce857b48a036d950ac1db7b3048cc",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/gauge/training/__init__.py": {
+    "mtime": 1780124220.347903,
+    "ast_hash": "4b574514f87c9cf5810f7d350a2d805b",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/gauge/services/region_ocr_api.py": {
+    "mtime": 1780132478.9828372,
+    "ast_hash": "5ef52c5c63a0742fc8fe26a2f0e3d325",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/gauge/services/weld_correction.py": {
+    "mtime": 1780124220.347903,
+    "ast_hash": "0aef9496403aa38d93b54e8eba82386e",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/gauge/services/base.py": {
+    "mtime": 1780132498.0245292,
+    "ast_hash": "a7cf8db5bd851c001164f0a6525dd366",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/gauge/services/region_ocr_service.py": {
+    "mtime": 1780132297.211766,
+    "ast_hash": "5a03d18a90a0f2d686b25e23d7e041cb",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/gauge/services/correction.py": {
+    "mtime": 1780124220.346903,
+    "ast_hash": "2a39cb6638789db8736fcd5d666f00ef",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/gauge/services/ocr_stage.py": {
+    "mtime": 1780132269.4052086,
+    "ast_hash": "6ff3d9d0b40ea6aac11b262b09bac3ef",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/gauge/services/region_snr_api.py": {
+    "mtime": 1780132489.7826626,
+    "ast_hash": "a457ea57d639acb71d35f817b39b9b79",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/gauge/services/fclip_stage.py": {
+    "mtime": 1780130069.761115,
+    "ast_hash": "921c1463234958a3b8a60507b8650a7d",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/gauge/services/adaptive_image_processor.py": {
+    "mtime": 1780124220.346903,
+    "ast_hash": "77b6a3e6d5342cee72713773ef1ced81",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/gauge/services/ocr_paddle_worker.py": {
+    "mtime": 1780126505.8854034,
+    "ast_hash": "ee5b8a1c7105201e2be066a043cfdfcf",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/gauge/services/region_snr_service.py": {
+    "mtime": 1780124220.347903,
+    "ast_hash": "f8fa656555cfff1e010a65d867cd9fc5",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/gauge/services/roi_stage.py": {
+    "mtime": 1780124220.347903,
+    "ast_hash": "b2129852b3a9c1317f56346ae0f79215",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/gauge/services/ocr_orientation.py": {
+    "mtime": 1780126447.868355,
+    "ast_hash": "0bc9c7220680dfc6646afbd703d3b38e",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/gauge/services/__init__.py": {
+    "mtime": 1780124220.346903,
+    "ast_hash": "f95a14565c420ce49c7f9c7d86b99d6d",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/gauge/stages/wire_detect.py": {
+    "mtime": 1780124220.347903,
+    "ast_hash": "7f71261927e7e440bdad4ad8f63ed6fb",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/gauge/stages/base.py": {
+    "mtime": 1780131391.250184,
+    "ast_hash": "d8253acf68e654f823d07b2a528ee6ad",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/gauge/stages/image_load.py": {
+    "mtime": 1780124220.347903,
+    "ast_hash": "268979b406ab47aeaccea8689abe3331",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/gauge/stages/correction.py": {
+    "mtime": 1780124220.347903,
+    "ast_hash": "45de9261c87312419c55c6e48a747107",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/gauge/stages/grade_fusion.py": {
+    "mtime": 1780124220.347903,
+    "ast_hash": "a4ad8a9fefe81384c80733e4899d78a5",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/gauge/stages/roi_detect.py": {
+    "mtime": 1780131822.492321,
+    "ast_hash": "f635226fd98b71082b7967cd249a22cb",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/gauge/stages/roi_ocr.py": {
+    "mtime": 1780130033.186684,
+    "ast_hash": "a7988d9e303978e769f2493df4a1e051",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/gauge/stages/full_image_ocr.py": {
+    "mtime": 1780124220.347903,
+    "ast_hash": "ca48c29ee23f0b720d1e533d4e6fcea9",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/gauge/stages/__init__.py": {
+    "mtime": 1780129988.0743856,
+    "ast_hash": "6c4f33ee3c6d6b51f898112268ae2b61",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/gauge/config/__init__.py": {
+    "mtime": 1780130939.304368,
+    "ast_hash": "43a8e653b6be49a7d308afc56fc5d611",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/gauge/models/plate.py": {
+    "mtime": 1780124220.346903,
+    "ast_hash": "3c6f8a6ae3cb09437296fc4bbde2b053",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/gauge/models/record.py": {
+    "mtime": 1780124220.346903,
+    "ast_hash": "6815504cc32630b5cf0d3f14eacc9a66",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/gauge/models/wire.py": {
+    "mtime": 1780124220.346903,
+    "ast_hash": "a1b8d0e904f752e88d0b19b82af5e73f",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/gauge/models/grade.py": {
+    "mtime": 1780124220.346903,
+    "ast_hash": "06b08fb30d38ff9928d5a80b06adcd8a",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/gauge/models/ocr.py": {
+    "mtime": 1780124220.346903,
+    "ast_hash": "463f37f8531df5baf228a0f4602dd904",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/gauge/models/roi.py": {
+    "mtime": 1780124220.346903,
+    "ast_hash": "d4ae2f33c5fa7be2d9927be4d31b25ec",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/gauge/models/fields.py": {
+    "mtime": 1780124220.346903,
+    "ast_hash": "d5c192943bfd0ad69c4f2c27f20ab28e",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/gauge/models/__init__.py": {
+    "mtime": 1780124220.346903,
+    "ast_hash": "2e569a5c71ec05a202ad4f54e3648bf9",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/dataset/input_parsing.py": {
+    "mtime": 1780121385.82752,
+    "ast_hash": "6a9705062aa73a63089a610eef7f7fa5",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/dataset/wireframe.py": {
+    "mtime": 1780121385.82752,
+    "ast_hash": "fae124898495a88da02830ce15ee465b",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/dataset/crop.py": {
+    "mtime": 1780121385.82752,
+    "ast_hash": "2731211dc7ed87f4f9c5a5afec8d4ab1",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/dataset/resolution.py": {
+    "mtime": 1780121385.82752,
+    "ast_hash": "cb8a5976589c59bec6947917e25353d4",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/dataset/york_line.py": {
+    "mtime": 1780121385.82752,
+    "ast_hash": "4125e34bd69897c75cf91aaeeb8cd812",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/dataset/wireframe_line.py": {
+    "mtime": 1780121385.82752,
+    "ast_hash": "2d22b19eb7b66ef80f2ea3cca7a7c3f7",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/dataset/york.py": {
+    "mtime": 1780121385.82752,
+    "ast_hash": "3dd8f9e09ef19539f9ca0c340b01680d",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/dataset/weld.py": {
+    "mtime": 1780121385.8285198,
+    "ast_hash": "e601487e957b2e7a0d909dc8083314dc",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/FClip/nms.py": {
+    "mtime": 1780121385.8285198,
+    "ast_hash": "f57538052f653cef60f1a505ff4d1b9c",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/FClip/line_parsing.py": {
+    "mtime": 1780121385.8285198,
+    "ast_hash": "2403147e9a4c20112df31c8e6adf7c72",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/FClip/valid_utils.py": {
+    "mtime": 1780121385.8285198,
+    "ast_hash": "17ea2b3e84ef6e89bf159af80dbf8274",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/FClip/box.py": {
+    "mtime": 1780121385.8285198,
+    "ast_hash": "b71621c5b238e1bbd5a08a3afbc8636e",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/FClip/config.py": {
+    "mtime": 1780121385.8285198,
+    "ast_hash": "4835ef06274a1a4ba1a2c75bbaaf9aab",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/FClip/metric.py": {
+    "mtime": 1780121385.8285198,
+    "ast_hash": "a34bd4682f45eeb15c2434516c262064",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/FClip/visualize.py": {
+    "mtime": 1780121385.8285198,
+    "ast_hash": "7b273ceb1fd9234477a4912a0e7f75f2",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/FClip/trainer.py": {
+    "mtime": 1780121385.8285198,
+    "ast_hash": "3e49319dba7f9911d6877e84179a7f3f",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/FClip/utils.py": {
+    "mtime": 1780121385.8285198,
+    "ast_hash": "4035d4b54c40e1052e1391adf6113e04",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/FClip/config_loader.py": {
+    "mtime": 1780121385.8285198,
+    "ast_hash": "f31c561a772570accb34fac14beff1b3",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/FClip/datasets.py": {
+    "mtime": 1780121385.8285198,
+    "ast_hash": "f3921425e65f9cccf7b94bf0d86d9330",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/FClip/lr_schedulers.py": {
+    "mtime": 1780121385.8295197,
+    "ast_hash": "292aa1452bf7fceab5cd768bf00c6693",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/FClip/infer_utils.py": {
+    "mtime": 1780121385.8295197,
+    "ast_hash": "61e51929bbcba9eeab33309a31ec1243",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/FClip/postprocess.py": {
+    "mtime": 1780121385.8295197,
+    "ast_hash": "2559f17a577f07677ceca819f98697a8",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/FClip/train.py": {
+    "mtime": 1780121385.8295197,
+    "ast_hash": "6b4dc104757efdc368d7506567ff79ed",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/FClip/__init__.py": {
+    "mtime": 1780121385.8295197,
+    "ast_hash": "87abd045763c45d3e79beaf925a338ad",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/FClip/losses/__init__.py": {
+    "mtime": 1780121385.8295197,
+    "ast_hash": "84cee13651cfbea5301d928192eea687",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/FClip/models/stage_1.py": {
+    "mtime": 1780121385.8295197,
+    "ast_hash": "b4929402fee29314a71a52ecc5368a5d",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/FClip/models/pose_hrnet.py": {
+    "mtime": 1780121385.8295197,
+    "ast_hash": "34f8e8528073ac20c6a680695596d82b",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/FClip/models/__init__.py": {
+    "mtime": 1780121385.8295197,
+    "ast_hash": "0e62f2ae359dcdc98e71ad215bc30bfa",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/.claude/settings.json": {
+    "mtime": 1780124220.2559044,
+    "ast_hash": "87f0d903477984d0587a02f8fe185263",
     "semantic_hash": ""
   },
   "/home/cht/code/IQIdet/models/OCR_rec_inference_best_accuracy0325/inference.json": {
@@ -6104,9 +6279,14 @@
     "ast_hash": "776cd1b4dedc6eb6dce9646b6f7a0b4c",
     "semantic_hash": ""
   },
+  "/home/cht/code/IQIdet/PROGRESS.md": {
+    "mtime": 1780124220.2569046,
+    "ast_hash": "48b376733355bdf6ed2b5abd0d29db6f",
+    "semantic_hash": ""
+  },
   "/home/cht/code/IQIdet/ARCHITECTURE.md": {
-    "mtime": 1780120515.2601707,
-    "ast_hash": "d8829ce1340b256b5fbe72ab2613073e",
+    "mtime": 1780124220.2569046,
+    "ast_hash": "bfd57a68c2ddf8e8b9318f571f66eeae",
     "semantic_hash": ""
   },
   "/home/cht/code/IQIdet/dvc.yaml": {
@@ -6117,6 +6297,11 @@
   "/home/cht/code/IQIdet/params.yaml": {
     "mtime": 1778988378.2345686,
     "ast_hash": "a5ddd66fb113d503c911715e40861a8e",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/CLAUDE.md": {
+    "mtime": 1780128772.5761545,
+    "ast_hash": "a57a6524b28b4642fb11e930bd70d744",
     "semantic_hash": ""
   },
   "/home/cht/code/IQIdet/\u96c6\u6210\u5f15\u5bfc.md": {
@@ -10929,6 +11114,21 @@
     "ast_hash": "f3d5d56817a032ed1f865c870b11f8ba",
     "semantic_hash": ""
   },
+  "/home/cht/code/IQIdet/src/gauge/README.md": {
+    "mtime": 1780132616.5636122,
+    "ast_hash": "cf8bbe6d81272c243be10459d956c71b",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/gauge/config/augment.yaml": {
+    "mtime": 1774105766.4172788,
+    "ast_hash": "fde2a8083b408b24868ea4fd5e123a8e",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/src/gauge/config/README.md": {
+    "mtime": 1772700272.3872228,
+    "ast_hash": "fbe8c193c970f230d564aeca33b8b8ef",
+    "semantic_hash": ""
+  },
   "/home/cht/code/IQIdet/docs/MODEL_ASSETS.md": {
     "mtime": 1778987360.924574,
     "ast_hash": "cf3d85307dca7f486a04fe711b8013a9",
@@ -10944,9 +11144,24 @@
     "ast_hash": "65f6eec51eb49e63f946470e8ca39053",
     "semantic_hash": ""
   },
+  "/home/cht/code/IQIdet/docs/superpowers/specs/2026-05-30-gauge-architecture-dedup-design.md": {
+    "mtime": 1780129169.0131009,
+    "ast_hash": "552c0164a20bc7d56aa560c884fd89a3",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/docs/superpowers/specs/2026-05-30-iqidet-refactor-design.md": {
+    "mtime": 1780124220.2569046,
+    "ast_hash": "cef3f0adfb6267984a732d22f8b8fd5a",
+    "semantic_hash": ""
+  },
   "/home/cht/code/IQIdet/docs/superpowers/specs/2026-04-16-iqi-wire-on-roi-design.md": {
     "mtime": 1776342128.7361817,
     "ast_hash": "b643c1a06d493baf15737d4a7bba57a7",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/docs/superpowers/specs/2026-05-30-gauge-layered-architecture-design.md": {
+    "mtime": 1780135310.2420897,
+    "ast_hash": "12e71e2239d6823abfd52d9ae5a9a868",
     "semantic_hash": ""
   },
   "/home/cht/code/IQIdet/docs/superpowers/plans/2026-05-17-iqi-single-wire-grade-alignment.md": {
@@ -10959,9 +11174,24 @@
     "ast_hash": "3eaa06d2fe2cb99f32e1d4e9d717d131",
     "semantic_hash": ""
   },
+  "/home/cht/code/IQIdet/docs/superpowers/plans/2026-05-30-gauge-architecture-dedup-plan.md": {
+    "mtime": 1780129738.132273,
+    "ast_hash": "da7bda0f3834fe119bc64ad3964215d1",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/docs/superpowers/plans/2026-05-30-iqidet-refactor-plan.md": {
+    "mtime": 1780124220.2569046,
+    "ast_hash": "dede2b02295af721f331472cfcd28375",
+    "semantic_hash": ""
+  },
   "/home/cht/code/IQIdet/docs/contract/IQI_SINGLE_WIRE_MARKER_GRADE_RULE.md": {
     "mtime": 1778993805.7255108,
     "ast_hash": "ee7697bba0fe2251666b044a69812d1b",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/docs/\u9700\u6c42/\u53cc\u4e1d\u50cf\u8d28\u8ba1\u5206\u8fa8\u7387.md": {
+    "mtime": 1780124220.2569046,
+    "ast_hash": "3920c57e1d986a8912b11a3e9e0d90c0",
     "semantic_hash": ""
   },
   "/home/cht/code/IQIdet/config/model.yaml": {
@@ -45714,6 +45944,16 @@
     "ast_hash": "8c7897ab256177a044586f3ec92f9840",
     "semantic_hash": ""
   },
+  "/home/cht/code/IQIdet/docs/\u9700\u6c42/\u53cc\u4e1d\u50cf\u8d28\u8ba1\u5206\u8fa8\u7387.png": {
+    "mtime": 1780124220.2619045,
+    "ast_hash": "be3d7d45e2091f9a9d14b17cd108db10",
+    "semantic_hash": ""
+  },
+  "/home/cht/code/IQIdet/docs/\u9700\u6c42/\u53cc\u4e1d\u50cf\u8d28\u8ba1\u5206\u8fa8\u7387_2.png": {
+    "mtime": 1780124220.2669044,
+    "ast_hash": "58424226b99ab21f4a83c99f94c453e9",
+    "semantic_hash": ""
+  },
   "/home/cht/code/IQIdet/IQIdata/ori/img/yuhuan3-2__S3-2-1Y.jpg": {
     "mtime": 1772699302.5468612,
     "ast_hash": "db3967b909a8ece1a8a30bc7a25f27d7",
@@ -70257,166 +70497,6 @@
   "/home/cht/code/IQIdet/IQIdata/OCRdata/0320/all/images/train/labeled1__det_crops_all_images__bde9ea_1120_D1_RD8-19-1_images__bde9ea__1120_D1_RD8-19-1__det_001__6837592d147b__1061ad72e9d8.png": {
     "mtime": 1773800822.0,
     "ast_hash": "c1d83c233ca13ed4a6f2ef0a9b62c78b",
-    "semantic_hash": ""
-  },
-  "/home/cht/code/IQIdet/CLAUDE.md": {
-    "mtime": 1780120515.2601707,
-    "ast_hash": "e1ebaafa822fa31993312bae9d8ed164",
-    "semantic_hash": ""
-  },
-  "/home/cht/code/IQIdet/.claude/settings.json": {
-    "mtime": 1780120515.2601707,
-    "ast_hash": "87f0d903477984d0587a02f8fe185263",
-    "semantic_hash": ""
-  },
-  "/home/cht/code/IQIdet/docs/superpowers/specs/2026-05-30-iqidet-refactor-design.md": {
-    "mtime": 1780116063.274937,
-    "ast_hash": "cef3f0adfb6267984a732d22f8b8fd5a",
-    "semantic_hash": ""
-  },
-  "/home/cht/code/IQIdet/docs/superpowers/plans/2026-05-30-iqidet-refactor-plan.md": {
-    "mtime": 1780116648.8935823,
-    "ast_hash": "dede2b02295af721f331472cfcd28375",
-    "semantic_hash": ""
-  },
-  "/home/cht/code/IQIdet/src/gauge/pipeline.py": {
-    "mtime": 1780120515.3231697,
-    "ast_hash": "03b6fd45ddcd3121567ca660f41102f7",
-    "semantic_hash": ""
-  },
-  "/home/cht/code/IQIdet/src/gauge/exceptions.py": {
-    "mtime": 1780120515.3221698,
-    "ast_hash": "2265bfa2bd3d634d4316f6391f860d37",
-    "semantic_hash": ""
-  },
-  "/home/cht/code/IQIdet/src/gauge/logging_setup.py": {
-    "mtime": 1780120515.3221698,
-    "ast_hash": "360c923384349ce478e839db4d807e20",
-    "semantic_hash": ""
-  },
-  "/home/cht/code/IQIdet/src/gauge/services/base.py": {
-    "mtime": 1780120515.3231697,
-    "ast_hash": "711a6a32437283c93678df69df790a20",
-    "semantic_hash": ""
-  },
-  "/home/cht/code/IQIdet/src/gauge/services/correction.py": {
-    "mtime": 1780120515.3231697,
-    "ast_hash": "3bc2e37411a1d322737ce727ba61c82c",
-    "semantic_hash": ""
-  },
-  "/home/cht/code/IQIdet/src/gauge/services/__init__.py": {
-    "mtime": 1780120515.3231697,
-    "ast_hash": "f95a14565c420ce49c7f9c7d86b99d6d",
-    "semantic_hash": ""
-  },
-  "/home/cht/code/IQIdet/src/gauge/stages/wire_detect.py": {
-    "mtime": 1780120515.3241699,
-    "ast_hash": "7f71261927e7e440bdad4ad8f63ed6fb",
-    "semantic_hash": ""
-  },
-  "/home/cht/code/IQIdet/src/gauge/stages/base.py": {
-    "mtime": 1780120515.3231697,
-    "ast_hash": "0831b6883b6c180be6729ed7bd40258f",
-    "semantic_hash": ""
-  },
-  "/home/cht/code/IQIdet/src/gauge/stages/image_load.py": {
-    "mtime": 1780120515.3231697,
-    "ast_hash": "268979b406ab47aeaccea8689abe3331",
-    "semantic_hash": ""
-  },
-  "/home/cht/code/IQIdet/src/gauge/stages/correction.py": {
-    "mtime": 1780120515.3231697,
-    "ast_hash": "45de9261c87312419c55c6e48a747107",
-    "semantic_hash": ""
-  },
-  "/home/cht/code/IQIdet/src/gauge/stages/grade_fusion.py": {
-    "mtime": 1780120515.3231697,
-    "ast_hash": "a4ad8a9fefe81384c80733e4899d78a5",
-    "semantic_hash": ""
-  },
-  "/home/cht/code/IQIdet/src/gauge/stages/roi_detect.py": {
-    "mtime": 1780120515.3231697,
-    "ast_hash": "ff3f3c7212a9537a303bf19c7eca0750",
-    "semantic_hash": ""
-  },
-  "/home/cht/code/IQIdet/src/gauge/stages/roi_ocr.py": {
-    "mtime": 1780120515.3241699,
-    "ast_hash": "6d6819bafa3af44f6354fbaef1e13da1",
-    "semantic_hash": ""
-  },
-  "/home/cht/code/IQIdet/src/gauge/stages/full_image_ocr.py": {
-    "mtime": 1780120515.3231697,
-    "ast_hash": "56f0cbd446c2d5af5fc90e8c5239c360",
-    "semantic_hash": ""
-  },
-  "/home/cht/code/IQIdet/src/gauge/stages/__init__.py": {
-    "mtime": 1780120515.3231697,
-    "ast_hash": "66e0d4224456dfa1e683b6c3ad3fdf28",
-    "semantic_hash": ""
-  },
-  "/home/cht/code/IQIdet/src/gauge/config/__init__.py": {
-    "mtime": 1780120515.3221698,
-    "ast_hash": "68804b4ee22ccbce066b0e6fe0a1e169",
-    "semantic_hash": ""
-  },
-  "/home/cht/code/IQIdet/src/gauge/models/plate.py": {
-    "mtime": 1780120515.3221698,
-    "ast_hash": "3c6f8a6ae3cb09437296fc4bbde2b053",
-    "semantic_hash": ""
-  },
-  "/home/cht/code/IQIdet/src/gauge/models/record.py": {
-    "mtime": 1780120515.3221698,
-    "ast_hash": "6815504cc32630b5cf0d3f14eacc9a66",
-    "semantic_hash": ""
-  },
-  "/home/cht/code/IQIdet/src/gauge/models/wire.py": {
-    "mtime": 1780120515.3231697,
-    "ast_hash": "a1b8d0e904f752e88d0b19b82af5e73f",
-    "semantic_hash": ""
-  },
-  "/home/cht/code/IQIdet/src/gauge/models/grade.py": {
-    "mtime": 1780120515.3221698,
-    "ast_hash": "06b08fb30d38ff9928d5a80b06adcd8a",
-    "semantic_hash": ""
-  },
-  "/home/cht/code/IQIdet/src/gauge/models/ocr.py": {
-    "mtime": 1780120515.3221698,
-    "ast_hash": "95fcb16d43ac18512611deb271f37488",
-    "semantic_hash": ""
-  },
-  "/home/cht/code/IQIdet/src/gauge/models/roi.py": {
-    "mtime": 1780120515.3221698,
-    "ast_hash": "d4ae2f33c5fa7be2d9927be4d31b25ec",
-    "semantic_hash": ""
-  },
-  "/home/cht/code/IQIdet/src/gauge/models/fields.py": {
-    "mtime": 1780120515.3221698,
-    "ast_hash": "d5c192943bfd0ad69c4f2c27f20ab28e",
-    "semantic_hash": ""
-  },
-  "/home/cht/code/IQIdet/src/gauge/models/__init__.py": {
-    "mtime": 1780120515.3221698,
-    "ast_hash": "2e569a5c71ec05a202ad4f54e3648bf9",
-    "semantic_hash": ""
-  },
-  "/home/cht/code/IQIdet/PROGRESS.md": {
-    "mtime": 1780120515.2611709,
-    "ast_hash": "48b376733355bdf6ed2b5abd0d29db6f",
-    "semantic_hash": ""
-  },
-  "/home/cht/code/IQIdet/docs/\u9700\u6c42/\u53cc\u4e1d\u50cf\u8d28\u8ba1\u5206\u8fa8\u7387.md": {
-    "mtime": 1780120515.2611709,
-    "ast_hash": "3920c57e1d986a8912b11a3e9e0d90c0",
-    "semantic_hash": ""
-  },
-  "/home/cht/code/IQIdet/docs/\u9700\u6c42/\u53cc\u4e1d\u50cf\u8d28\u8ba1\u5206\u8fa8\u7387.png": {
-    "mtime": 1780120515.2651708,
-    "ast_hash": "be3d7d45e2091f9a9d14b17cd108db10",
-    "semantic_hash": ""
-  },
-  "/home/cht/code/IQIdet/docs/\u9700\u6c42/\u53cc\u4e1d\u50cf\u8d28\u8ba1\u5206\u8fa8\u7387_2.png": {
-    "mtime": 1780120515.2701707,
-    "ast_hash": "58424226b99ab21f4a83c99f94c453e9",
     "semantic_hash": ""
   }
 }

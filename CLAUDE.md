@@ -75,6 +75,8 @@ OCR 运行在**独立子进程**中（`ocr_paddle_worker.py`），通过 stdin/s
 - 修改主流程或代码边界时，同步更新 `ARCHITECTURE.md`。
 - 更新模型文件或路径时，同步更新 `docs/MODEL_ASSETS.md`。
 - 规则层与模型层保持分离：OCR 文本修正、标识判定、等级计算属于 `iqi_rules.py`；图像裁剪、模型加载、坐标变换不混入规则层。
+- **严禁修改** `run_iqi_grade_infer.py`、`region_ocr_api.py`、`region_SNR_api.py` 的对外接口（CLI 参数、函数签名、输出 JSON 字段），除非用户明确要求。即使要求修改，也应先提示影响范围。
+- **重构分支专属**：`refactor/pipeline-stages*` 分支上，重构完成后运行 `python scripts/compare_results.py` 一键执行推理并对比基线。此脚本和本条说明将在合并到 `main` 前的最后一个 commit 中删除。
 
 ## graphify
 
