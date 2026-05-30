@@ -133,23 +133,33 @@ flowchart TD
 - `models/`：Pydantic 数据模型（`OCRItem`, `OCRResult`, `ROIInfo`, `WireResult`, `PlateResult`, `GradeResult`, `IQIRecord` 等），通过 `.model_dump()` 输出向后兼容的 Dict。
 - `exceptions.py`：统一异常体系（`IQIError` 基类 + 各阶段子类异常），每个异常带上 `result_code`/`result_name`。
 - `logging_setup.py`：`StructuredFormatter`（JSON 行输出）+ `setup_logging()`。
-- `services/`：共享服务基类。
+- `services/`：服务实现、API 门面和 Stage 适配函数。
   - `base.py`：`BaseRegionService[T]` — base64 解码 + ThreadPoolExecutor 单例 + atexit 清理。
-  - `correction.py`：`BaseOrientationCorrector` — 8 类方向检测/矫正共享逻辑，子类只需实现模型架构和预处理。
+  - `correction.py`：`BaseOrientationCorrector` — 8 类方向检测/矫正共享逻辑。
+  - `ocr_stage.py`、`roi_stage.py`、`fclip_stage.py`：OCR/ROI/FClip 适配函数，供 Stage 调用。
+  - `region_ocr_api.py`、`region_snr_api.py`：区域 API 的 FastAPI 请求/响应封装。
+  - `region_ocr_service.py`、`region_snr_service.py`：区域 OCR/SNR 服务实现。
+  - `weld_correction.py`、`ocr_orientation.py`：方向矫正子类实现。
+  - `adaptive_image_processor.py`：自适应图像处理器。
+  - `ocr_paddle_worker.py`：PaddleOCR 子进程入口。
 
 ### 业务逻辑与算法
 
 - `iqi_rules.py`：纯业务规则层，负责 OCR 字段提取、像质计标识解析、等级计算和结果码定义。
-- `ocr_stage.py`：OCR stage 封装，包含 PaddleOCR 子进程客户端、检测/识别结果归一化、逐文本框裁剪识别和 OCR 可视化辅助。
-- `ocr_paddle_worker.py`：实际创建 PaddleOCR TextDetection/TextRecognition 的 worker 进程，通过 stdin/stdout JSON 与主进程通信。
-- `roi_stage.py`：从 Ultralytics YOLO-OBB 结果中选择最佳像质计 ROI。
-- `fclip_stage.py`：加载 FClip checkpoint，对 ROI 灰度图推理丝数与线段。
 - `pipeline_utils.py`：图像读取、收集、透视裁剪、ROI 旋转、窗宽窗位增强、灰度转换等公共工具。
-- `ocr_orientation.py`：`OCRTextOrientationCorrector` — 文本 crop 方向矫正（继承自 `BaseOrientationCorrector`）。
-- `weld_correction.py`：`WeldOrientationCorrector` — 整图方向矫正（继承自 `BaseOrientationCorrector`）。
-- `region_ocr_service.py`、`region_ocr_api.py`：区域 OCR 服务及 FastAPI 风格请求/响应封装（使用 `BaseRegionService`）。
-- `region_snr_service.py`、`region_snr_api.py`：区域归一化信噪比服务及 FastAPI 风格请求/响应封装（使用 `BaseRegionService`）。
-- `train.py`、`convert_to_yolo_obb.py`、`custom_augment.py`：像质计 ROI 检测训练相关工具。
+- `services/ocr_stage.py`：OCR stage 封装，包含 PaddleOCR 子进程客户端、检测/识别结果归一化、逐文本框裁剪识别和 OCR 可视化辅助。
+- `services/ocr_paddle_worker.py`：PaddleOCR worker 子进程，通过 stdin/stdout JSON 与主进程通信。
+- `services/roi_stage.py`：从 Ultralytics YOLO-OBB 结果中选择最佳像质计 ROI。
+- `services/fclip_stage.py`：加载 FClip checkpoint，对 ROI 灰度图推理丝数与线段。
+- `services/ocr_orientation.py`：`OCRTextOrientationCorrector` — 文本 crop 方向矫正（继承自 `BaseOrientationCorrector`）。
+- `services/weld_correction.py`：`WeldOrientationCorrector` — 整图方向矫正（继承自 `BaseOrientationCorrector`）。
+- `services/region_ocr_service.py`、`services/region_ocr_api.py`：区域 OCR 服务及 FastAPI 风格请求/响应封装（使用 `BaseRegionService`）。
+- `services/region_snr_service.py`、`services/region_snr_api.py`：区域归一化信噪比服务及 FastAPI 风格请求/响应封装（使用 `BaseRegionService`）。
+
+### 训练与数据预处理
+
+- `training/train.py`、`training/convert_to_yolo_obb.py`、`training/custom_augment.py`：像质计 ROI 检测训练相关工具。
+- `training/infer.py`、`training/valid.py`、`training/OBBtraintest.py`、`training/iqi_ocr.py`：训练辅助和实验脚本。
 
 ### 其他边界
 
@@ -223,11 +233,11 @@ OCR 运行在独立子进程中。主进程通过 `PaddleOCRSubprocessClient` �
 
 单丝型像质计标识解析以标记顺序判定类型：`数字+材料+JB` 为通用像质计，`材料+数字+JB` 为专用像质计，材料代号不再参与类型判定。`compute_iqi_grade()` 只接受 `general/special`：通用像质计按 `标记丝号 + 可见丝数 - 1` 计算等级，专用像质计在至少识别到 1 根丝时直接输出标记丝号。详细合同见 `docs/contract/IQI_SINGLE_WIRE_MARKER_GRADE_RULE.md`。
 
-`src/gauge/ocr_stage.py` 封装 PaddleOCR 交互和 OCR 结果结构。`infer_roi_ocr()` 的命名来自早期 ROI OCR，但当前也被全图 OCR 复用。
+`src/gauge/services/ocr_stage.py` 封装 PaddleOCR 交互和 OCR 结果结构。`infer_roi_ocr()` 的命名来自早期 ROI OCR，但当前也被全图 OCR 复用。
 
-`src/gauge/roi_stage.py` 只处理 YOLO-OBB 输出解析。它从 Ultralytics result 中选择最佳 ROI，返回统一 `ROIInfo` 结构。
+`src/gauge/services/roi_stage.py` 只处理 YOLO-OBB 输出解析。它从 Ultralytics result 中选择最佳 ROI，返回统一 `ROIInfo` 结构。
 
-`src/gauge/fclip_stage.py` 是 FClip 推理适配层。返回 `WireResult` 结构，包含丝数和线段坐标映射。
+`src/gauge/services/fclip_stage.py` 是 FClip 推理适配层。返回 `WireResult` 结构，包含丝数和线段坐标映射。
 
 `src/gauge/pipeline_utils.py` 是图像处理基础设施。主流程中的图片收集、读取、长边缩放、四点排序、透视裁剪、ROI 横向转竖向、窗宽窗位增强、CLAHE、灰度转换都来自这里。
 
@@ -237,7 +247,7 @@ OCR 运行在独立子进程中。主进程通过 `PaddleOCRSubprocessClient` �
 
 ## 训练与数据生产链路
 
-ROI 检测训练链路由 `dvc.yaml` 中的 `gauge_preprocess` 和 `train_gauge` 描述。`src/gauge/convert_to_yolo_obb.py` 从 LabelMe polygon 标注生成 YOLO-OBB 数据集，输出 `images/train`、`images/val`、`labels/train`、`labels/val` 和 `data.yaml`。`src/gauge/train.py` 读取 `params.yaml` 的 `gauge_train` 配置，使用 Ultralytics YOLO 训练 OBB 检测器。
+ROI 检测训练链路由 `dvc.yaml` 中的 `gauge_preprocess` 和 `train_gauge` 描述。`src/gauge/training/convert_to_yolo_obb.py` 从 LabelMe polygon 标注生成 YOLO-OBB 数据集，输出 `images/train`、`images/val`、`labels/train`、`labels/val` 和 `data.yaml`。`src/gauge/training/train.py` 读取 `params.yaml` 的 `gauge_train` 配置，使用 Ultralytics YOLO 训练 OBB 检测器。
 
 FClip 像质丝训练链路由 `dvc.yaml` 中的 `preprocess_fclip` 和 `train_fclip` 描述。`src/dataset/weld.py` 读取原图和 LabelMe 标注，生成 FClip 所需数据。`src/FClip/train.py` 构建 HRNet backbone + 多任务 head，训练 lcmap/lcoff/lleng/angle/count 输出。
 
@@ -284,7 +294,7 @@ IQIStageSkipped — 控制流信号，非错误
 6. **异常处理：业务错误 raise IQIError 子类**（带 `result_code`/`result_name`），非预期错误 raise 普通 `Exception`。PipelineRunner 会据此决定继续或停止。
 7. **规则层与模型层保持分离**。OCR 文本修正、标识判定、等级计算属于 `iqi_rules.py`；图像裁剪、模型加载、坐标变换不混入规则层。
 8. **`OCRtrain/third_party/PaddleOCR` 是第三方源码子模块**，项目自有的 OCR 训练逻辑在 `OCRtrain/scripts/` 和 `OCRtrain/tools/`。
-9. **`src/FClip/` 同时承担训练和推理模型代码**。推理主流程通过 `src/gauge/fclip_stage.py` 维持统一适配层。
+9. **`src/FClip/` 同时承担训练和推理模型代码**。推理主流程通过 `src/gauge/services/fclip_stage.py` 维持统一适配层。
 10. **现有 `docs/` 文档更偏交付流程、字段解释和历史方案**；本文档只维护代码架构和边界。
 
 ## 运行时资产与输出形态
