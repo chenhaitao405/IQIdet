@@ -8,14 +8,10 @@ from typing import Any, List, Optional
 
 import numpy as np
 
-from gauge.imaging.geometry import project_ocr_items_to_image
 from gauge.domain.iqi_rules import infer_plate_from_ocr_items
+from gauge.imaging.geometry import is_usable_ocr_item, project_ocr_items_to_image
+from gauge.imaging.visualization import build_plate_visualization_items
 from gauge.services.ocr.infer import infer_roi_ocr
-from gauge.pipeline_utils import (
-    build_plate_visualization_items,
-    is_usable_ocr_item,
-    merge_prefixed_ocr_timings,
-)
 from gauge.pipeline.context import StageContext
 from gauge.pipeline.stages.base import PipelineStage
 
@@ -45,7 +41,14 @@ class ROIOCRStage(PipelineStage):
             text_orientation_corrector=ocr_text_corrector,
             text_orientation_verbose=config.ocr.orientation_verbose,
         )
-        merge_prefixed_ocr_timings(ctx.timings_ms, "roi", roi_ocr_result)
+        # Merge OCR timings with prefix
+        if roi_ocr_result:
+            for key, value in (roi_ocr_result.get("timings_ms") or {}).items():
+                normalized_key = str(key)
+                if normalized_key == "text_total_ms":
+                    ctx.timings_ms["roi_ocr_ms"] = float(value)
+                else:
+                    ctx.timings_ms[f"roi_{normalized_key}"] = float(value)
 
         # Match plate markers
         roi_plate_result = infer_plate_from_ocr_items(

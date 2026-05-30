@@ -8,16 +8,13 @@ from typing import Any, Dict, Optional
 
 import numpy as np
 
-from gauge.imaging.geometry import invert_perspective_matrix
+from gauge.domain.record_builders import build_skipped_ocr
+from gauge.imaging.geometry import invert_perspective_matrix, scale_roi_info_to_original
 from gauge.imaging.preprocess import (
     crop_rotated_polygon,
     enhance_windowing_gray,
     rotate_if_wide,
     to_gray,
-)
-from gauge.pipeline_utils import (
-    build_skipped_ocr,
-    scale_roi_info_to_original,
 )
 from gauge.services.roi.yolo_obb import extract_best_obb
 from gauge.pipeline.context import StageContext

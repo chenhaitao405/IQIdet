@@ -10,17 +10,13 @@ from gauge.domain.iqi_rules import (
     extract_general_fields_from_ocr_items,
     infer_plate_from_ocr_items,
 )
-from gauge.services.ocr.infer import infer_roi_ocr
+from gauge.imaging.geometry import is_usable_ocr_item, scale_ocr_items_to_original
 from gauge.imaging.preprocess import (
     enhance_windowing_gray,
     resize_long_side,
 )
-from gauge.pipeline_utils import (
-    build_plate_visualization_items,
-    is_usable_ocr_item,
-    merge_prefixed_ocr_timings,
-    scale_ocr_items_to_original,
-)
+from gauge.imaging.visualization import build_plate_visualization_items
+from gauge.services.ocr.infer import infer_roi_ocr
 from gauge.pipeline.context import StageContext
 from gauge.pipeline.stages.base import PipelineStage
 
@@ -62,7 +58,14 @@ class FullImageOCRStage(PipelineStage):
             text_orientation_corrector=ocr_text_corrector,
             text_orientation_verbose=config.ocr.orientation_verbose,
         )
-        merge_prefixed_ocr_timings(ctx.timings_ms, "full", full_ocr_result)
+        # Merge OCR timings with prefix
+        if full_ocr_result:
+            for key, value in (full_ocr_result.get("timings_ms") or {}).items():
+                normalized_key = str(key)
+                if normalized_key == "text_total_ms":
+                    ctx.timings_ms["full_ocr_ms"] = float(value)
+                else:
+                    ctx.timings_ms[f"full_{normalized_key}"] = float(value)
 
         # Scale items back to original image coordinates
         full_items_original = scale_ocr_items_to_original(

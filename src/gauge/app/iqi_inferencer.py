@@ -21,32 +21,13 @@ from gauge.imaging.geometry import invert_perspective_matrix, perspective_transf
 from gauge.domain.iqi_rules import (
     build_result_status,
     choose_primary_result_code,
-    compute_iqi_grade,
-    extract_general_fields_from_ocr_items,
     format_allowed_numbers_spec,
-    infer_plate_from_ocr_items,
     infer_plate_from_texts,
     normalize_text,
     parse_allowed_numbers_spec,
 )
 from gauge.domain.record_builders import build_delivery_record, build_iqi_statistics
 from gauge.runtime.ocr_runtime import PaddleOCRSubprocessClient
-from gauge.services.ocr.infer import infer_roi_ocr
-from gauge.imaging.preprocess import (
-    collect_images,
-    crop_rotated_polygon,
-    enhance_windowing_gray,
-    load_image,
-    resize_long_side,
-    rotate_if_wide,
-    to_gray,
-)
-from gauge.services.roi.yolo_obb import extract_best_obb
-from gauge.imaging.visualization import (
-    build_final_result_vis_image,
-    build_wire_vis_image,
-    save_debug_visualizations,
-)
 
 
 class IQIInferencer:
@@ -272,37 +253,37 @@ class IQIInferencer:
 
     @staticmethod
     def _build_skipped_wire(status: str, error: Optional[str] = None) -> Dict[str, Any]:
-        from gauge.pipeline_utils import build_skipped_wire
+        from gauge.domain.record_builders import build_skipped_wire
 
         return build_skipped_wire(status, error)
 
     @staticmethod
     def _scale_box_points(box: Any, scale: float) -> Any:
-        from gauge.pipeline_utils import scale_box_points
+        from gauge.imaging.geometry import scale_box_points
 
         return scale_box_points(box, scale)
 
     @classmethod
     def _scale_ocr_items_to_original(cls, items: Sequence[Dict[str, Any]], scale: float) -> List[Dict[str, Any]]:
-        from gauge.pipeline_utils import scale_ocr_items_to_original
+        from gauge.imaging.geometry import scale_ocr_items_to_original
 
         return scale_ocr_items_to_original(items, scale)
 
     @classmethod
     def _scale_roi_info_to_original(cls, roi_info: Dict[str, Any], scale: float) -> Dict[str, Any]:
-        from gauge.pipeline_utils import scale_roi_info_to_original
+        from gauge.imaging.geometry import scale_roi_info_to_original
 
         return scale_roi_info_to_original(roi_info, scale)
 
     @staticmethod
     def _is_usable_ocr_item(item: Dict[str, Any]) -> bool:
-        from gauge.pipeline_utils import is_usable_ocr_item
+        from gauge.imaging.geometry import is_usable_ocr_item
 
         return is_usable_ocr_item(item)
 
     @staticmethod
     def _box_points_to_bbox(box: Any) -> Optional[List[float]]:
-        from gauge.pipeline_utils import box_points_to_bbox
+        from gauge.imaging.geometry import box_points_to_bbox
 
         return box_points_to_bbox(box)
 
@@ -362,7 +343,7 @@ class IQIInferencer:
         items: Sequence[Dict[str, Any]],
         source: str,
     ) -> List[Dict[str, Any]]:
-        from gauge.pipeline_utils import build_plate_visualization_items
+        from gauge.imaging.visualization import build_plate_visualization_items
 
         return build_plate_visualization_items(items, source)
 
@@ -447,9 +428,14 @@ class IQIInferencer:
         prefix: str,
         ocr_result: Optional[Dict[str, Any]],
     ) -> None:
-        from gauge.pipeline_utils import merge_prefixed_ocr_timings
-
-        merge_prefixed_ocr_timings(step_timings, prefix, ocr_result)
+        if not ocr_result:
+            return
+        for key, value in (ocr_result.get("timings_ms") or {}).items():
+            normalized_key = str(key)
+            if normalized_key == "text_total_ms":
+                step_timings[f"{prefix}_ocr_ms"] = float(value)
+            else:
+                step_timings[f"{prefix}_{normalized_key}"] = float(value)
 
     @staticmethod
     def _finalize_record(
@@ -530,22 +516,3 @@ class IQIInferencer:
                 "errors": [{"stage": "pipeline", **build_result_status(9001, str(exc))}],
             }
             return record, None
-
-
-def collect_input_images(
-    image_path: Optional[str] = None,
-    image_dir: Optional[str] = None,
-    image_list: Optional[str] = None,
-    max_images: Optional[int] = None,
-) -> List[Path]:
-    if image_path:
-        paths = [Path(image_path).resolve()]
-    else:
-        paths = collect_images(
-            Path(image_dir).resolve() if image_dir else None,
-            Path(image_list).resolve() if image_list else None,
-            max_images=max_images,
-        )
-    if max_images is not None:
-        paths = paths[:max_images]
-    return paths

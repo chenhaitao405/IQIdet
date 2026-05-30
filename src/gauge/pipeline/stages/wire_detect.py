@@ -7,7 +7,7 @@ import logging
 
 import numpy as np
 
-from gauge.pipeline_utils import build_skipped_wire
+from gauge.domain.record_builders import build_skipped_wire
 from gauge.pipeline.context import StageContext
 from gauge.pipeline.stages.base import PipelineStage
 

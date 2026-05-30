@@ -4,14 +4,15 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Sequence
 
 import cv2
 import numpy as np
 
+from gauge.imaging.geometry import box_points_to_bbox, is_usable_ocr_item
 from gauge.imaging.preprocess import ensure_dir
 from gauge.services.ocr.debug import build_ocr_item_debug_images, draw_ocr_on_roi
-from gauge.services.roi_stage import build_roi_vis_image
+from gauge.services.roi.yolo_obb import build_roi_vis_image
 
 
 def build_wire_vis_image(roi_image: np.ndarray, wire_result: Dict[str, Any]) -> np.ndarray:
@@ -263,3 +264,39 @@ def save_debug_visualizations(
         payload["final_result_vis_path"] = str(final_result_path.relative_to(output_dir))
 
     return payload
+
+
+def build_plate_visualization_items(
+    items: Sequence[Dict[str, Any]],
+    source: str,
+) -> List[Dict[str, Any]]:
+    """Build visualization-ready plate items from OCR items."""
+    from gauge.domain.iqi_rules import normalize_text
+
+    vis_items: List[Dict[str, Any]] = []
+    text_index = 0
+    for item in items:
+        if not is_usable_ocr_item(item):
+            continue
+        box_image = item.get("box_image")
+        if box_image is None:
+            box_image = item.get("box")
+        vis_items.append(
+            {
+                "text_index": int(text_index),
+                "crop_index": item.get("crop_index"),
+                "source": str(source),
+                "text": str(item.get("text", "")),
+                "normalized_text": normalize_text(item.get("text", "")),
+                "score": item.get("score"),
+                "det_score": item.get("det_score"),
+                "status": item.get("status"),
+                "accepted_by_score": bool(item.get("accepted_by_score", True)),
+                "box_image_xy": box_image,
+                "bbox_image": box_points_to_bbox(box_image),
+                "box_roi_xy": item.get("box") if source == "roi" else None,
+                "bbox_roi": box_points_to_bbox(item.get("box")) if source == "roi" else None,
+            }
+        )
+        text_index += 1
+    return vis_items

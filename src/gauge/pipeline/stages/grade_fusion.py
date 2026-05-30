@@ -11,7 +11,7 @@ from gauge.domain.iqi_rules import (
     compute_iqi_grade,
     parse_allowed_numbers_spec,
 )
-from gauge.pipeline_utils import build_skipped_wire
+from gauge.domain.record_builders import build_skipped_wire
 from gauge.pipeline.context import StageContext
 from gauge.pipeline.stages.base import PipelineStage
 

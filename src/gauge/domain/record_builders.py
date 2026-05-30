@@ -18,6 +18,55 @@ from gauge.domain.iqi_rules import (
 from gauge.models.record import IQIRecord
 
 
+# ---------------------------------------------------------------------------
+# Skipped/unavailable state builders (used by pipeline stages)
+# ---------------------------------------------------------------------------
+
+
+def build_skipped_ocr(status: str, error: Optional[str] = None) -> Dict[str, Any]:
+    """Build a placeholder OCR result when OCR is skipped."""
+    payload: Dict[str, Any] = {
+        "status": str(status),
+        "texts": [],
+        "scores": [],
+        "items": [],
+        "all_items": [],
+        "num_items": 0,
+        "selected_variant": str(status),
+        "all_texts_original": [],
+        "all_texts_mirror": [],
+        "det_box_count": 0,
+        "rec_item_count": 0,
+        "jb_items": [],
+        "jb_texts": [],
+        "jb_item_count": 0,
+        "item_errors": [],
+        "timings_ms": {
+            "text_det_ms": 0.0,
+            "text_orientation_ms": 0.0,
+            "text_rec_ms": 0.0,
+            "text_total_ms": 0.0,
+        },
+    }
+    if error:
+        payload["error"] = str(error)
+    return payload
+
+
+def build_skipped_wire(status: str, error: Optional[str] = None) -> Dict[str, Any]:
+    """Build a placeholder wire result when wire inference is skipped."""
+    payload: Dict[str, Any] = {
+        "status": str(status),
+        "wire_count": None,
+        "parsed_line_count": 0,
+        "lines": [],
+        "warnings": [],
+    }
+    if error:
+        payload["error"] = str(error)
+    return payload
+
+
 def _optional_section(value: Any) -> Any:
     if isinstance(value, dict) and not value:
         return None

@@ -27,7 +27,7 @@ fake_domain_statistics = types.ModuleType("gauge.domain.statistics")
 fake_domain_statistics.build_ocr_statistics = lambda *args, **kwargs: {}
 sys.modules.setdefault("gauge.domain.statistics", fake_domain_statistics)
 
-from gauge.iqi_inferencer import build_delivery_record
+from gauge.domain.record_builders import build_delivery_record
 import run_iqi_grade_infer
 
 
