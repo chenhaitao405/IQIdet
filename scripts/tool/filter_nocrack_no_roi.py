@@ -122,7 +122,7 @@ def main() -> None:
     print(f"Gauge 权重: {gauge_weights}")
 
     # 收集输入图像
-    image_paths = collect_images(image_dir=image_dir)
+    image_paths = collect_images(image_dir=image_dir, image_list=None)
     if not image_paths:
         raise SystemExit(f"在 {image_dir} 中未找到支持的图像文件")
     print(f"待处理图像: {len(image_paths)} 张")
