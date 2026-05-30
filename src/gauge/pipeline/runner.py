@@ -10,16 +10,17 @@ from typing import Any, Dict, List, Optional, Tuple
 from gauge.config import PipelineConfig
 from gauge.exceptions import IQIError, IQIStageSkipped
 from gauge.models.record import IQIRecord
-from gauge.stages.base import PipelineStage, StageContext
+from gauge.pipeline.context import StageContext
+from gauge.pipeline.stages.base import PipelineStage
 
 logger = logging.getLogger(__name__)
-from gauge.stages.correction import CorrectionStage
-from gauge.stages.full_image_ocr import FullImageOCRStage
-from gauge.stages.grade_fusion import GradeFusionStage
-from gauge.stages.image_load import ImageLoadStage
-from gauge.stages.roi_detect import ROIDetectStage
-from gauge.stages.roi_ocr import ROIOCRStage
-from gauge.stages.wire_detect import WireDetectStage
+from gauge.pipeline.stages.correction import CorrectionStage
+from gauge.pipeline.stages.full_image_ocr import FullImageOCRStage
+from gauge.pipeline.stages.grade_fusion import GradeFusionStage
+from gauge.pipeline.stages.image_load import ImageLoadStage
+from gauge.pipeline.stages.roi_detect import ROIDetectStage
+from gauge.pipeline.stages.roi_ocr import ROIOCRStage
+from gauge.pipeline.stages.wire_detect import WireDetectStage
 
 
 class PipelineRunner:

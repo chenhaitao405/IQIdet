@@ -21,7 +21,8 @@ from gauge.pipeline_utils import (
     merge_prefixed_ocr_timings,
     scale_ocr_items_to_original,
 )
-from gauge.stages.base import PipelineStage, StageContext
+from gauge.pipeline.context import StageContext
+from gauge.pipeline.stages.base import PipelineStage
 
 logger = logging.getLogger(__name__)
 

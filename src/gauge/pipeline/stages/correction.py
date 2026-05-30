@@ -6,7 +6,8 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, Optional
 
-from gauge.stages.base import PipelineStage, StageContext
+from gauge.pipeline.context import StageContext
+from gauge.pipeline.stages.base import PipelineStage
 
 logger = logging.getLogger(__name__)
 

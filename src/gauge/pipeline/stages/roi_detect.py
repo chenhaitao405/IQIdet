@@ -19,8 +19,9 @@ from gauge.pipeline_utils import (
     build_skipped_ocr,
     scale_roi_info_to_original,
 )
-from gauge.services.roi_stage import extract_best_obb
-from gauge.stages.base import PipelineStage, StageContext
+from gauge.services.roi.yolo_obb import extract_best_obb
+from gauge.pipeline.context import StageContext
+from gauge.pipeline.stages.base import PipelineStage
 
 logger = logging.getLogger(__name__)
 

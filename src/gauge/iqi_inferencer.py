@@ -41,7 +41,7 @@ from gauge.imaging.preprocess import (
     rotate_if_wide,
     to_gray,
 )
-from gauge.services.roi_stage import extract_best_obb
+from gauge.services.roi.yolo_obb import extract_best_obb
 from gauge.imaging.visualization import (
     build_final_result_vis_image,
     build_wire_vis_image,
@@ -170,7 +170,7 @@ class IQIInferencer:
         if self.config.correction.enabled:
             if not self.config.correction.model:
                 raise ValueError("--correction-model is required when enable_correction=True")
-            from gauge.services.weld_correction import WeldOrientationCorrector
+            from gauge.services.orientation.weld import WeldOrientationCorrector
 
             self.corrector = WeldOrientationCorrector(
                 model_path=self.config.correction.model,
@@ -182,7 +182,7 @@ class IQIInferencer:
         if self.config.ocr.enable_orientation:
             if not self.config.ocr.orientation_model:
                 raise ValueError("--ocr-orientation-model is required when enable_ocr_orientation=True")
-            from gauge.services.ocr_orientation import OCRTextOrientationCorrector
+            from gauge.services.orientation.ocr_text import OCRTextOrientationCorrector
 
             model_path = Path(self.config.ocr.orientation_model)
             if not model_path.is_absolute():
@@ -216,7 +216,7 @@ class IQIInferencer:
             )
 
         # ---- Build PipelineRunner ----
-        from gauge.pipeline import PipelineRunner
+        from gauge.pipeline.runner import PipelineRunner
 
         services: Dict[str, Any] = {
             "gauge_model": self.gauge_model,

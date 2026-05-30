@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""Base classes for IQI pipeline stages."""
+"""StageContext — mutable state flowing through pipeline stages."""
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 from pydantic import BaseModel, ConfigDict, Field
@@ -84,22 +83,3 @@ class StageContext(BaseModel):
         if self.debug_artifacts is not None:
             record._debug_artifacts = self.debug_artifacts
         return record
-
-
-class PipelineStage(ABC):
-    """Base class for a single pipeline stage."""
-
-    name: str = "unnamed"
-
-    def __init__(self, config: PipelineConfig, services: Optional[Dict[str, Any]] = None):
-        self.config = config
-        self.services = services or {}
-
-    def should_run(self, ctx: StageContext) -> bool:
-        """Return False to skip this stage."""
-        return True
-
-    @abstractmethod
-    def run(self, ctx: StageContext) -> StageContext:
-        """Execute the stage, mutating and returning the context."""
-        ...

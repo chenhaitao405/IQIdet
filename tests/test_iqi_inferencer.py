@@ -66,7 +66,7 @@ class IQIInferencerMarkerFailureWireTest(unittest.TestCase):
             CorrectionConfig,
             EnhanceConfig,
         )
-        from gauge.pipeline import PipelineRunner
+        from gauge.pipeline.runner import PipelineRunner
 
         config = PipelineConfig(
             gauge=GaugeConfig(weights="dummy"),
@@ -141,35 +141,35 @@ class IQIInferencerMarkerFailureWireTest(unittest.TestCase):
         }
 
         # Patch functions at the stage-module namespace where they are imported.
-        with mock.patch("gauge.stages.image_load.load_image", return_value=image), \
-            mock.patch("gauge.stages.full_image_ocr.resize_long_side", return_value=(image, 1.0)), \
-            mock.patch("gauge.stages.full_image_ocr.enhance_windowing_gray", return_value=image), \
-            mock.patch("gauge.stages.full_image_ocr.infer_roi_ocr", return_value=ocr_result), \
+        with mock.patch("gauge.pipeline.stages.image_load.load_image", return_value=image), \
+            mock.patch("gauge.pipeline.stages.full_image_ocr.resize_long_side", return_value=(image, 1.0)), \
+            mock.patch("gauge.pipeline.stages.full_image_ocr.enhance_windowing_gray", return_value=image), \
+            mock.patch("gauge.pipeline.stages.full_image_ocr.infer_roi_ocr", return_value=ocr_result), \
             mock.patch(
-                "gauge.stages.full_image_ocr.extract_general_fields_from_ocr_items",
+                "gauge.pipeline.stages.full_image_ocr.extract_general_fields_from_ocr_items",
                 return_value=general_fields,
             ), \
             mock.patch(
-                "gauge.stages.full_image_ocr.infer_plate_from_ocr_items",
+                "gauge.pipeline.stages.full_image_ocr.infer_plate_from_ocr_items",
                 return_value=marker_failure,
             ), \
             mock.patch(
-                "gauge.stages.roi_detect.extract_best_obb",
+                "gauge.pipeline.stages.roi_detect.extract_best_obb",
                 return_value={"polygon": [[0, 0], [10, 0], [10, 10], [0, 10]], "bbox": [0, 0, 10, 10]},
             ), \
             mock.patch(
-                "gauge.stages.roi_detect.crop_rotated_polygon",
+                "gauge.pipeline.stages.roi_detect.crop_rotated_polygon",
                 return_value=(roi_image, np.eye(3, dtype=np.float32)),
             ), \
             mock.patch(
-                "gauge.stages.roi_detect.invert_perspective_matrix",
+                "gauge.pipeline.stages.roi_detect.invert_perspective_matrix",
                 return_value=np.eye(3, dtype=np.float32),
             ), \
-            mock.patch("gauge.stages.roi_detect.rotate_if_wide", return_value=(roi_image, False, 0)), \
-            mock.patch("gauge.stages.roi_detect.enhance_windowing_gray", return_value=roi_gray), \
-            mock.patch("gauge.stages.roi_ocr.infer_roi_ocr", return_value=ocr_result), \
+            mock.patch("gauge.pipeline.stages.roi_detect.rotate_if_wide", return_value=(roi_image, False, 0)), \
+            mock.patch("gauge.pipeline.stages.roi_detect.enhance_windowing_gray", return_value=roi_gray), \
+            mock.patch("gauge.pipeline.stages.roi_ocr.infer_roi_ocr", return_value=ocr_result), \
             mock.patch(
-                "gauge.stages.roi_ocr.infer_plate_from_ocr_items",
+                "gauge.pipeline.stages.roi_ocr.infer_plate_from_ocr_items",
                 return_value=marker_failure,
             ), \
             mock.patch("gauge.domain.iqi_rules.compute_iqi_grade") as compute_grade:
@@ -238,19 +238,19 @@ class IQIInferencerMarkerFailureWireTest(unittest.TestCase):
             "timings_ms": {},
         }
 
-        with mock.patch("gauge.stages.image_load.load_image", return_value=image), \
-            mock.patch("gauge.stages.full_image_ocr.resize_long_side", return_value=(image, 1.0)), \
-            mock.patch("gauge.stages.full_image_ocr.enhance_windowing_gray", return_value=image), \
-            mock.patch("gauge.stages.full_image_ocr.infer_roi_ocr", return_value=ocr_result), \
+        with mock.patch("gauge.pipeline.stages.image_load.load_image", return_value=image), \
+            mock.patch("gauge.pipeline.stages.full_image_ocr.resize_long_side", return_value=(image, 1.0)), \
+            mock.patch("gauge.pipeline.stages.full_image_ocr.enhance_windowing_gray", return_value=image), \
+            mock.patch("gauge.pipeline.stages.full_image_ocr.infer_roi_ocr", return_value=ocr_result), \
             mock.patch(
-                "gauge.stages.full_image_ocr.extract_general_fields_from_ocr_items",
+                "gauge.pipeline.stages.full_image_ocr.extract_general_fields_from_ocr_items",
                 return_value=general_fields,
             ), \
             mock.patch(
-                "gauge.stages.full_image_ocr.infer_plate_from_ocr_items",
+                "gauge.pipeline.stages.full_image_ocr.infer_plate_from_ocr_items",
                 return_value=marker_success,
             ), \
-            mock.patch("gauge.stages.roi_detect.extract_best_obb", return_value=None):
+            mock.patch("gauge.pipeline.stages.roi_detect.extract_best_obb", return_value=None):
             record, _ = inferencer.infer_image_path("fake.png")
 
         self.assertEqual(record["result_code"], 1101)

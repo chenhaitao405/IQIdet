@@ -8,7 +8,8 @@ from pathlib import Path
 from typing import Any, Dict
 
 from gauge.imaging.preprocess import load_image
-from gauge.stages.base import PipelineStage, StageContext
+from gauge.pipeline.context import StageContext
+from gauge.pipeline.stages.base import PipelineStage
 
 logger = logging.getLogger(__name__)
 
