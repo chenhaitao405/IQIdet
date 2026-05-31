@@ -448,6 +448,52 @@ class TestBAMHelpers(unittest.TestCase):
         result = _detect_film_type(profile, np.array([], dtype=int), np.array([], dtype=int))
         self.assertEqual(result, "positive")
 
+    def test_fit_quadratic_background_positive(self):
+        """正片: 遮罩 valley 区后在 gap 区拟合二次背景."""
+        from gauge.imaging.profile import _fit_quadratic_background
+        x = np.arange(200, dtype=np.float64)
+        true_bg = 0.001 * x**2 + 100.0
+        profile = true_bg.copy()
+        wire_idx = np.array([30, 50, 100, 120, 170], dtype=int)
+        for w in wire_idx:
+            profile[w-3:w+4] -= 30.0
+
+        bg = _fit_quadratic_background(profile, wire_idx, inverted=True)
+
+        self.assertEqual(bg.shape, profile.shape)
+        self.assertEqual(bg.dtype, np.float64)
+        gap_mask = np.ones(200, dtype=bool)
+        for w in wire_idx:
+            gap_mask[w-3:w+4] = False
+        rmse = np.sqrt(np.mean((bg[gap_mask] - true_bg[gap_mask]) ** 2))
+        self.assertLess(rmse, 5.0, f"Background RMSE={rmse:.1f} too high")
+
+    def test_fit_quadratic_background_negative(self):
+        """负片: 遮罩 peak 区，inverted=False."""
+        from gauge.imaging.profile import _fit_quadratic_background
+        x = np.arange(200, dtype=np.float64)
+        true_bg = -0.0005 * x**2 + 0.1 * x + 120.0
+        profile = true_bg.copy()
+        wire_idx = np.array([30, 50, 100, 120, 170], dtype=int)
+        for w in wire_idx:
+            profile[w-3:w+4] += 30.0
+
+        bg = _fit_quadratic_background(profile, wire_idx, inverted=False)
+
+        self.assertEqual(bg.shape, profile.shape)
+        gap_mask = np.ones(200, dtype=bool)
+        for w in wire_idx:
+            gap_mask[w-3:w+4] = False
+        rmse = np.sqrt(np.mean((bg[gap_mask] - true_bg[gap_mask]) ** 2))
+        self.assertLess(rmse, 5.0, f"Background RMSE={rmse:.1f} too high")
+
+    def test_fit_quadratic_background_short_profile(self):
+        """极短剖面不应崩溃."""
+        from gauge.imaging.profile import _fit_quadratic_background
+        profile = np.array([10.0, 12.0, 10.0], dtype=np.float64)
+        bg = _fit_quadratic_background(profile, np.array([1], dtype=int), inverted=True)
+        self.assertEqual(bg.shape, (3,))
+
 
 if __name__ == "__main__":
     unittest.main()

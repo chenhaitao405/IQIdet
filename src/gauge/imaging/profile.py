@@ -13,7 +13,7 @@ import cv2
 import numpy as np
 from scipy.ndimage import map_coordinates
 from scipy.optimize import curve_fit
-from scipy.signal import find_peaks, peak_widths
+from scipy.signal import find_peaks
 
 # JBT 7902-2025 表2 标准双丝型像质计 D1~D13 丝径/间距 (mm)
 _DEFAULT_WIRE_SPACINGS: Tuple[float, ...] = (
@@ -242,6 +242,63 @@ def _detect_film_type(
         c_val = float(profile[peaks[0]])
         return "negative" if a_val > c_val else "positive"
     return "positive"
+
+
+def _fit_quadratic_background(
+    profile: np.ndarray,
+    wire_indices: np.ndarray,
+    *,
+    inverted: bool = False,
+) -> np.ndarray:
+    """Fit a quadratic background curve after masking out wire regions.
+
+    Wire regions are masked out using a distance-based strategy: the mask
+    half-width around each wire index is computed as one-third of the
+    minimum distance to an adjacent wire (or the profile edge), with a
+    floor of 3 pixels.  A quadratic ``a*x² + b*x + c`` is then fitted to
+    the remaining (gap-dominated) samples.
+
+    Args:
+        profile: 1D band-averaged gray profile.
+        wire_indices: Integer indices of wire positions (valleys for positive
+            film, peaks for negative film).
+        inverted: Unused (kept for API compatibility).  Previously used to
+            negate the profile before :func:`peak_widths`.
+
+    Returns:
+        1D ndarray of background values, same length as *profile*.
+    """
+    n = len(profile)
+    if len(wire_indices) == 0:
+        x = np.arange(n, dtype=np.float64)
+        popt, _ = curve_fit(
+            lambda x, a, b, c: a * x * x + b * x + c,
+            x, profile.astype(np.float64),
+        )
+        return np.asarray(popt[0] * x * x + popt[1] * x + popt[2], dtype=np.float64)
+
+    # Distance-based half-width: one-third of min adjacent gap, floor 3
+    left_dists = np.diff(wire_indices, prepend=wire_indices[0].item())
+    right_dists = np.diff(wire_indices, append=(n - 1))
+    half_widths = np.maximum(
+        np.minimum(left_dists, right_dists) // 3, 3,
+    )
+
+    mask = np.ones(n, dtype=bool)
+    for i, p in enumerate(wire_indices):
+        lo = max(0, int(np.rint(p - half_widths[i])))
+        hi = min(n - 1, int(np.rint(p + half_widths[i])))
+        mask[lo:hi + 1] = False
+
+    if mask.sum() < 3:
+        mask[:] = True
+
+    x = np.arange(n, dtype=np.float64)
+    popt, _ = curve_fit(
+        lambda x, a, b, c: a * x * x + b * x + c,
+        x[mask], profile.astype(np.float64)[mask],
+    )
+    return np.asarray(popt[0] * x * x + popt[1] * x + popt[2], dtype=np.float64)
 
 
 def detect_peaks_valleys(
