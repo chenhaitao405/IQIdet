@@ -532,6 +532,18 @@ class TestBAMHelpers(unittest.TestCase):
         dip = _compute_dip(profile, 20, 30, 40, background, half_w=0)
         self.assertEqual(dip, 0.0)
 
+    def test_compute_dip_gap_exceeds_wires(self):
+        """间隙偏差大于丝偏差 → 钳位到 0."""
+        from gauge.imaging.profile import _compute_dip
+        profile = np.ones(100, dtype=np.float64) * 100.0
+        profile[20] = 110.0  # wire_a
+        profile[30] = 80.0   # gap (deep gap — profile farther from bg than wires)
+        profile[40] = 110.0  # wire_b
+        background = np.ones(100, dtype=np.float64) * 100.0
+        # A=10, B=10, C=20 → dip=100*(20-40)/20 = -100 → should clamp to 0
+        dip = _compute_dip(profile, 20, 30, 40, background, half_w=0)
+        self.assertAlmostEqual(dip, 0.0)
+
 
 if __name__ == "__main__":
     unittest.main()

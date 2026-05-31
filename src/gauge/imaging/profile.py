@@ -350,7 +350,8 @@ def _compute_dip(
     denom = A + B
     if denom < 1e-10:
         return 0.0
-    return 100.0 * (A + B - 2.0 * C) / denom
+    dip = 100.0 * (A + B - 2.0 * C) / denom
+    return max(0.0, dip)
 
 
 def detect_peaks_valleys(
