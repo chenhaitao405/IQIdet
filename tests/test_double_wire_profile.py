@@ -634,6 +634,36 @@ class TestBAMHelpers(unittest.TestCase):
         self.assertEqual(d, [100.0, 90.0, 95.0])
         self.assertEqual(s, [0.80, 0.63, 0.40])
 
+    def test_find_crossing_group_all_resolved(self):
+        from gauge.imaging.profile import _find_crossing_group
+        dips = [80.0, 65.0, 45.0, 28.0]
+        spacings = [0.80, 0.63, 0.50, 0.40]
+        result = _find_crossing_group(dips, spacings, threshold=20.0, min_dip=1.5)
+        self.assertIsNone(result)
+
+    def test_find_crossing_group_first_unresolved(self):
+        from gauge.imaging.profile import _find_crossing_group
+        dips = [15.0, 8.0, 3.0, 1.0]
+        spacings = [0.80, 0.63, 0.50, 0.40]
+        result = _find_crossing_group(dips, spacings, threshold=20.0, min_dip=1.5)
+        self.assertEqual(result, 1)
+
+    def test_find_crossing_group_middle(self):
+        from gauge.imaging.profile import _find_crossing_group
+        dips = [80.0, 65.0, 45.0, 28.0, 15.0, 5.0, 1.0]
+        spacings = [0.80, 0.63, 0.50, 0.40, 0.32, 0.25, 0.20]
+        result = _find_crossing_group(dips, spacings, threshold=20.0, min_dip=1.5)
+        self.assertIsNotNone(result)
+        self.assertGreaterEqual(result, 4)
+        self.assertLessEqual(result, 5)
+
+    def test_find_crossing_group_excludes_low_dips(self):
+        from gauge.imaging.profile import _find_crossing_group
+        dips = [80.0, 65.0, 45.0, 28.0, 18.0, 1.0, 0.5]
+        spacings = [0.80, 0.63, 0.50, 0.40, 0.32, 0.25, 0.20]
+        result = _find_crossing_group(dips, spacings, threshold=20.0, min_dip=1.5)
+        self.assertEqual(result, 5)
+
 
 class TestComputeContrast(unittest.TestCase):
     """Tests for compute_contrast()."""

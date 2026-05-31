@@ -479,6 +479,85 @@ def _cleanup_dips_monotonic(
     return d, s
 
 
+def _find_crossing_group(
+    dips: Sequence[float],
+    spacings: Sequence[float],
+    threshold: float,
+    min_dip: float,
+) -> Optional[int]:
+    """Find the first wire-pair group whose dip falls below *threshold*.
+
+    Performs discrete traversal (coarse -> fine) with optional quadratic
+    interpolation refinement around the crossing point.
+
+    Groups whose dip is below *min_dip* are excluded from the
+    interpolation neighbourhood.
+
+    Args:
+        dips: Dip values (percent) per wire pair, D1 -> Dn.
+        spacings: Nominal wire-pair spacings (mm), same length as *dips*.
+        threshold: Dip percentage below which a pair is considered
+            unresolved (typically 20).
+        min_dip: Minimum dip (percent) for a group to be included in the
+            interpolation neighbourhood (typically 1.5).
+
+    Returns:
+        1-indexed group number of the first unresolved pair, or *None*
+        if all pairs are resolved.
+    """
+    n = len(dips)
+    if n == 0:
+        return None
+
+    crossing_i = None
+    for i in range(n):
+        if dips[i] < threshold:
+            crossing_i = i
+            break
+
+    if crossing_i is None:
+        return None
+    if crossing_i == 0:
+        return 1
+
+    lo = max(0, crossing_i - 1)
+    hi = min(n, crossing_i + 3)
+
+    sel_dips = list(dips[lo:hi])
+    sel_spacings = list(spacings[lo:hi])
+
+    keep = [j for j in range(len(sel_dips)) if sel_dips[j] >= min_dip]
+    if len(keep) < 2:
+        return crossing_i + 1
+
+    sel_dips = [sel_dips[j] for j in keep]
+    sel_spacings = [sel_spacings[j] for j in keep]
+
+    if len(sel_spacings) < 2:
+        return crossing_i + 1
+
+    try:
+        coeffs = np.polyfit(sel_spacings, sel_dips, 2)
+    except (np.linalg.LinAlgError, ValueError):
+        return crossing_i + 1
+
+    a, b, c_coeff = coeffs
+    roots = np.roots([a, b, c_coeff - threshold])
+    valid = roots[np.isreal(roots) &
+                  (roots >= min(sel_spacings)) &
+                  (roots <= max(sel_spacings))].real
+    if len(valid) == 0:
+        return crossing_i + 1
+
+    crossing_spacing = float(np.max(valid) if a >= 0 else np.min(valid))
+
+    for idx, s in enumerate(spacings):
+        if s <= crossing_spacing:
+            return idx + 1
+
+    return crossing_i + 1
+
+
 def detect_peaks_valleys(
     profile: np.ndarray,
     min_distance: int = 10,
