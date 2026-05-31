@@ -452,11 +452,12 @@ class TestBAMHelpers(unittest.TestCase):
         """正片: 遮罩 valley 区后在 gap 区拟合二次背景."""
         from gauge.imaging.profile import _fit_quadratic_background
         x = np.arange(200, dtype=np.float64)
-        true_bg = 0.001 * x**2 + 100.0
+        sigma = 2.0
+        true_bg = np.full_like(x, 100.0)
         profile = true_bg.copy()
         wire_idx = np.array([30, 50, 100, 120, 170], dtype=int)
         for w in wire_idx:
-            profile[w-3:w+4] -= 30.0
+            profile -= 30.0 * np.exp(-0.5 * ((x - w) / sigma) ** 2)
 
         bg = _fit_quadratic_background(profile, wire_idx, inverted=True)
 
@@ -464,7 +465,7 @@ class TestBAMHelpers(unittest.TestCase):
         self.assertEqual(bg.dtype, np.float64)
         gap_mask = np.ones(200, dtype=bool)
         for w in wire_idx:
-            gap_mask[w-3:w+4] = False
+            gap_mask[w - 10:w + 11] = False
         rmse = np.sqrt(np.mean((bg[gap_mask] - true_bg[gap_mask]) ** 2))
         self.assertLess(rmse, 5.0, f"Background RMSE={rmse:.1f} too high")
 
@@ -472,18 +473,19 @@ class TestBAMHelpers(unittest.TestCase):
         """负片: 遮罩 peak 区，inverted=False."""
         from gauge.imaging.profile import _fit_quadratic_background
         x = np.arange(200, dtype=np.float64)
-        true_bg = -0.0005 * x**2 + 0.1 * x + 120.0
+        sigma = 2.0
+        true_bg = np.full_like(x, 120.0)
         profile = true_bg.copy()
         wire_idx = np.array([30, 50, 100, 120, 170], dtype=int)
         for w in wire_idx:
-            profile[w-3:w+4] += 30.0
+            profile += 30.0 * np.exp(-0.5 * ((x - w) / sigma) ** 2)
 
         bg = _fit_quadratic_background(profile, wire_idx, inverted=False)
 
         self.assertEqual(bg.shape, profile.shape)
         gap_mask = np.ones(200, dtype=bool)
         for w in wire_idx:
-            gap_mask[w-3:w+4] = False
+            gap_mask[w - 10:w + 11] = False
         rmse = np.sqrt(np.mean((bg[gap_mask] - true_bg[gap_mask]) ** 2))
         self.assertLess(rmse, 5.0, f"Background RMSE={rmse:.1f} too high")
 

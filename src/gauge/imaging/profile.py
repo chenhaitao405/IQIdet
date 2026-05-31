@@ -13,7 +13,7 @@ import cv2
 import numpy as np
 from scipy.ndimage import map_coordinates
 from scipy.optimize import curve_fit
-from scipy.signal import find_peaks
+from scipy.signal import find_peaks, peak_widths
 
 # JBT 7902-2025 表2 标准双丝型像质计 D1~D13 丝径/间距 (mm)
 _DEFAULT_WIRE_SPACINGS: Tuple[float, ...] = (
@@ -252,18 +252,21 @@ def _fit_quadratic_background(
 ) -> np.ndarray:
     """Fit a quadratic background curve after masking out wire regions.
 
-    Wire regions are masked out using a distance-based strategy: the mask
-    half-width around each wire index is computed as one-third of the
-    minimum distance to an adjacent wire (or the profile edge), with a
-    floor of 3 pixels.  A quadratic ``a*x² + b*x + c`` is then fitted to
-    the remaining (gap-dominated) samples.
+    Wire regions are masked out by computing their widths with
+    :func:`scipy.signal.peak_widths` at ``rel_height=0.9``.  The profile is
+    negated before calling ``peak_widths`` when *inverted* is ``True``
+    (positive film, where wires are valleys in the original profile).
+    A quadratic ``a*x^2 + b*x + c`` is then fitted to the remaining
+    (gap-dominated) samples via :func:`scipy.optimize.curve_fit`.
 
     Args:
         profile: 1D band-averaged gray profile.
         wire_indices: Integer indices of wire positions (valleys for positive
             film, peaks for negative film).
-        inverted: Unused (kept for API compatibility).  Previously used to
-            negate the profile before :func:`peak_widths`.
+        inverted: If ``True``, negate the profile before calling
+            ``peak_widths``.  This is needed for positive film where wires
+            appear as valleys (dark) and must be flipped to peaks for width
+            measurement.
 
     Returns:
         1D ndarray of background values, same length as *profile*.
@@ -277,17 +280,17 @@ def _fit_quadratic_background(
         )
         return np.asarray(popt[0] * x * x + popt[1] * x + popt[2], dtype=np.float64)
 
-    # Distance-based half-width: one-third of min adjacent gap, floor 3
-    left_dists = np.diff(wire_indices, prepend=wire_indices[0].item())
-    right_dists = np.diff(wire_indices, append=(n - 1))
-    half_widths = np.maximum(
-        np.minimum(left_dists, right_dists) // 3, 3,
-    )
+    # Compute wire widths via peak_widths at rel_height=0.9.
+    # For positive film (inverted=True): wires are valleys, so negate profile
+    # to turn valleys into peaks for peak_widths.
+    # For negative film (inverted=False): wires are peaks, use profile directly.
+    target = -profile if inverted else profile
+    widths, _, _, _ = peak_widths(target, wire_indices, rel_height=0.9)
 
     mask = np.ones(n, dtype=bool)
     for i, p in enumerate(wire_indices):
-        lo = max(0, int(np.rint(p - half_widths[i])))
-        hi = min(n - 1, int(np.rint(p + half_widths[i])))
+        lo = max(0, int(np.rint(p - widths[i])))
+        hi = min(n - 1, int(np.rint(p + widths[i])))
         mask[lo:hi + 1] = False
 
     if mask.sum() < 3:
