@@ -601,12 +601,11 @@ class TestBAMHelpers(unittest.TestCase):
         """两丝之间无 gap → 跳过该对."""
         from gauge.imaging.profile import _pair_wires_and_compute_dips
         profile = np.ones(100, dtype=np.float64) * 100.0
-        profile[[20, 40]] = 80.0
-        profile[60] = 120.0
+        profile[[20, 40, 60]] = 80.0
         background = np.ones(100, dtype=np.float64) * 100.0
 
         dips, pairs = _pair_wires_and_compute_dips(
-            profile, np.array([20, 40, 60]), np.array([30]), background,
+            profile, np.array([20, 40, 60]), np.array([10, 90]), background,
             half_w=0, dist_factor=1.05, film_type="positive",
         )
         self.assertEqual(len(pairs), 0)

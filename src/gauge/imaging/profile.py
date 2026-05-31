@@ -407,16 +407,8 @@ def _pair_wires_and_compute_dips(
             if len(gaps_between) >= 1:
                 if film_type == "negative":
                     c = int(gaps_between[np.argmin(profile[gaps_between])])
-                    # For negative film the gap is a valley (profile < background)
-                    if profile[c] >= background[c]:
-                        i += 1
-                        continue
                 else:
                     c = int(gaps_between[np.argmax(profile[gaps_between])])
-                    # For positive film the gap is a peak (profile > background)
-                    if profile[c] <= background[c]:
-                        i += 1
-                        continue
                 pairs.append((w1, c, w2))
                 dip = _compute_dip(profile, w1, c, w2, background, half_w)
                 dips.append(dip)
