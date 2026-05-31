@@ -13,7 +13,7 @@ import cv2
 import numpy as np
 from scipy.ndimage import map_coordinates
 from scipy.optimize import curve_fit
-from scipy.signal import find_peaks, peak_widths
+from scipy.signal import find_peaks, peak_widths, savgol_filter
 
 # JBT 7902-2025 表2 标准双丝型像质计 D1~D13 丝径/间距 (mm)
 _DEFAULT_WIRE_SPACINGS: Tuple[float, ...] = (
@@ -282,58 +282,40 @@ def _fit_quadratic_background(
     *,
     inverted: bool = False,
 ) -> np.ndarray:
-    """Fit a quadratic background curve after masking out wire regions.
+    """Estimate a smoothly-varying background via Savitzky-Golay low-pass filter.
 
-    Wire regions are masked out by computing their widths with
-    :func:`scipy.signal.peak_widths` at ``rel_height=0.9``.  The profile is
-    negated before calling ``peak_widths`` when *inverted* is ``True``
-    (positive film, where wires are valleys in the original profile).
-    A quadratic ``a*x^2 + b*x + c`` is then fitted to the remaining
-    (gap-dominated) samples via :func:`scipy.optimize.curve_fit`.
+    Unlike a single quadratic fit (which can overshoot in regions of strong
+    wire modulation), the Savitzky-Golay filter with a wide window acts as a
+    local low-pass estimator that naturally follows the gap-region baseline
+    while ignoring narrow wire features.  This fixes the dip inversion seen
+    when ``C >> A, B`` for coarse pairs (RC-4).
+
+    The *wire_indices* and *inverted* parameters are kept for API
+    compatibility with the ctsimu-toolbox-inspired interface; they are not
+    used by this implementation.
 
     Args:
         profile: 1D band-averaged gray profile.
-        wire_indices: Integer indices of wire positions (valleys for positive
-            film, peaks for negative film).
-        inverted: If ``True``, negate the profile before calling
-            ``peak_widths``.  This is needed for positive film where wires
-            appear as valleys (dark) and must be flipped to peaks for width
-            measurement.
+        wire_indices: Unused — kept for caller compatibility.
+        inverted: Unused — kept for caller compatibility.
 
     Returns:
         1D ndarray of background values, same length as *profile*.
     """
     n = len(profile)
-    if len(wire_indices) == 0:
-        x = np.arange(n, dtype=np.float64)
-        popt, _ = curve_fit(
-            lambda x, a, b, c: a * x * x + b * x + c,
-            x, profile.astype(np.float64),
-        )
-        return np.asarray(popt[0] * x * x + popt[1] * x + popt[2], dtype=np.float64)
-
-    # Compute wire widths via peak_widths at rel_height=0.9.
-    # For positive film (inverted=True): wires are valleys, so negate profile
-    # to turn valleys into peaks for peak_widths.
-    # For negative film (inverted=False): wires are peaks, use profile directly.
-    target = -profile if inverted else profile
-    widths, _, _, _ = peak_widths(target, wire_indices, rel_height=0.9)
-
-    mask = np.ones(n, dtype=bool)
-    for i, p in enumerate(wire_indices):
-        lo = max(0, int(np.rint(p - widths[i])))
-        hi = min(n - 1, int(np.rint(p + widths[i])))
-        mask[lo:hi + 1] = False
-
-    if mask.sum() < 3:
-        mask[:] = True
-
-    x = np.arange(n, dtype=np.float64)
-    popt, _ = curve_fit(
-        lambda x, a, b, c: a * x * x + b * x + c,
-        x[mask], profile.astype(np.float64)[mask],
-    )
-    return np.asarray(popt[0] * x * x + popt[1] * x + popt[2], dtype=np.float64)
+    # Wide window captures only the low-frequency trend (gap baseline)
+    window = min(n // 8 * 2 + 1, 201)  # odd, ≤ 201
+    if window < 9:
+        window = 9
+    if window % 2 == 0:
+        window += 1
+    if window > n:
+        window = n if n % 2 == 1 else n - 1
+        if window < 5:
+            # Profile too short for meaningful low-pass — return the mean
+            return np.full(n, float(np.mean(profile)), dtype=np.float64)
+    bg = savgol_filter(profile.astype(np.float64), window, 2)
+    return bg.astype(np.float64)
 
 
 def _compute_dip(
@@ -427,7 +409,13 @@ def _pair_wires_and_compute_dips(
         return dips, pairs
 
     dist = wire_positions[1:] - wire_positions[:-1]
-    dist_max = dist_factor * float(dist[0])
+    # Use median of the first few inter-wire distances as reference,
+    # which is robust against a single spurious leading pair (RC-3).
+    k = min(5, len(dist))
+    ref_dist = float(np.median(dist[:k]))
+    if ref_dist < 1.0:
+        ref_dist = float(dist[0])
+    dist_max = dist_factor * ref_dist
 
     i = 0
     while i < len(wire_positions) - 1:
@@ -645,9 +633,20 @@ def compute_contrast(
             film_type=film_type if film_type != "auto" else "positive",
         )
 
-    # 1. Peak / valley detection
+    # 1. Detrend profile for robust peak/valley detection.
+    #    The profile may carry a strong global gradient (e.g. heel effect)
+    #    that confuses scipy.signal.find_peaks.  A wide Savitzky–Golay
+    #    low-pass filter captures the trend; subtracting it gives a flat-
+    #    baseline signal where local wire extrema are unambiguous.
+    window = min(n // 8 * 2 + 1, 201)  # odd, ≤ 201
+    if window >= 11:
+        trend = savgol_filter(profile.astype(np.float64), window, 2)
+        detrended = profile.astype(np.float64) - trend
+    else:
+        detrended = profile.astype(np.float64)
+
     peaks, valleys = detect_peaks_valleys(
-        profile, min_distance=min_distance, prominence=prominence,
+        detrended, min_distance=min_distance, prominence=prominence,
     )
 
     if len(peaks) == 0 and len(valleys) == 0:
