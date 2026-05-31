@@ -695,20 +695,55 @@ def compute_contrast(
 
 
 def find_first_unresolved_group(
-    profiles: List[np.ndarray],
-    threshold: float = 0.2,
+    dips: Sequence[float],
+    wire_spacings: Optional[Sequence[float]] = None,
+    dip_threshold: float = 20.0,
+    min_dip_pct: float = 1.5,
 ) -> Optional[int]:
-    """Find the first wire pair group with Contrast < threshold.
+    """Find the first (coarsest) wire-pair group whose dip is below the
+    resolution threshold.
+
+    Applies monotonicity cleanup to the dip sequence, excludes very-low-dip
+    neighbours from interpolation, and returns the 1-indexed group number
+    of the first unresolved pair.
 
     Args:
-        profiles: List of 1D gray profiles, one per wire pair group (D1 -> Dn).
-        threshold: Contrast threshold (default 0.2 = 20%).
+        dips: Dip values (percent) per wire pair, from coarse (D1) to fine.
+            Typically obtained from :func:`compute_contrast`.
+        wire_spacings: Nominal wire-pair spacings (mm) matching the IQI
+            model.  Defaults to the JBT 7902 D1-D13 sequence.  Must have
+            at least as many entries as *dips*.
+        dip_threshold: Dip percentage below which a pair is considered
+            unresolved (default 20 %).
+        min_dip_pct: Minimum dip (percent) for a group to participate in
+            the interpolation neighbourhood (default 1.5 %).
 
     Returns:
-        1-indexed group number of the first unresolved group, or None if all
-        groups are resolved.
-
-    Note:
-        Phase 2 implementation.
+        1-indexed group number, or *None* if all pairs are resolved.
     """
-    raise NotImplementedError("Phase 2 implementation")
+    if len(dips) == 0:
+        return None
+
+    if wire_spacings is None:
+        spacings = list(_DEFAULT_WIRE_SPACINGS[:len(dips)])
+    else:
+        spacings = list(wire_spacings[:len(dips)])
+
+    clean_dips, clean_spacings = _cleanup_dips_monotonic(dips, spacings)
+
+    if len(clean_dips) == 0:
+        return None
+
+    result = _find_crossing_group(
+        clean_dips, clean_spacings,
+        threshold=dip_threshold,
+        min_dip=min_dip_pct,
+    )
+
+    # Map cleaned index back to original group number since cleanup may have
+    # removed entries, shifting the index-based numbering.
+    if result is not None:
+        crossing_val = clean_spacings[result - 1]
+        return spacings.index(crossing_val) + 1
+
+    return None

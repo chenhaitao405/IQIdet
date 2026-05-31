@@ -735,5 +735,37 @@ class TestComputeContrast(unittest.TestCase):
         self.assertEqual(len(result.dips), 0)
 
 
+class TestFindFirstUnresolvedGroup(unittest.TestCase):
+    """Tests for find_first_unresolved_group()."""
+
+    def test_all_resolved(self):
+        from gauge.imaging.profile import find_first_unresolved_group
+        dips = [80.0, 65.0, 45.0, 28.0]
+        result = find_first_unresolved_group(dips)
+        self.assertIsNone(result)
+
+    def test_first_unresolved(self):
+        from gauge.imaging.profile import find_first_unresolved_group
+        dips = [15.0, 8.0, 3.0, 1.0]
+        result = find_first_unresolved_group(dips)
+        self.assertEqual(result, 1)
+
+    def test_monotonicity_cleanup_applied(self):
+        from gauge.imaging.profile import find_first_unresolved_group
+        dips = [60.0, 70.0, 55.0, 35.0, 18.0]
+        result = find_first_unresolved_group(dips)
+        self.assertEqual(result, 5)
+
+    def test_empty_dips(self):
+        from gauge.imaging.profile import find_first_unresolved_group
+        self.assertIsNone(find_first_unresolved_group([]))
+
+    def test_custom_threshold(self):
+        from gauge.imaging.profile import find_first_unresolved_group
+        dips = [80.0, 25.0, 16.0, 8.0]
+        result = find_first_unresolved_group(dips, dip_threshold=15.0)
+        self.assertEqual(result, 4)
+
+
 if __name__ == "__main__":
     unittest.main()
