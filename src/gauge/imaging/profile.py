@@ -134,14 +134,16 @@ def fit_obb_and_midline(
     )
 
     # Midline: connect midpoints of the two SHORT (height) edges
-    # SHORT edges are TR→BR and BL→TL, midline runs parallel to TL→TR
+    # SHORT edges are TR→BR and BL→TL. Profile runs LEFT to RIGHT
+    # so that profile[0] ≈ left edge (col 0 of unwarped image) and
+    # profile[-1] ≈ right edge (col w-1).
     start = (
-        float((box[tr_idx][0] + box[br_idx][0]) / 2.0),
-        float((box[tr_idx][1] + box[br_idx][1]) / 2.0),
-    )
-    end = (
         float((box[bl_idx][0] + box[tl_idx][0]) / 2.0),
         float((box[bl_idx][1] + box[tl_idx][1]) / 2.0),
+    )
+    end = (
+        float((box[tr_idx][0] + box[br_idx][0]) / 2.0),
+        float((box[tr_idx][1] + box[br_idx][1]) / 2.0),
     )
 
     return obb_corners, (start, end)
