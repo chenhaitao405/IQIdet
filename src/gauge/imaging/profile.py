@@ -105,54 +105,45 @@ def fit_obb_and_midline(
         - midline: endpoints of the profile midline, running parallel to the long edges.
     """
     rect = cv2.minAreaRect(np.asarray(points, dtype=np.float32))
-    box = cv2.boxPoints(rect)  # (4, 2), CCW from lowest-y point
+    box = cv2.boxPoints(rect)  # (4, 2), CCW from lowest point, may not be TL-TR-BR-BL
 
-    # --- Assign each box corner to the nearest user-clicked point ---
-    # points[i] carries user intent: p0=TL, p1=TR, p2=BR, p3=BL (clockwise).
-    # We match each fitted box corner to its nearest clicked point, then
-    # reorder box corners to the canonical TL-TR-BR-BL sequence.
-    pts = np.asarray(points, dtype=np.float32)
+    (cx, cy), (w, h), angle = rect  # w >= h guaranteed
+
+    # --- Reorder box corners to TL-TR-BR-BL for getPerspectiveTransform ---
+    # box is CCW starting from lowest-y point. Edges alternate long-short-long-short
+    # because minAreaRect guarantees w >= h. Find a starting index where the first
+    # edge is a LONG edge (≈w). Then TL→TR = long edge, TR→BR = short edge, etc.
+
     n = 4
+    lengths = [float(np.linalg.norm(box[(i + 1) % n] - box[i])) for i in range(n)]
+    max_len = max(lengths)
 
-    # Build distance matrix: box_corners × user_points
-    dists = np.zeros((n, n), dtype=np.float64)
+    start_idx = 0
     for i in range(n):
-        for j in range(n):
-            dists[i, j] = np.linalg.norm(box[i] - pts[j])
+        if lengths[i] >= 0.95 * max_len and lengths[(i + 2) % n] >= 0.95 * max_len:
+            start_idx = i
+            break
 
-    # Greedy assignment: for each box corner, pick the nearest unassigned user point
-    corner_map = {}  # user_point_index → box_corner_index
-    used_user = set()
-    # Process box corners sorted by minimum distance (closest matches first)
-    pairs = sorted(
-        [(dists[i, j], i, j) for i in range(n) for j in range(n)],
-        key=lambda x: x[0],
-    )
-    for _, bi, uj in pairs:
-        if uj not in used_user and bi not in corner_map.values():
-            corner_map[uj] = bi
-            used_user.add(uj)
-
-    # corner_map[0] = box index for TL, corner_map[1] = TR, etc.
-    tl_corner = box[corner_map[0]]
-    tr_corner = box[corner_map[1]]
-    br_corner = box[corner_map[2]]
-    bl_corner = box[corner_map[3]]
+    tl_idx = start_idx
+    tr_idx = (start_idx + 1) % n
+    br_idx = (start_idx + 2) % n
+    bl_idx = (start_idx + 3) % n
 
     obb_corners = np.array(
-        [tl_corner, tr_corner, br_corner, bl_corner], dtype=np.float32
+        [box[tl_idx], box[tr_idx], box[br_idx], box[bl_idx]], dtype=np.float32
     )
 
     # Midline: connect midpoints of the two SHORT (height) edges
-    # Short edges are TR→BR and BL→TL. Profile runs LEFT to RIGHT
-    # so profile[0] ≈ left edge (col 0), profile[-1] ≈ right edge (col w-1).
+    # SHORT edges are TR→BR and BL→TL. Profile runs LEFT to RIGHT
+    # so that profile[0] ≈ left edge (col 0 of unwarped image) and
+    # profile[-1] ≈ right edge (col w-1).
     start = (
-        float((bl_corner[0] + tl_corner[0]) / 2.0),
-        float((bl_corner[1] + tl_corner[1]) / 2.0),
+        float((box[bl_idx][0] + box[tl_idx][0]) / 2.0),
+        float((box[bl_idx][1] + box[tl_idx][1]) / 2.0),
     )
     end = (
-        float((tr_corner[0] + br_corner[0]) / 2.0),
-        float((tr_corner[1] + br_corner[1]) / 2.0),
+        float((box[tr_idx][0] + box[br_idx][0]) / 2.0),
+        float((box[tr_idx][1] + box[br_idx][1]) / 2.0),
     )
 
     return obb_corners, (start, end)
