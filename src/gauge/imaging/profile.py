@@ -314,7 +314,7 @@ def _fit_quadratic_background(
         if window < 5:
             # Profile too short for meaningful low-pass — return the mean
             return np.full(n, float(np.mean(profile)), dtype=np.float64)
-    bg = savgol_filter(profile.astype(np.float64), window, 2)
+    bg = savgol_filter(profile.astype(np.float64), window, 2, mode='mirror')
     return bg.astype(np.float64)
 
 
@@ -634,16 +634,14 @@ def compute_contrast(
         )
 
     # 1. Detrend profile for robust peak/valley detection.
-    #    The profile may carry a strong global gradient (e.g. heel effect)
-    #    that confuses scipy.signal.find_peaks.  A wide Savitzky–Golay
-    #    low-pass filter captures the trend; subtracting it gives a flat-
-    #    baseline signal where local wire extrema are unambiguous.
-    window = min(n // 8 * 2 + 1, 201)  # odd, ≤ 201
-    if window >= 11:
-        trend = savgol_filter(profile.astype(np.float64), window, 2)
-        detrended = profile.astype(np.float64) - trend
-    else:
-        detrended = profile.astype(np.float64)
+    #    A quadratic polynomial fit captures the global background
+    #    curvature (heel effect) without the edge artifacts of wide-
+    #    kernel Savitzky-Golay filtering.  Subtracting it flattens the
+    #    baseline so that local wire/gap extrema are unambiguous.
+    x = np.arange(n, dtype=np.float64)
+    coeffs = np.polyfit(x, profile.astype(np.float64), 2)
+    trend = np.polyval(coeffs, x)
+    detrended = profile.astype(np.float64) - trend
 
     peaks, valleys = detect_peaks_valleys(
         detrended, min_distance=min_distance, prominence=prominence,

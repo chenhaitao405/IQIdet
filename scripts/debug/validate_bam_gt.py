@@ -72,7 +72,7 @@ log("BAM DOUBLE-WIRE ALGORITHM -- GROUND TRUTH VALIDATION")
 log("=" * 80)
 log()
 
-result = compute_contrast(profile, film_type="auto", min_distance=10, prominence=0.05)
+result = compute_contrast(profile, film_type="auto", min_distance=5, prominence=0.03)
 
 # ---- 2a. Film type ----
 log(f"Algorithm film_type: {result.film_type}")
@@ -299,7 +299,7 @@ log(f"  {'prom':>6} {'min_dist':>9} {'pairs':>6} {'peaks':>6} {'wire_hit':>9} {'
 log(f"  {'-'*70}")
 for prom in [0.05, 0.08, 0.10, 0.15, 0.20]:
     for md in [10, 15, 20]:
-        r2 = compute_contrast(profile, film_type="auto", min_distance=md, prominence=prom)
+        r2 = compute_contrast(profile, film_type="negative", min_distance=md, prominence=prom)
         p2, _ = detect_peaks_valleys(profile, min_distance=md, prominence=prom)
         hit = len(set(p2.tolist()) & set(gt_signal_peaks))
         dip_str = " ".join(f"{d:.0f}" for d in r2.dips[:7])
