@@ -431,13 +431,13 @@ class TestBAMHelpers(unittest.TestCase):
         self.assertEqual(result, "positive")
 
     def test_detect_film_type_negative(self):
-        """负片: valley(丝·亮) > peak(间隙·暗) → film_type='negative'."""
+        """负片: peaks=wire(bright), valleys=gap(dark) → film_type='negative'."""
         from gauge.imaging.profile import _detect_film_type
-        valleys = np.array([10, 50])
-        peaks = np.array([30, 70])
+        valleys = np.array([30, 70])   # gaps (dark minima)
+        peaks = np.array([10, 50])     # wires (bright maxima)
         profile = np.ones(100, dtype=np.float64) * 100.0
-        profile[valleys] = 200.0  # 亮丝(bright wires)
-        profile[peaks] = 50.0     # 暗间隙(dark gaps)
+        profile[peaks] = 200.0   # bright wires
+        profile[valleys] = 50.0  # dark gaps
         result = _detect_film_type(profile, valleys, peaks)
         self.assertEqual(result, "negative")
 
@@ -609,6 +609,75 @@ class TestBAMHelpers(unittest.TestCase):
             half_w=0, dist_factor=1.05, film_type="positive",
         )
         self.assertEqual(len(pairs), 0)
+
+
+class TestComputeContrast(unittest.TestCase):
+    """Tests for compute_contrast()."""
+
+    def setUp(self):
+        """Create synthetic negative-film profile with 4 wire pairs."""
+        np.random.seed(42)
+        x = np.arange(400, dtype=np.float64)
+        bg = 0.0003 * x**2 + 150.0
+        self.profile = bg.copy()
+        # D1 (deep): wires at ~50,90
+        self.profile[45:55] += 40.0
+        self.profile[85:95] += 40.0
+        self.profile[65:75] -= 30.0
+        # D2: wires at ~140,180  (inter-pair gap 140-90=50 > intra-pair 40)
+        self.profile[135:145] += 35.0
+        self.profile[175:185] += 35.0
+        self.profile[155:165] -= 25.0
+        # D3: wires at ~230,270
+        self.profile[225:235] += 25.0
+        self.profile[265:275] += 25.0
+        self.profile[245:255] -= 15.0
+        # D4 (nearly merged): wires at ~320,360
+        self.profile[315:325] += 15.0
+        self.profile[355:365] += 15.0
+        self.profile[335:345] -= 8.0
+        self.profile += np.random.normal(0, 1.5, 400).astype(np.float64)
+
+    def test_auto_film_type(self):
+        """film_type='auto' 应检测为 negative."""
+        from gauge.imaging.profile import compute_contrast
+        result = compute_contrast(self.profile, film_type="auto", min_distance=30)
+        self.assertEqual(result.film_type, "negative")
+
+    def test_explicit_film_type(self):
+        """显式指定 film_type='positive' 应保留."""
+        from gauge.imaging.profile import compute_contrast
+        result = compute_contrast(self.profile, film_type="positive")
+        self.assertEqual(result.film_type, "positive")
+
+    def test_produces_dips_and_pairs(self):
+        """应产出 dips 和 pairs."""
+        from gauge.imaging.profile import compute_contrast
+        result = compute_contrast(self.profile, film_type="negative", min_distance=30)
+        self.assertGreater(len(result.dips), 0)
+        self.assertEqual(len(result.dips), len(result.pairs))
+        self.assertGreater(result.dips[-1], result.dips[0])
+
+    def test_background_length(self):
+        """background 与 profile 等长."""
+        from gauge.imaging.profile import compute_contrast
+        result = compute_contrast(self.profile)
+        self.assertEqual(len(result.background), len(self.profile))
+        self.assertEqual(result.background.dtype, np.float64)
+
+    def test_short_profile_edge_case(self):
+        """极短 profile 不应崩溃."""
+        from gauge.imaging.profile import compute_contrast
+        result = compute_contrast(np.array([10.0, 12.0], dtype=np.float64))
+        self.assertEqual(len(result.dips), 0)
+        self.assertEqual(result.film_type, "positive")
+
+    def test_no_peaks_or_valleys(self):
+        """平坦剖面 → 空结果."""
+        from gauge.imaging.profile import compute_contrast
+        flat = np.ones(200, dtype=np.float64) * 100.0
+        result = compute_contrast(flat)
+        self.assertEqual(len(result.dips), 0)
 
 
 if __name__ == "__main__":

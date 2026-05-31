@@ -222,11 +222,14 @@ def _detect_film_type(
     valleys: np.ndarray,
     peaks: np.ndarray,
 ) -> str:
-    """Determine film type from the first wire pair's gray-level relationship.
+    """Determine film type from raw peak/valley positions.
 
-    For a positive film wires are dark (low gray) and gaps are bright (high
-    gray), so ``profile[valley] < profile[peak]``.  Negative film is the
-    inverse.
+    Works by finding the alternating triple (v-p-v or p-v-p) with the
+    largest amplitude swing.  The dominant wire pair produces the largest
+    swing, and its pattern reveals the film type:
+
+    - v-p-v with deep valleys → positive film  (wires are dark valleys)
+    - p-v-p with tall peaks   → negative film (wires are bright peaks)
 
     Args:
         profile: 1D band-averaged gray profile.
@@ -235,12 +238,41 @@ def _detect_film_type(
 
     Returns:
         ``"positive"`` or ``"negative"``.  Defaults to ``"positive"`` when
-        there are fewer than 2 valleys or 1 peak.
+        no reliable alternating triple is found.
     """
-    if len(valleys) >= 2 and len(peaks) >= 1:
-        a_val = float(profile[valleys[0]])
-        c_val = float(profile[peaks[0]])
-        return "negative" if a_val > c_val else "positive"
+    if len(valleys) < 1 or len(peaks) < 1:
+        return "positive"
+
+    # Merge extrema in position order
+    extrema: List[Tuple[str, int]] = []
+    vi = pi = 0
+    while vi < len(valleys) or pi < len(peaks):
+        if pi >= len(peaks) or (vi < len(valleys) and int(valleys[vi]) < int(peaks[pi])):
+            extrema.append(("v", int(valleys[vi])))
+            vi += 1
+        else:
+            extrema.append(("p", int(peaks[pi])))
+            pi += 1
+
+    # Find the alternating triple with the largest total swing
+    best_type: Optional[str] = None
+    best_swing = -1.0
+    for i in range(len(extrema) - 2):
+        t1, p1 = extrema[i]
+        t2, p2 = extrema[i + 1]
+        t3, p3 = extrema[i + 2]
+        if t1 == t3 and t1 != t2:
+            swing = abs(float(profile[p1]) - float(profile[p2])) + abs(
+                float(profile[p2]) - float(profile[p3])
+            )
+            if swing > best_swing:
+                best_swing = swing
+                best_type = t1
+
+    if best_type == "v":
+        return "positive"
+    if best_type == "p":
+        return "negative"
     return "positive"
 
 
@@ -460,26 +492,97 @@ def detect_peaks_valleys(
 
 def compute_contrast(
     profile: np.ndarray,
-    peak_indices: np.ndarray,
-    valley_indices: np.ndarray,
-) -> float:
-    """Compute Contrast = (a + b - 2c) / (a + b) using the peak-two-valley method.
+    wire_spacings: Optional[Sequence[float]] = None,
+    window_half_width: int = 3,
+    film_type: str = "auto",
+    min_distance: int = 10,
+    prominence: float = 0.05,
+) -> ComputeContrastResult:
+    """Compute the modulation depth (dip) for every wire pair in a profile.
+
+    Orchestrates: peak/valley detection -> film-type determination ->
+    quadratic background fitting -> wire pairing -> per-pair dip calculation.
+
+    The input *profile* is expected to be the output of
+    :func:`extract_profile_band`, i.e. already band-averaged across
+    >= 21 pixel rows to satisfy JBT 7902.
 
     Args:
-        profile: 1D gray profile.
-        peak_indices: Peak position indices.
-        valley_indices: Valley position indices.
+        profile: 1D band-averaged gray profile.  Each element is the
+            column-wise mean of >= 21 pixel rows perpendicular to the
+            profile direction.
+        wire_spacings: Nominal spacings (mm) of the wire pairs, e.g. the
+            JBT 7902 D1-D13 sequence.  Accepted for forward compatibility;
+            not used internally by this function.
+        window_half_width: Half-width of the neighbourhood window for
+            computing the a / b / c region means.  0 degenerates to
+            single-pixel values.
+        film_type: ``"positive"``, ``"negative"``, or ``"auto"``.  When
+            ``"auto"`` the type is detected from the first wire pair.
+        min_distance: Minimum pixel distance between adjacent peaks,
+            forwarded to :func:`detect_peaks_valleys`.
+        prominence: Relative peak prominence, forwarded to
+            :func:`detect_peaks_valleys`.
 
     Returns:
-        Contrast value in [0, 1].
-
-    Note:
-        Phase 2 implementation. Must handle:
-        - Positive/negative film determination
-        - Neighborhood averaging of a, b values
-        - Mismatched peak/valley counts
+        :class:`ComputeContrastResult` with dips, pairs, background, and
+        film_type.
     """
-    raise NotImplementedError("Phase 2 implementation")
+    n = len(profile)
+    if n < 3:
+        return ComputeContrastResult(
+            dips=[], pairs=[],
+            background=np.array([], dtype=np.float64),
+            film_type=film_type if film_type != "auto" else "positive",
+        )
+
+    # 1. Peak / valley detection
+    peaks, valleys = detect_peaks_valleys(
+        profile, min_distance=min_distance, prominence=prominence,
+    )
+
+    if len(peaks) == 0 and len(valleys) == 0:
+        return ComputeContrastResult(
+            dips=[], pairs=[],
+            background=np.zeros(n, dtype=np.float64),
+            film_type=film_type if film_type != "auto" else "positive",
+        )
+
+    # 2. Film-type determination
+    if film_type == "auto":
+        ft = _detect_film_type(profile, valleys, peaks)
+    else:
+        ft = film_type
+
+    is_negative = (ft == "negative")
+
+    # 3. Assign wire / gap roles
+    if is_negative:
+        wire_positions = peaks
+        gap_positions = valleys
+    else:
+        wire_positions = valleys
+        gap_positions = peaks
+
+    # 4. Quadratic background fit (masking wire regions)
+    background = _fit_quadratic_background(
+        profile, wire_positions, inverted=not is_negative,
+    )
+
+    # 5. Pair wires and compute dips
+    dips, pairs = _pair_wires_and_compute_dips(
+        profile, wire_positions, gap_positions, background,
+        half_w=window_half_width,
+        dist_factor=1.05,
+        film_type=ft,
+    )
+
+    return ComputeContrastResult(
+        dips=dips,
+        pairs=pairs,
+        background=background,
+        film_type=ft,
+    )
 
 
 def find_first_unresolved_group(
