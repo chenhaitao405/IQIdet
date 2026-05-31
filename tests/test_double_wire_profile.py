@@ -615,27 +615,27 @@ class TestComputeContrast(unittest.TestCase):
     """Tests for compute_contrast()."""
 
     def setUp(self):
-        """Create synthetic negative-film profile with 4 wire pairs."""
+        """Create synthetic negative-film profile with 4 wire pairs (decreasing dip)."""
         np.random.seed(42)
         x = np.arange(400, dtype=np.float64)
         bg = 0.0003 * x**2 + 150.0
         self.profile = bg.copy()
-        # D1 (deep): wires at ~50,90
-        self.profile[45:55] += 40.0
+        # D1 (deep): wires at ~50,90, gap at ~70
+        self.profile[45:55] += 40.0   # wire height
         self.profile[85:95] += 40.0
-        self.profile[65:75] -= 30.0
-        # D2: wires at ~140,180  (inter-pair gap 140-90=50 > intra-pair 40)
-        self.profile[135:145] += 35.0
-        self.profile[175:185] += 35.0
-        self.profile[155:165] -= 25.0
-        # D3: wires at ~230,270
-        self.profile[225:235] += 25.0
-        self.profile[265:275] += 25.0
-        self.profile[245:255] -= 15.0
-        # D4 (nearly merged): wires at ~320,360
-        self.profile[315:325] += 15.0
-        self.profile[355:365] += 15.0
-        self.profile[335:345] -= 8.0
+        self.profile[65:75] -= 22.0   # gap dip (~55% of wire height)
+        # D2: wires at ~140,180, gap at ~160
+        self.profile[135:145] += 34.0
+        self.profile[175:185] += 34.0
+        self.profile[155:165] -= 20.0   # gap dip (~59% of wire height)
+        # D3: wires at ~230,270, gap at ~250
+        self.profile[225:235] += 24.0
+        self.profile[265:275] += 24.0
+        self.profile[245:255] -= 16.0   # gap dip (~67% of wire height)
+        # D4 (nearly merged): wires at ~320,360, gap at ~340
+        self.profile[315:325] += 12.0
+        self.profile[355:365] += 12.0
+        self.profile[335:345] -= 10.0   # gap dip (~83% of wire height, nearly merged)
         self.profile += np.random.normal(0, 1.5, 400).astype(np.float64)
 
     def test_auto_film_type(self):
@@ -656,7 +656,8 @@ class TestComputeContrast(unittest.TestCase):
         result = compute_contrast(self.profile, film_type="negative", min_distance=30)
         self.assertGreater(len(result.dips), 0)
         self.assertEqual(len(result.dips), len(result.pairs))
-        self.assertGreater(result.dips[-1], result.dips[0])
+        self.assertGreater(result.dips[0], result.dips[-1],
+                          f"D1 dip ({result.dips[0]:.1f}) should exceed D4 dip ({result.dips[-1]:.1f})")
 
     def test_background_length(self):
         """background 与 profile 等长."""
