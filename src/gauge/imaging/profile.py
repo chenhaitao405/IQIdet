@@ -109,36 +109,40 @@ def fit_obb_and_midline(
 
     (cx, cy), (w, h), angle = rect  # w >= h guaranteed
 
-    # Identify the four edges of box
-    n = len(box)
-    edges = []
-    for i in range(n):
-        a = box[i]
-        b = box[(i + 1) % n]
-        length_val = float(np.linalg.norm(b - a))
-        mid = (a + b) / 2.0
-        edges.append({"length": length_val, "mid": mid, "a": a, "b": b, "idx": i})
-
-    # Sort edges by length: shortest first
-    edges.sort(key=lambda e: e["length"])
-
-    # The two shortest edges are the OBB height edges (parallel to wires)
-    # Their midpoints define the profile midline
-    start = (float(edges[0]["mid"][0]), float(edges[0]["mid"][1]))
-    end = (float(edges[1]["mid"][0]), float(edges[1]["mid"][1]))
-
     # --- Reorder box corners to TL-TR-BR-BL for getPerspectiveTransform ---
-    # box from minAreaRect is CCW starting from the point with lowest y (or
-    # lowest x if tie). Sort by (y, x): topmost first, leftmost within same row.
-    ordered = sorted(box, key=lambda p: (p[1], p[0]))
-    tl = ordered[0]  # smallest y (and smallest x if tie)
-    br = ordered[3]  # largest y (and largest x if tie)
-    # Among remaining two, the one with larger x is TR
-    mid_pts = ordered[1:3]
-    tr = mid_pts[0] if mid_pts[0][0] > mid_pts[1][0] else mid_pts[1]
-    bl = mid_pts[1] if mid_pts[0][0] > mid_pts[1][0] else mid_pts[0]
+    # box is CCW starting from lowest-y point. Edges alternate long-short-long-short
+    # because minAreaRect guarantees w >= h. Find a starting index where the first
+    # edge is a LONG edge (≈w). Then TL→TR = long edge, TR→BR = short edge, etc.
 
-    obb_corners = np.array([tl, tr, br, bl], dtype=np.float32)
+    n = 4
+    lengths = [float(np.linalg.norm(box[(i + 1) % n] - box[i])) for i in range(n)]
+    max_len = max(lengths)
+
+    start_idx = 0
+    for i in range(n):
+        if lengths[i] >= 0.95 * max_len and lengths[(i + 2) % n] >= 0.95 * max_len:
+            start_idx = i
+            break
+
+    tl_idx = start_idx
+    tr_idx = (start_idx + 1) % n
+    br_idx = (start_idx + 2) % n
+    bl_idx = (start_idx + 3) % n
+
+    obb_corners = np.array(
+        [box[tl_idx], box[tr_idx], box[br_idx], box[bl_idx]], dtype=np.float32
+    )
+
+    # Midline: connect midpoints of the two SHORT (height) edges
+    # SHORT edges are TR→BR and BL→TL, midline runs parallel to TL→TR
+    start = (
+        float((box[tr_idx][0] + box[br_idx][0]) / 2.0),
+        float((box[tr_idx][1] + box[br_idx][1]) / 2.0),
+    )
+    end = (
+        float((box[bl_idx][0] + box[tl_idx][0]) / 2.0),
+        float((box[bl_idx][1] + box[tl_idx][1]) / 2.0),
+    )
 
     return obb_corners, (start, end)
 
