@@ -497,5 +497,41 @@ class TestBAMHelpers(unittest.TestCase):
         self.assertEqual(bg.shape, (3,))
 
 
+    def test_compute_dip_basic(self):
+        """已知 profile 和 background 值 → 验证 dip 计算."""
+        from gauge.imaging.profile import _compute_dip
+        profile = np.ones(100, dtype=np.float64) * 100.0
+        profile[20] = 90.0   # wire_a (dark)
+        profile[30] = 105.0  # gap (bright)
+        profile[40] = 90.0   # wire_b (dark)
+        background = np.ones(100, dtype=np.float64) * 100.0
+
+        dip = _compute_dip(profile, 20, 30, 40, background, half_w=0)
+        # A=|100-90|=10, B=|100-90|=10, C=|100-105|=5
+        # dip=100*(10+10-2*5)/(10+10)=100*10/20=50.0
+        self.assertAlmostEqual(dip, 50.0, delta=0.01)
+
+    def test_compute_dip_with_window(self):
+        """half_w > 0 时使用邻域均值."""
+        from gauge.imaging.profile import _compute_dip
+        profile = np.ones(100, dtype=np.float64) * 100.0
+        profile[18:23] = 90.0
+        profile[28:33] = 105.0
+        profile[38:43] = 90.0
+        background = np.ones(100, dtype=np.float64) * 100.0
+
+        dip = _compute_dip(profile, 20, 30, 40, background, half_w=2)
+        self.assertAlmostEqual(dip, 50.0, delta=0.5)
+
+    def test_compute_dip_fully_merged(self):
+        """完全融合（denom≈0）→ 返回 0."""
+        from gauge.imaging.profile import _compute_dip
+        profile = np.ones(100, dtype=np.float64) * 100.0
+        background = np.ones(100, dtype=np.float64) * 100.0
+
+        dip = _compute_dip(profile, 20, 30, 40, background, half_w=0)
+        self.assertEqual(dip, 0.0)
+
+
 if __name__ == "__main__":
     unittest.main()

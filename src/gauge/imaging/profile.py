@@ -304,6 +304,55 @@ def _fit_quadratic_background(
     return np.asarray(popt[0] * x * x + popt[1] * x + popt[2], dtype=np.float64)
 
 
+def _compute_dip(
+    profile: np.ndarray,
+    wire_a: int,
+    gap_c: int,
+    wire_b: int,
+    background: np.ndarray,
+    half_w: int,
+) -> float:
+    """Compute the modulation depth (dip) for a single wire pair.
+
+    The dip is defined as ``100 * (A + B - 2*C) / (A + B)`` where *A*, *B*
+    are the absolute deviations of the two wires from the background and *C*
+    is the absolute deviation of the gap from the background.  Each value is
+    taken as the neighbourhood mean of width ``2*half_w+1`` around the
+    detected position.
+
+    Args:
+        profile: 1D band-averaged gray profile.
+        wire_a: Index of the first wire.
+        gap_c: Index of the gap between the two wires.
+        wire_b: Index of the second wire.
+        background: Background fit values (same length as *profile*).
+        half_w: Half-width of the neighbourhood window.
+
+    Returns:
+        Dip value in percent [0, 100].  Returns 0 when the denominator is
+        negligible (fully merged pair).
+    """
+    L = len(profile)
+
+    def _region_mean(center: int) -> float:
+        lo = max(0, center - half_w)
+        hi = min(L - 1, center + half_w)
+        return float(profile[lo:hi + 1].mean())
+
+    a_mean = _region_mean(wire_a)
+    c_mean = _region_mean(gap_c)
+    b_mean = _region_mean(wire_b)
+
+    A = abs(float(background[wire_a]) - a_mean)
+    B = abs(float(background[wire_b]) - b_mean)
+    C = abs(float(background[gap_c]) - c_mean)
+
+    denom = A + B
+    if denom < 1e-10:
+        return 0.0
+    return 100.0 * (A + B - 2.0 * C) / denom
+
+
 def detect_peaks_valleys(
     profile: np.ndarray,
     min_distance: int = 10,
