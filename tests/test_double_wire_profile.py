@@ -766,6 +766,40 @@ class TestFindFirstUnresolvedGroup(unittest.TestCase):
         result = find_first_unresolved_group(dips, dip_threshold=15.0)
         self.assertEqual(result, 4)
 
+    def test_end_to_end_negative_film(self):
+        """完整流程: 合成负片剖面 -> compute_contrast -> find_first_unresolved_group."""
+        from gauge.imaging.profile import compute_contrast, find_first_unresolved_group
+
+        x = np.arange(400, dtype=np.float64)
+        profile = 0.0003 * x**2 + 150.0
+        # D1 (deep): wires at ~50,90
+        profile[45:55] += 40.0
+        profile[85:95] += 40.0
+        profile[65:75] -= 22.0
+        # D2: wires at ~140,180
+        profile[135:145] += 34.0
+        profile[175:185] += 34.0
+        profile[155:165] -= 20.0
+        # D3: wires at ~230,270
+        profile[225:235] += 24.0
+        profile[265:275] += 24.0
+        profile[245:255] -= 16.0
+        # D4 (nearly merged): wires at ~320,360
+        profile[315:325] += 12.0
+        profile[355:365] += 12.0
+        profile[335:345] -= 10.0
+        profile += np.random.default_rng(42).normal(0, 1.5, 400)
+
+        result = compute_contrast(profile, film_type="auto", min_distance=30)
+        self.assertEqual(result.film_type, "negative")
+        self.assertGreaterEqual(len(result.dips), 3)
+        self.assertGreater(result.dips[0], result.dips[-1],
+                          f"D1 dip ({result.dips[0]:.1f}) should exceed D4 dip ({result.dips[-1]:.1f})")
+
+        group = find_first_unresolved_group(result.dips)
+        self.assertIsNotNone(group)
+        self.assertGreaterEqual(group, 3)
+
 
 if __name__ == "__main__":
     unittest.main()
