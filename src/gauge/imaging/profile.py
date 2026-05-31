@@ -217,6 +217,33 @@ class ComputeContrastResult:
     film_type: str
 
 
+def _detect_film_type(
+    profile: np.ndarray,
+    valleys: np.ndarray,
+    peaks: np.ndarray,
+) -> str:
+    """Determine film type from the first wire pair's gray-level relationship.
+
+    For a positive film wires are dark (low gray) and gaps are bright (high
+    gray), so ``profile[valley] < profile[peak]``.  Negative film is the
+    inverse.
+
+    Args:
+        profile: 1D band-averaged gray profile.
+        valleys: Valley index array (positions of profile minima).
+        peaks: Peak index array (positions of profile maxima).
+
+    Returns:
+        ``"positive"`` or ``"negative"``.  Defaults to ``"positive"`` when
+        there are fewer than 2 valleys or 1 peak.
+    """
+    if len(valleys) >= 2 and len(peaks) >= 1:
+        a_val = float(profile[valleys[0]])
+        c_val = float(profile[peaks[0]])
+        return "negative" if a_val > c_val else "positive"
+    return "positive"
+
+
 def detect_peaks_valleys(
     profile: np.ndarray,
     min_distance: int = 10,

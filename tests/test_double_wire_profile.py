@@ -416,5 +416,38 @@ class TestDetectPeaksValleys(unittest.TestCase):
         self.assertAlmostEqual(peaks[0], 100, delta=5)
 
 
+class TestBAMHelpers(unittest.TestCase):
+    """Unit tests for BAM internal helpers."""
+
+    def test_detect_film_type_positive(self):
+        """正片: valley(丝·暗) < peak(间隙·亮) → film_type='positive'."""
+        from gauge.imaging.profile import _detect_film_type
+        valleys = np.array([10, 50])
+        peaks = np.array([30, 70])
+        profile = np.ones(100, dtype=np.float64) * 100.0
+        profile[valleys] = 50.0   # 暗丝(dark wires)
+        profile[peaks] = 200.0    # 亮间隙(bright gaps)
+        result = _detect_film_type(profile, valleys, peaks)
+        self.assertEqual(result, "positive")
+
+    def test_detect_film_type_negative(self):
+        """负片: valley(丝·亮) > peak(间隙·暗) → film_type='negative'."""
+        from gauge.imaging.profile import _detect_film_type
+        valleys = np.array([10, 50])
+        peaks = np.array([30, 70])
+        profile = np.ones(100, dtype=np.float64) * 100.0
+        profile[valleys] = 200.0  # 亮丝(bright wires)
+        profile[peaks] = 50.0     # 暗间隙(dark gaps)
+        result = _detect_film_type(profile, valleys, peaks)
+        self.assertEqual(result, "negative")
+
+    def test_detect_film_type_insufficient_data(self):
+        """峰谷不足时默认返回 'positive'."""
+        from gauge.imaging.profile import _detect_film_type
+        profile = np.ones(100, dtype=np.float64)
+        result = _detect_film_type(profile, np.array([], dtype=int), np.array([], dtype=int))
+        self.assertEqual(result, "positive")
+
+
 if __name__ == "__main__":
     unittest.main()
