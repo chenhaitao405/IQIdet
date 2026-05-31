@@ -6,12 +6,19 @@ Suitable for integration into the automated pipeline (Phase 2).
 
 from __future__ import annotations
 
-from typing import List, Optional, Tuple
+from dataclasses import dataclass
+from typing import List, Optional, Sequence, Tuple
 
 import cv2
 import numpy as np
 from scipy.ndimage import map_coordinates
-from scipy.signal import find_peaks
+from scipy.optimize import curve_fit
+from scipy.signal import find_peaks, peak_widths
+
+# JBT 7902-2025 表2 标准双丝型像质计 D1~D13 丝径/间距 (mm)
+_DEFAULT_WIRE_SPACINGS: Tuple[float, ...] = (
+    0.80, 0.63, 0.50, 0.40, 0.32, 0.25, 0.20, 0.16, 0.13, 0.10, 0.08, 0.063, 0.05,
+)
 
 
 def _match_box_to_point_order(box: np.ndarray, points: np.ndarray) -> np.ndarray:
@@ -189,6 +196,25 @@ def unwarp_obb_region(
     M = cv2.getPerspectiveTransform(corners, dst)
     unwarped = cv2.warpPerspective(image, M, (w, h))
     return unwarped, (w, h)
+
+
+@dataclass
+class ComputeContrastResult:
+    """Result of :func:`compute_contrast`.
+
+    Attributes:
+        dips: Dip (modulation depth) for each wire pair, in percent [0, 100].
+        pairs: Detected (wire_a_idx, gap_idx, wire_b_idx) triplets.
+            Conventions follow positive-film semantics (valley, peak, valley),
+            matching the naming in ``groundtruth.json``.
+        background: Quadratic background fit values, same length as the input
+            profile.
+        film_type: ``"positive"`` or ``"negative"``.
+    """
+    dips: List[float]
+    pairs: List[Tuple[int, int, int]]
+    background: np.ndarray
+    film_type: str
 
 
 def detect_peaks_valleys(
