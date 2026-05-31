@@ -31,16 +31,6 @@ def _match_box_to_point_order(box: np.ndarray, points: np.ndarray) -> np.ndarray
     return np.asarray(best_order, dtype=np.float32)
 
 
-def _ensure_long_edge_width(corners: np.ndarray) -> np.ndarray:
-    """Rotate TL-TR-BR-BL corners so edge 0-1 is the long unwrapped width."""
-    corners = np.asarray(corners, dtype=np.float32).reshape(4, 2)
-    width = float(np.linalg.norm(corners[1] - corners[0]))
-    height = float(np.linalg.norm(corners[3] - corners[0]))
-    if width < height:
-        return corners[[3, 0, 1, 2]]
-    return corners
-
-
 def extract_profile_band(
     image: np.ndarray,
     start_point: Tuple[float, float],
@@ -119,34 +109,37 @@ def fit_obb_and_midline(
     """Fit an oriented bounding box to 4 points and compute the profile midline.
 
     Uses cv2.minAreaRect to fit a true rectangle (correcting for click imprecision),
-    then matches the fitted rectangle back to the caller's corner order and
-    rotates it, if needed, so the long edge becomes the unwrapped width. The
-    midline connects the left and right edge midpoints, so it runs along the
-    OBB's long-edge direction (perpendicular to wires).
+    then matches the fitted rectangle back to the caller's corner order via
+    nearest-neighbor. The fitted corners preserve the user's TL-TR-BR-BL
+    clockwise order: corner 0 maps to the unwarped image's top-left, corner 1
+    to top-right, etc.
+
+    The profile midline runs parallel to the user's top edge (p0→p1), which
+    defines the profile scan direction. The midline connects the left edge
+    midpoint to the right edge midpoint.
 
     Args:
-        points: (4, 2) array of corner points. For interactive OBB
-            selection, pass points in TL-TR-BR-BL order to preserve the
-            user's corner semantics after rectangular fitting. If TL-TR is
-            the short edge, the returned corners are rotated so the original
-            TL point maps to the unwrapped image's top-right corner.
+        points: (4, 2) array of corner points. Pass in TL-TR-BR-BL
+            clockwise order. The user's p0→p1 edge defines the profile
+            scan direction (across wires for double-wire IQI).
 
     Returns:
         (obb_corners, (midline_start, midline_end)):
-        - obb_corners: (4, 2) rectangle corners in unwrapped
+        - obb_corners: (4, 2) rectangle corners in
           "top-left, top-right, bottom-right, bottom-left" order, suitable
-          for cv2.getPerspectiveTransform.
-        - midline: endpoints of the profile midline, running parallel to the long edges.
+          for cv2.getPerspectiveTransform. corners[0] corresponds to the
+          user's p0 (top-left). Edge 0-1 is the profile scan direction.
+        - midline: endpoints of the profile midline, running parallel to
+          corners[0]→corners[1] (the profile direction).
     """
     rect = cv2.minAreaRect(np.asarray(points, dtype=np.float32))
     box = cv2.boxPoints(rect)
-    obb_corners = _ensure_long_edge_width(_match_box_to_point_order(box, points))
+    obb_corners = _match_box_to_point_order(box, points)
     tl, tr, br, bl = obb_corners
 
-    # Midline: connect midpoints of the two SHORT (height) edges
-    # SHORT edges are TR→BR and BL→TL. Profile runs LEFT to RIGHT
-    # so that profile[0] ≈ left edge (col 0 of unwarped image) and
-    # profile[-1] ≈ right edge (col w-1).
+    # Midline: connect midpoints of the left (BL→TL) and right (TR→BR) edges.
+    # Profile runs LEFT to RIGHT so that profile[0] ≈ left edge
+    # (col 0 of unwarped image) and profile[-1] ≈ right edge (col w-1).
     start = (
         float((bl[0] + tl[0]) / 2.0),
         float((bl[1] + tl[1]) / 2.0),
@@ -165,6 +158,11 @@ def unwarp_obb_region(
 ) -> Tuple[np.ndarray, Tuple[int, int]]:
     """Perspective-unwarp an OBB region into an axis-aligned rectangle.
 
+    Maps user-ordered corners directly: corner 0 → top-left, corner 1 →
+    top-right, corner 2 → bottom-right, corner 3 → bottom-left of the
+    output image. The output width is the TL→TR edge length (profile scan
+    direction), and the height is the TL→BL edge length (perpendicular).
+
     Args:
         image: Source image (grayscale, any dtype).
         obb_corners: (4, 2) rectangle corners in TL-TR-BR-BL order
@@ -173,21 +171,16 @@ def unwarp_obb_region(
     Returns:
         (unwarped, (width, height)):
         - unwarped: Unwarped grayscale image.
-        - (width, height): Dimensions in pixels. width = OBB long edge (profile direction),
-          height = OBB short edge (across wires).
+        - (width, height): Dimensions in pixels. width = TL→TR edge
+          (profile direction, across wires), height = TL→BL edge
+          (perpendicular direction).
     """
     corners = np.asarray(obb_corners, dtype=np.float32).reshape(4, 2)
 
-    # Width = distance from TL->TR (or BL->BR) -- the long edge
+    # Width = TL→TR (profile direction, across wires)
     w = int(np.ceil(np.linalg.norm(corners[1] - corners[0])))
-    # Height = distance from TL->BL (or TR->BR) -- the short edge
+    # Height = TL→BL (perpendicular direction)
     h = int(np.ceil(np.linalg.norm(corners[3] - corners[0])))
-
-    # Ensure w >= h (the long edge should be width)
-    if w < h:
-        w, h = h, w
-        # Reorder corners: rotate 90 so 0-1 is now the long edge
-        corners = corners[[3, 0, 1, 2]]
 
     dst = np.array(
         [[0, 0], [w - 1, 0], [w - 1, h - 1], [0, h - 1]],

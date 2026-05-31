@@ -150,7 +150,7 @@ class TestFitOBBAndMidline(unittest.TestCase):
         return corners + np.array(center, dtype=np.float32)
 
     def test_axis_aligned_rectangle(self):
-        """Axis-aligned rectangle: OBB should match input, midline along long edge."""
+        """Axis-aligned rectangle: OBB should match input, midline along user's top edge."""
         pts = np.array([
             [0, 0],     # TL
             [300, 0],   # TR
@@ -162,13 +162,11 @@ class TestFitOBBAndMidline(unittest.TestCase):
 
         # Should return 4 corners in TL-TR-BR-BL order
         self.assertEqual(corners.shape, (4, 2))
-        # Midline should run along long edge (width=300 direction)
-        # It connects midpoints of the two short edges (the vertical 100-px edges)
-        # Short edges are left (y:0->100 at x=0) and right (y:0->100 at x=300)
-        # Midpoints: (0, 50) and (300, 50)
+        # Midline runs along user's top edge (p0→p1, horizontal)
+        # Left edge midpoint (0,50) → right edge midpoint (300,50)
         dx = abs(end[0] - start[0])
         dy = abs(end[1] - start[1])
-        self.assertGreater(dx, dy, "Midline should run along long-edge direction (horizontal)")
+        self.assertGreater(dx, dy, "Midline should run along user's top-edge direction (horizontal)")
         self.assertAlmostEqual(dx, 300.0, delta=5.0)
 
     def test_irregular_quadrilateral(self):
@@ -214,7 +212,7 @@ class TestFitOBBAndMidline(unittest.TestCase):
         corners, (start, end) = fit_obb_and_midline(pts)
 
         self.assertEqual(corners.shape, (4, 2))
-        # Midline length should be approximately w (200) -- the long edge direction
+        # Midline runs along user's top edge: length ≈ w (200)
         mid_dist = math.hypot(end[0] - start[0], end[1] - start[1])
         self.assertAlmostEqual(mid_dist, w, delta=10.0)
 
@@ -259,45 +257,43 @@ class TestFitOBBAndMidline(unittest.TestCase):
         self.assertAlmostEqual(float(profile[0]), float(unwarped[uh // 2, 0]), delta=5.0)
         self.assertAlmostEqual(float(profile[-1]), float(unwarped[uh // 2, -1]), delta=5.0)
 
-    def test_short_top_edge_is_rotated_to_long_width_before_midline(self):
-        """If p0-p1 is the short edge, normalize corners before computing midline."""
+    def test_short_top_edge_preserves_user_corner_order(self):
+        """Short top edge: corners should NOT be rotated — preserve user ordering."""
         pts = self._rotated_rect_corners(
             width=60.0, height=240.0, angle_deg=35.0, center=(260.0, 260.0),
         )
 
         corners, (start, end) = fit_obb_and_midline(pts)
 
+        # Corners should preserve user's order: 0→p0, 1→p1, 2→p2, 3→p3
         nearest_clicked = [
             int(np.argmin(np.linalg.norm(pts - corner, axis=1)))
             for corner in corners
         ]
-        self.assertEqual(nearest_clicked, [3, 0, 1, 2])
+        self.assertEqual(nearest_clicked, [0, 1, 2, 3])
 
-        edge_lengths = [
-            float(np.linalg.norm(corners[(i + 1) % 4] - corners[i]))
-            for i in range(4)
-        ]
-        self.assertGreaterEqual(edge_lengths[0], edge_lengths[1])
-
-        expected_start = (pts[2] + pts[3]) / 2.0
-        expected_end = (pts[0] + pts[1]) / 2.0
+        # Midline connects LEFT edge (p3→p0) midpoint to RIGHT edge (p1→p2) midpoint
+        expected_start = (pts[3] + pts[0]) / 2.0
+        expected_end = (pts[1] + pts[2]) / 2.0
         self.assertTrue(np.allclose(start, expected_start, atol=1.0))
         self.assertTrue(np.allclose(end, expected_end, atol=1.0))
 
-    def test_short_top_edge_profile_matches_rotated_unwarped_columns(self):
-        """Profile and unwarped image should use the same long-width direction."""
+    def test_short_top_edge_profile_matches_unwarped_columns(self):
+        """Profile and unwarped image should share the same left→right direction."""
         pts = self._rotated_rect_corners(
             width=60.0, height=240.0, angle_deg=35.0, center=(260.0, 260.0),
         )
-        desired_start = (pts[2] + pts[3]) / 2.0
-        desired_end = (pts[0] + pts[1]) / 2.0
-        long_axis = desired_end - desired_start
-        long_axis = long_axis / np.linalg.norm(long_axis)
+        # Profile runs LEFT to RIGHT: midline connects left edge midpoint
+        # (p3,p0) to right edge midpoint (p1,p2).
+        profile_start = (pts[3] + pts[0]) / 2.0
+        profile_end = (pts[1] + pts[2]) / 2.0
+        axis = profile_end - profile_start
+        axis = axis / np.linalg.norm(axis)
 
         y_coords, x_coords = np.mgrid[0:520, 0:520]
         projection = (
-            (x_coords.astype(np.float64) - float(desired_start[0])) * float(long_axis[0])
-            + (y_coords.astype(np.float64) - float(desired_start[1])) * float(long_axis[1])
+            (x_coords.astype(np.float64) - float(profile_start[0])) * float(axis[0])
+            + (y_coords.astype(np.float64) - float(profile_start[1])) * float(axis[1])
         )
         image = np.clip(projection + 32.0, 0, 255).astype(np.uint8)
 
@@ -305,7 +301,7 @@ class TestFitOBBAndMidline(unittest.TestCase):
         unwarped, (uw, uh) = unwarp_obb_region(image, corners)
         profile = extract_profile_band(image, start, end, band_width=1, num_samples=uw)
 
-        self.assertGreaterEqual(uw, uh)
+        # After unwarp, profile runs left → right along the ramp
         self.assertLess(unwarped[uh // 2, 0], unwarped[uh // 2, -1])
         self.assertLess(profile[0], profile[-1])
         self.assertAlmostEqual(float(profile[0]), float(unwarped[uh // 2, 0]), delta=5.0)

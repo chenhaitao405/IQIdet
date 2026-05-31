@@ -389,15 +389,37 @@ class DoubleWireDemo:
         if self.output_dir is None:
             print("[save] No output directory configured. Skipping.")
             return
+        if self.obb_corners_raw is None:
+            print("[save] No OBB fitted. Lock OBB first before saving.")
+            return
         self.output_dir.mkdir(parents=True, exist_ok=True)
         stem = self.image_path.stem
+
+        # ── Unwarped OBB image ──
+        unwarped, (uw, uh) = unwarp_obb_region(self.image_raw, self.obb_corners_raw)
+        obb_path = self.output_dir / f"{stem}_obb.png"
+        # Normalize 16-bit→8-bit for PNG portability
+        if unwarped.dtype == np.uint16 or unwarped.dtype == np.int32:
+            obb_8u = cv2.normalize(unwarped, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
+        elif unwarped.dtype == np.uint8:
+            obb_8u = unwarped
+        else:
+            obb_8u = cv2.normalize(unwarped, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
+        cv2.imwrite(str(obb_path), obb_8u)
+        print(f"[save] OBB image ({uw}x{uh}): {obb_path}")
+
+        # ── Overlay image ──
         overlay_path = self.output_dir / f"{stem}_overlay.png"
         overlay = self.draw_overlay()
         cv2.imwrite(str(overlay_path), overlay)
         print(f"[save] Overlay: {overlay_path}")
+
+        # ── Profile data JSON ──
         json_path = self.output_dir / f"{stem}_profile.json"
         payload = {
             "image_path": str(self.image_path),
+            "obb_corners_raw": self.obb_corners_raw.tolist() if self.obb_corners_raw is not None else None,
+            "obb_size": {"width": uw, "height": uh},
             "obb_points": [[float(x), float(y)] for x, y in self.obb_points],
             "profile_midline": {
                 "start": list(self.profile_line[0]) if self.profile_line else None,
