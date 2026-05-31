@@ -595,7 +595,7 @@ def detect_peaks_valleys(
 
 
 # ---------------------------------------------------------------------------
-# Phase 2 interface stubs (not implemented in this phase)
+# Phase 2: BAM double-wire IQI analysis
 # ---------------------------------------------------------------------------
 
 
