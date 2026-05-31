@@ -354,6 +354,77 @@ def _compute_dip(
     return max(0.0, dip)
 
 
+def _pair_wires_and_compute_dips(
+    profile: np.ndarray,
+    wire_positions: np.ndarray,
+    gap_positions: np.ndarray,
+    background: np.ndarray,
+    half_w: int,
+    *,
+    dist_factor: float = 1.05,
+    film_type: str = "positive",
+) -> Tuple[List[float], List[Tuple[int, int, int]]]:
+    """Pair adjacent wires into wire-pair groups and compute each dip.
+
+    Two adjacent wire positions are paired when their distance does not
+    exceed ``dist_factor * dist_between_first_two``.  The gap (the profile
+    extremum between the two wires) is located in a film-type-aware manner,
+    and the dip for the pair is computed via :func:`_compute_dip`.
+
+    Args:
+        profile: 1D band-averaged gray profile.
+        wire_positions: Sorted indices of wire positions (valleys for
+            positive film, peaks for negative).
+        gap_positions: Sorted indices of gap positions (peaks for positive,
+            valleys for negative).
+        background: Quadratic background fit, same length as *profile*.
+        half_w: Half-window for neighbourhood-averaged dip computation.
+        dist_factor: Maximum allowed multiple of the first-pair spacing
+            for two wires to be considered a pair.
+        film_type: ``"positive"`` or ``"negative"``.
+
+    Returns:
+        ``(dips, pairs)`` where *dips* is a list of float percentages and
+        *pairs* is the corresponding list of ``(wire_a, gap, wire_b)``
+        index triplets.
+    """
+    dips: List[float] = []
+    pairs: List[Tuple[int, int, int]] = []
+
+    if len(wire_positions) < 2:
+        return dips, pairs
+
+    dist = wire_positions[1:] - wire_positions[:-1]
+    dist_max = dist_factor * float(dist[0])
+
+    i = 0
+    while i < len(wire_positions) - 1:
+        if dist[i] <= dist_max:
+            w1 = int(wire_positions[i])
+            w2 = int(wire_positions[i + 1])
+            gap_mask = (gap_positions > w1) & (gap_positions < w2)
+            gaps_between = gap_positions[gap_mask]
+            if len(gaps_between) >= 1:
+                if film_type == "negative":
+                    c = int(gaps_between[np.argmin(profile[gaps_between])])
+                    # For negative film the gap is a valley (profile < background)
+                    if profile[c] >= background[c]:
+                        i += 1
+                        continue
+                else:
+                    c = int(gaps_between[np.argmax(profile[gaps_between])])
+                    # For positive film the gap is a peak (profile > background)
+                    if profile[c] <= background[c]:
+                        i += 1
+                        continue
+                pairs.append((w1, c, w2))
+                dip = _compute_dip(profile, w1, c, w2, background, half_w)
+                dips.append(dip)
+        i += 1
+
+    return dips, pairs
+
+
 def detect_peaks_valleys(
     profile: np.ndarray,
     min_distance: int = 10,

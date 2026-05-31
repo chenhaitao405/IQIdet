@@ -544,6 +544,73 @@ class TestBAMHelpers(unittest.TestCase):
         dip = _compute_dip(profile, 20, 30, 40, background, half_w=0)
         self.assertAlmostEqual(dip, 0.0)
 
+    def test_pair_wires_positive(self):
+        """正片: wires=valleys, gaps=peaks, 相邻 valley 间距≤1.05*首对间距."""
+        from gauge.imaging.profile import _pair_wires_and_compute_dips
+        x = np.linspace(0, 6 * np.pi, 300)
+        profile = (-np.sin(x) * 30.0 + 100.0).astype(np.float64)
+        background = np.ones(300, dtype=np.float64) * 100.0
+        peaks, valleys = detect_peaks_valleys(profile, min_distance=30, prominence=0.05)
+
+        dips, pairs = _pair_wires_and_compute_dips(
+            profile, valleys, peaks, background, half_w=1,
+            dist_factor=1.05, film_type="positive",
+        )
+        self.assertGreater(len(dips), 0)
+        self.assertEqual(len(dips), len(pairs))
+        for w1, g, w2 in pairs:
+            self.assertLess(w1, g)
+            self.assertLess(g, w2)
+
+    def test_pair_wires_negative(self):
+        """负片: wires=peaks, gaps=valleys."""
+        from gauge.imaging.profile import _pair_wires_and_compute_dips
+        x = np.linspace(0, 6 * np.pi, 300)
+        profile = (np.sin(x) * 30.0 + 100.0).astype(np.float64)
+        background = np.ones(300, dtype=np.float64) * 100.0
+        peaks, valleys = detect_peaks_valleys(profile, min_distance=30, prominence=0.05)
+
+        dips, pairs = _pair_wires_and_compute_dips(
+            profile, peaks, valleys, background, half_w=1,
+            dist_factor=1.05, film_type="negative",
+        )
+        self.assertGreater(len(dips), 0)
+        for w1, g, w2 in pairs:
+            self.assertLess(w1, g)
+            self.assertLess(g, w2)
+
+    def test_pair_wires_filters_wide_gaps(self):
+        """间距 > 1.05*dist[0] 的假丝被跳过."""
+        from gauge.imaging.profile import _pair_wires_and_compute_dips
+        profile = np.ones(200, dtype=np.float64) * 100.0
+        wire_pos = np.array([20, 40, 60, 150], dtype=int)
+        for w in wire_pos:
+            profile[w] = 80.0
+        gap_pos = np.array([30, 50, 105], dtype=int)
+        for g in gap_pos:
+            profile[g] = 120.0
+        background = np.ones(200, dtype=np.float64) * 100.0
+
+        dips, pairs = _pair_wires_and_compute_dips(
+            profile, wire_pos, gap_pos, background, half_w=0,
+            dist_factor=1.05, film_type="positive",
+        )
+        self.assertEqual(len(pairs), 2)
+
+    def test_pair_wires_no_gap_between(self):
+        """两丝之间无 gap → 跳过该对."""
+        from gauge.imaging.profile import _pair_wires_and_compute_dips
+        profile = np.ones(100, dtype=np.float64) * 100.0
+        profile[[20, 40]] = 80.0
+        profile[60] = 120.0
+        background = np.ones(100, dtype=np.float64) * 100.0
+
+        dips, pairs = _pair_wires_and_compute_dips(
+            profile, np.array([20, 40, 60]), np.array([30]), background,
+            half_w=0, dist_factor=1.05, film_type="positive",
+        )
+        self.assertEqual(len(pairs), 0)
+
 
 if __name__ == "__main__":
     unittest.main()
