@@ -19,3 +19,5 @@ __pycache__/
 !/models/**
 TODO.md
 graphify-out/
+
+.superpowers

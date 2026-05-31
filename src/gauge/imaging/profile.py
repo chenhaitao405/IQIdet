@@ -14,6 +14,33 @@ from scipy.ndimage import map_coordinates
 from scipy.signal import find_peaks
 
 
+def _match_box_to_point_order(box: np.ndarray, points: np.ndarray) -> np.ndarray:
+    """Match fitted rectangle corners to the caller-provided corner order."""
+    pts = np.asarray(points, dtype=np.float32).reshape(4, 2)
+    box = np.asarray(box, dtype=np.float32).reshape(4, 2)
+
+    best_order = box
+    best_score = float("inf")
+    for sequence in (box, box[::-1]):
+        for shift in range(4):
+            candidate = np.roll(sequence, -shift, axis=0)
+            score = float(np.sum((candidate - pts) ** 2))
+            if score < best_score:
+                best_score = score
+                best_order = candidate
+    return np.asarray(best_order, dtype=np.float32)
+
+
+def _ensure_long_edge_width(corners: np.ndarray) -> np.ndarray:
+    """Rotate TL-TR-BR-BL corners so edge 0-1 is the long unwrapped width."""
+    corners = np.asarray(corners, dtype=np.float32).reshape(4, 2)
+    width = float(np.linalg.norm(corners[1] - corners[0]))
+    height = float(np.linalg.norm(corners[3] - corners[0]))
+    if width < height:
+        return corners[[3, 0, 1, 2]]
+    return corners
+
+
 def extract_profile_band(
     image: np.ndarray,
     start_point: Tuple[float, float],
@@ -92,58 +119,41 @@ def fit_obb_and_midline(
     """Fit an oriented bounding box to 4 points and compute the profile midline.
 
     Uses cv2.minAreaRect to fit a true rectangle (correcting for click imprecision),
-    then finds the two shortest edges and connects their midpoints -- this line runs
-    along the OBB's long-edge direction (perpendicular to wires).
+    then matches the fitted rectangle back to the caller's corner order and
+    rotates it, if needed, so the long edge becomes the unwrapped width. The
+    midline connects the left and right edge midpoints, so it runs along the
+    OBB's long-edge direction (perpendicular to wires).
 
     Args:
-        points: (4, 2) array of corner points in any order.
+        points: (4, 2) array of corner points. For interactive OBB
+            selection, pass points in TL-TR-BR-BL order to preserve the
+            user's corner semantics after rectangular fitting. If TL-TR is
+            the short edge, the returned corners are rotated so the original
+            TL point maps to the unwrapped image's top-right corner.
 
     Returns:
         (obb_corners, (midline_start, midline_end)):
-        - obb_corners: (4, 2) rectangle corners in "top-left, top-right, bottom-right, bottom-left" order,
-          suitable for cv2.getPerspectiveTransform.
+        - obb_corners: (4, 2) rectangle corners in unwrapped
+          "top-left, top-right, bottom-right, bottom-left" order, suitable
+          for cv2.getPerspectiveTransform.
         - midline: endpoints of the profile midline, running parallel to the long edges.
     """
     rect = cv2.minAreaRect(np.asarray(points, dtype=np.float32))
-    box = cv2.boxPoints(rect)  # (4, 2), CCW from lowest point, may not be TL-TR-BR-BL
-
-    (cx, cy), (w, h), angle = rect  # w >= h guaranteed
-
-    # --- Reorder box corners to TL-TR-BR-BL for getPerspectiveTransform ---
-    # box is CCW starting from lowest-y point. Edges alternate long-short-long-short
-    # because minAreaRect guarantees w >= h. Find a starting index where the first
-    # edge is a LONG edge (≈w). Then TL→TR = long edge, TR→BR = short edge, etc.
-
-    n = 4
-    lengths = [float(np.linalg.norm(box[(i + 1) % n] - box[i])) for i in range(n)]
-    max_len = max(lengths)
-
-    start_idx = 0
-    for i in range(n):
-        if lengths[i] >= 0.95 * max_len and lengths[(i + 2) % n] >= 0.95 * max_len:
-            start_idx = i
-            break
-
-    tl_idx = start_idx
-    tr_idx = (start_idx + 1) % n
-    br_idx = (start_idx + 2) % n
-    bl_idx = (start_idx + 3) % n
-
-    obb_corners = np.array(
-        [box[tl_idx], box[tr_idx], box[br_idx], box[bl_idx]], dtype=np.float32
-    )
+    box = cv2.boxPoints(rect)
+    obb_corners = _ensure_long_edge_width(_match_box_to_point_order(box, points))
+    tl, tr, br, bl = obb_corners
 
     # Midline: connect midpoints of the two SHORT (height) edges
     # SHORT edges are TR→BR and BL→TL. Profile runs LEFT to RIGHT
     # so that profile[0] ≈ left edge (col 0 of unwarped image) and
     # profile[-1] ≈ right edge (col w-1).
     start = (
-        float((box[bl_idx][0] + box[tl_idx][0]) / 2.0),
-        float((box[bl_idx][1] + box[tl_idx][1]) / 2.0),
+        float((bl[0] + tl[0]) / 2.0),
+        float((bl[1] + tl[1]) / 2.0),
     )
     end = (
-        float((box[tr_idx][0] + box[br_idx][0]) / 2.0),
-        float((box[tr_idx][1] + box[br_idx][1]) / 2.0),
+        float((tr[0] + br[0]) / 2.0),
+        float((tr[1] + br[1]) / 2.0),
     )
 
     return obb_corners, (start, end)

@@ -135,6 +135,20 @@ class TestExtractProfileBand(unittest.TestCase):
 class TestFitOBBAndMidline(unittest.TestCase):
     """Tests for fit_obb_and_midline()."""
 
+    @staticmethod
+    def _rotated_rect_corners(width=240.0, height=60.0, angle_deg=35.0, center=(500.0, 400.0)):
+        """Return p0=TL, p1=TR, p2=BR, p3=BL for a rotated rectangle."""
+        angle = math.radians(angle_deg)
+        c, s = math.cos(angle), math.sin(angle)
+        w, h = float(width), float(height)
+        corners = np.array([
+            [-w / 2 * c + h / 2 * s, -w / 2 * s - h / 2 * c],
+            [ w / 2 * c + h / 2 * s,  w / 2 * s - h / 2 * c],
+            [ w / 2 * c - h / 2 * s,  w / 2 * s + h / 2 * c],
+            [-w / 2 * c - h / 2 * s, -w / 2 * s + h / 2 * c],
+        ], dtype=np.float32)
+        return corners + np.array(center, dtype=np.float32)
+
     def test_axis_aligned_rectangle(self):
         """Axis-aligned rectangle: OBB should match input, midline along long edge."""
         pts = np.array([
@@ -203,6 +217,99 @@ class TestFitOBBAndMidline(unittest.TestCase):
         # Midline length should be approximately w (200) -- the long edge direction
         mid_dist = math.hypot(end[0] - start[0], end[1] - start[1])
         self.assertAlmostEqual(mid_dist, w, delta=10.0)
+
+    def test_preserves_user_clicked_corner_order_for_rotated_rectangle(self):
+        """Fitted OBB corners should keep p0,p1,p2,p3 as TL,TR,BR,BL."""
+        pts = self._rotated_rect_corners(angle_deg=35.0)
+
+        corners, (start, end) = fit_obb_and_midline(pts)
+
+        nearest_clicked = [
+            int(np.argmin(np.linalg.norm(pts - corner, axis=1)))
+            for corner in corners
+        ]
+        self.assertEqual(nearest_clicked, [0, 1, 2, 3])
+
+        expected_start = (pts[3] + pts[0]) / 2.0
+        expected_end = (pts[1] + pts[2]) / 2.0
+        self.assertTrue(np.allclose(start, expected_start, atol=1.0))
+        self.assertTrue(np.allclose(end, expected_end, atol=1.0))
+
+    def test_profile_direction_matches_user_ordered_unwarped_columns(self):
+        """Profile x-axis should run from clicked left edge to clicked right edge."""
+        pts = self._rotated_rect_corners(
+            width=180.0, height=50.0, angle_deg=35.0, center=(180.0, 160.0),
+        )
+        long_axis = pts[1] - pts[0]
+        long_axis = long_axis / np.linalg.norm(long_axis)
+
+        y_coords, x_coords = np.mgrid[0:320, 0:360]
+        projection = (
+            (x_coords.astype(np.float64) - float(pts[0][0])) * float(long_axis[0])
+            + (y_coords.astype(np.float64) - float(pts[0][1])) * float(long_axis[1])
+        )
+        image = np.clip(projection + 32.0, 0, 255).astype(np.uint8)
+
+        corners, (start, end) = fit_obb_and_midline(pts)
+        unwarped, (uw, uh) = unwarp_obb_region(image, corners)
+        profile = extract_profile_band(image, start, end, band_width=1, num_samples=uw)
+
+        self.assertLess(unwarped[uh // 2, 0], unwarped[uh // 2, -1])
+        self.assertLess(profile[0], profile[-1])
+        self.assertAlmostEqual(float(profile[0]), float(unwarped[uh // 2, 0]), delta=5.0)
+        self.assertAlmostEqual(float(profile[-1]), float(unwarped[uh // 2, -1]), delta=5.0)
+
+    def test_short_top_edge_is_rotated_to_long_width_before_midline(self):
+        """If p0-p1 is the short edge, normalize corners before computing midline."""
+        pts = self._rotated_rect_corners(
+            width=60.0, height=240.0, angle_deg=35.0, center=(260.0, 260.0),
+        )
+
+        corners, (start, end) = fit_obb_and_midline(pts)
+
+        nearest_clicked = [
+            int(np.argmin(np.linalg.norm(pts - corner, axis=1)))
+            for corner in corners
+        ]
+        self.assertEqual(nearest_clicked, [3, 0, 1, 2])
+
+        edge_lengths = [
+            float(np.linalg.norm(corners[(i + 1) % 4] - corners[i]))
+            for i in range(4)
+        ]
+        self.assertGreaterEqual(edge_lengths[0], edge_lengths[1])
+
+        expected_start = (pts[2] + pts[3]) / 2.0
+        expected_end = (pts[0] + pts[1]) / 2.0
+        self.assertTrue(np.allclose(start, expected_start, atol=1.0))
+        self.assertTrue(np.allclose(end, expected_end, atol=1.0))
+
+    def test_short_top_edge_profile_matches_rotated_unwarped_columns(self):
+        """Profile and unwarped image should use the same long-width direction."""
+        pts = self._rotated_rect_corners(
+            width=60.0, height=240.0, angle_deg=35.0, center=(260.0, 260.0),
+        )
+        desired_start = (pts[2] + pts[3]) / 2.0
+        desired_end = (pts[0] + pts[1]) / 2.0
+        long_axis = desired_end - desired_start
+        long_axis = long_axis / np.linalg.norm(long_axis)
+
+        y_coords, x_coords = np.mgrid[0:520, 0:520]
+        projection = (
+            (x_coords.astype(np.float64) - float(desired_start[0])) * float(long_axis[0])
+            + (y_coords.astype(np.float64) - float(desired_start[1])) * float(long_axis[1])
+        )
+        image = np.clip(projection + 32.0, 0, 255).astype(np.uint8)
+
+        corners, (start, end) = fit_obb_and_midline(pts)
+        unwarped, (uw, uh) = unwarp_obb_region(image, corners)
+        profile = extract_profile_band(image, start, end, band_width=1, num_samples=uw)
+
+        self.assertGreaterEqual(uw, uh)
+        self.assertLess(unwarped[uh // 2, 0], unwarped[uh // 2, -1])
+        self.assertLess(profile[0], profile[-1])
+        self.assertAlmostEqual(float(profile[0]), float(unwarped[uh // 2, 0]), delta=5.0)
+        self.assertAlmostEqual(float(profile[-1]), float(unwarped[uh // 2, -1]), delta=5.0)
 
     def test_square(self):
         """Square: midline should still work."""
