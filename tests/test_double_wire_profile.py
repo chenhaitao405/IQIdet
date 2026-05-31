@@ -610,6 +610,30 @@ class TestBAMHelpers(unittest.TestCase):
         )
         self.assertEqual(len(pairs), 0)
 
+    def test_cleanup_dips_monotonic_removes_anomaly(self):
+        from gauge.imaging.profile import _cleanup_dips_monotonic
+        dips = [70.0, 80.0, 60.0, 50.0]
+        spacings = [0.80, 0.63, 0.50, 0.40]
+        d, s = _cleanup_dips_monotonic(dips, spacings)
+        self.assertEqual(d, [80.0, 60.0, 50.0])
+        self.assertEqual(s, [0.63, 0.50, 0.40])
+
+    def test_cleanup_dips_monotonic_no_removal(self):
+        from gauge.imaging.profile import _cleanup_dips_monotonic
+        dips = [80.0, 75.0, 60.0, 50.0]
+        spacings = [0.80, 0.63, 0.50, 0.40]
+        d, s = _cleanup_dips_monotonic(dips, spacings)
+        self.assertEqual(d, dips)
+        self.assertEqual(s, spacings)
+
+    def test_cleanup_dips_monotonic_chain_removal(self):
+        from gauge.imaging.profile import _cleanup_dips_monotonic
+        dips = [100.0, 90.0, 85.0, 95.0]
+        spacings = [0.80, 0.63, 0.50, 0.40]
+        d, s = _cleanup_dips_monotonic(dips, spacings)
+        self.assertEqual(d, [100.0, 90.0, 95.0])
+        self.assertEqual(s, [0.80, 0.63, 0.40])
+
 
 class TestComputeContrast(unittest.TestCase):
     """Tests for compute_contrast()."""

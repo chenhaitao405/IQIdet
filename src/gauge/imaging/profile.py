@@ -449,6 +449,36 @@ def _pair_wires_and_compute_dips(
     return dips, pairs
 
 
+def _cleanup_dips_monotonic(
+    dips: Sequence[float],
+    spacings: Sequence[float],
+) -> Tuple[List[float], List[float]]:
+    """Enforce monotonic decrease of dips from coarse (D1) to fine pairs.
+
+    A dip that is more than 5 percentage points deeper than its
+    predecessor is considered a detection anomaly; the shallower
+    predecessor is removed.  This matches the ctsimu-toolbox monotonicity
+    check.
+
+    Args:
+        dips: Dip values (percent) per wire pair, from coarse to fine.
+        spacings: Nominal wire-pair spacings (mm), same length as *dips*.
+
+    Returns:
+        ``(cleaned_dips, cleaned_spacings)`` as new lists.
+    """
+    d = list(dips)
+    s = list(spacings)
+    i = 1
+    while i < len(d):
+        if (d[i] - d[i - 1]) > 5.0:
+            del d[i - 1]
+            del s[i - 1]
+            i -= 1
+        i += 1
+    return d, s
+
+
 def detect_peaks_valleys(
     profile: np.ndarray,
     min_distance: int = 10,
