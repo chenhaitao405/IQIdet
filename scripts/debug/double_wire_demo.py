@@ -48,6 +48,8 @@ from gauge.imaging.profile import (
     fit_obb_and_midline,
     unwarp_obb_region,
     detect_peaks_valleys,
+    compute_contrast,
+    find_first_unresolved_group,
 )
 
 # ── Color constants (BGR for OpenCV) ──
@@ -58,6 +60,34 @@ COLOR_WHITE = (255, 255, 255)
 COLOR_BLACK = (0, 0, 0)
 
 PROFILE_COLOR = "#4C78A8"
+
+
+def normalize_profile_obb(
+    corners: np.ndarray,
+) -> Tuple[np.ndarray, Tuple[Tuple[float, float], Tuple[float, float]]]:
+    """Normalize double-wire OBB so profile width follows the long edge.
+
+    The interactive clicks may start on either the long or short rectangle edge.
+    In this demo the selected OBB covers a row of double-wire pairs, so the
+    profile scan direction should follow the longer edge across the wires.
+    """
+    normalized = np.asarray(corners, dtype=np.float32).reshape(4, 2)
+    edge_01 = float(np.linalg.norm(normalized[1] - normalized[0]))
+    edge_12 = float(np.linalg.norm(normalized[2] - normalized[1]))
+
+    if edge_01 < edge_12:
+        normalized = np.roll(normalized, -1, axis=0)
+
+    tl, tr, br, bl = normalized
+    start = (
+        float((bl[0] + tl[0]) / 2.0),
+        float((bl[1] + tl[1]) / 2.0),
+    )
+    end = (
+        float((tr[0] + br[0]) / 2.0),
+        float((tr[1] + br[1]) / 2.0),
+    )
+    return normalized, (start, end)
 
 
 class DoubleWireDemo:
@@ -111,6 +141,10 @@ class DoubleWireDemo:
         self.profile: Optional[np.ndarray] = None
         self.peak_indices: Optional[np.ndarray] = None
         self.valley_indices: Optional[np.ndarray] = None
+
+        # BAM analysis
+        self.bam_result: Optional[ComputeContrastResult] = None
+        self.unresolved_group: Optional[int] = None
 
         # UI handles
         self.window_name = "Double Wire Demo"
@@ -181,6 +215,9 @@ class DoubleWireDemo:
         raw_pts = [(x / self.display_scale_x, y / self.display_scale_y) for x, y in self.obb_points]
         pts = np.array(raw_pts, dtype=np.float32)
         self.obb_corners_raw, self.obb_midline_raw = fit_obb_and_midline(pts)
+        self.obb_corners_raw, self.obb_midline_raw = normalize_profile_obb(
+            self.obb_corners_raw
+        )
         # Convert fitted corners back to display for overlay drawing
         self.obb_corners_disp = [
             (x * self.display_scale_x, y * self.display_scale_y)
@@ -211,12 +248,12 @@ class DoubleWireDemo:
             return
         px = -dy / length
         py = dx / length
-        # Compute OBB short edge from fitted corners
-        short_e0 = float(np.linalg.norm(obb[0] - obb[3]))
-        short_e1 = float(np.linalg.norm(obb[1] - obb[2]))
-        short_side = (short_e0 + short_e1) / 2.0
+        # Normalized OBB height is the offset direction across the selected band.
+        side_e0 = float(np.linalg.norm(obb[0] - obb[3]))
+        side_e1 = float(np.linalg.norm(obb[1] - obb[2]))
+        offset_side = (side_e0 + side_e1) / 2.0
         offset_frac = (self.profile_offset_pct - 50) / 50.0
-        offset_amount = offset_frac * short_side * 0.45
+        offset_amount = offset_frac * offset_side * 0.45
         sx_off = sx + offset_amount * px
         sy_off = sy + offset_amount * py
         ex_off = ex + offset_amount * px
@@ -231,6 +268,11 @@ class DoubleWireDemo:
         self.peak_indices, self.valley_indices = detect_peaks_valleys(
             self.profile, min_distance=10, prominence=0.05,
         )
+        # BAM double-wire analysis
+        self.bam_result = compute_contrast(
+            self.profile, film_type="auto", min_distance=5, prominence=0.03,
+        )
+        self.unresolved_group = find_first_unresolved_group(self.bam_result.dips)
         self.plot_profile()
 
     # ── Overlay Drawing ──
@@ -374,10 +416,27 @@ class DoubleWireDemo:
         self.ax_bottom.set_ylabel("Gray value")
         self.ax_bottom.legend(fontsize=7, loc="upper right")
 
+        # BAM dip overlay (wire pair markers + dip labels)
+        if self.bam_result is not None and len(self.bam_result.pairs) > 0:
+            dips = self.bam_result.dips
+            pairs = self.bam_result.pairs
+            for i, ((w1, g, w2), dip) in enumerate(zip(pairs, dips)):
+                color = "green" if dip >= 20.0 else "orange"
+                self.ax_bottom.axvspan(w1, w2, alpha=0.12, color=color)
+                mid = (w1 + w2) // 2
+                self.ax_bottom.annotate(
+                    f"D{i+1}:{dip:.0f}%", (mid, self.profile[g]),
+                    textcoords="offset points", xytext=(0, 16),
+                    fontsize=6, color=color, ha="center",
+                )
+
         # Title
         stem = self.image_path.stem
         title = (f"{stem} | OBB: {uw}x{uh} | offset:{self.profile_offset_pct}%"
-                 f" | band:{self.band_width}")
+                 f" | band:{self.band_width} | film:{self.bam_result.film_type if self.bam_result else '?'}"
+                 f" | pairs:{len(self.bam_result.pairs) if self.bam_result else 0}")
+        if self.unresolved_group is not None:
+            title += f" | 1st unres.:D{self.unresolved_group}"
         self.fig.suptitle(title, fontsize=9)
         self.fig.tight_layout()
         self.fig.canvas.draw()
@@ -431,6 +490,16 @@ class DoubleWireDemo:
             "peak_indices": self.peak_indices.tolist() if self.peak_indices is not None else [],
             "valley_indices": self.valley_indices.tolist() if self.valley_indices is not None else [],
         }
+        # ── BAM analysis fields ──
+        if self.bam_result is not None:
+            payload["bam_film_type"] = self.bam_result.film_type
+            payload["bam_dips"] = self.bam_result.dips
+            payload["bam_pairs"] = [
+                [int(w1), int(g), int(w2)]
+                for w1, g, w2 in self.bam_result.pairs
+            ]
+            payload["bam_unresolved_group"] = self.unresolved_group
+
         json_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
         print(f"[save] Profile data: {json_path}")
 
