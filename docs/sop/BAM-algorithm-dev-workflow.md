@@ -11,19 +11,10 @@
 修改路径时只需改下面 `export` 的值，后续命令直接复制使用。
 
 ```bash
-# 输入图像
 export IMG="outputs/候选双丝像质计/wqxDR__SHLNG-PED-A05+002-Z-NJ01__01.jpg"
-
-# 输出目录（Step 1 产出）
 export OUT_DIR="outputs/double_wire_demo_3"
-
-# 剖面 JSON（Step 1 产出 → Step 2 输入）
 export PROFILE="${OUT_DIR}/wqxDR__SHLNG-PED-A05+002-Z-NJ01__01_profile.json"
-
-# Ground Truth（Step 2 产出 → Step 4 输入）
 export GT="${OUT_DIR}/wqxDR__SHLNG-PED-A05+002-Z-NJ01__01_groundtruth.json"
-
-# Python 路径
 export PYTHONPATH=".:./src"
 ```
 
@@ -135,7 +126,7 @@ python scripts/debug/validate_bam_gt.py "${PROFILE}" "${GT}"
 
 **产出：**
 - 终端输出：配对对比、位置误差、dip 值、参数敏感度
-- `outputs/double_wire_demo/validation_report.txt`（报告文本）
+- `${OUT_DIR}/validation_report.txt`（报告文本）
 
 ---
 
@@ -149,7 +140,7 @@ vim src/gauge/imaging/profile.py
 python -m py_compile src/gauge/imaging/profile.py
 
 # 3. 单元测试
-PYTHONPATH=.:./src python -m unittest tests.test_double_wire_profile -v
+python -m unittest tests.test_double_wire_profile -v
 
 # 4. GT 验证
 python scripts/debug/validate_bam_gt.py "${PROFILE}" "${GT}"
