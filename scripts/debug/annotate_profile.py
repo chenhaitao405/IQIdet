@@ -15,7 +15,7 @@ Arguments:
 
 Options:
     -h --help                显示帮助信息
-    --output <path>          输出 ground truth JSON 路径 [default: 自动生成 _groundtruth.json]
+    --output <path>          输出 ground truth JSON 路径；默认与输入 *_profile.json 同目录
 
 Interaction:
     Left-click on the profile curve  → add a marker at the nearest profile index.
@@ -62,6 +62,17 @@ PEAK_MARKER = "v"          # downward triangle (profile peaks point down visuall
 VALLEY_MARKER = "^"        # upward triangle
 
 
+def default_groundtruth_path(profile_json_path: str | Path) -> Path:
+    """Return the default GT path next to the input profile JSON."""
+    profile_path = Path(profile_json_path)
+    stem = profile_path.stem
+    if stem.endswith("_profile"):
+        stem = stem[: -len("_profile")] + "_groundtruth"
+    else:
+        stem = stem + "_groundtruth"
+    return profile_path.with_name(stem + ".json")
+
+
 class ProfileAnnotator:
     """Interactive profile annotation tool."""
 
@@ -70,9 +81,7 @@ class ProfileAnnotator:
         self.output_path = (
             Path(output_path)
             if output_path
-            else self.profile_json_path.with_name(
-                self.profile_json_path.stem.replace("_profile", "_groundtruth") + ".json"
-            )
+            else default_groundtruth_path(self.profile_json_path)
         )
 
         # Load data

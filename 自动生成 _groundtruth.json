@@ -1,172 +1,172 @@
 {
-  "source_profile": "outputs/double_wire_demo/wqxDR__SHLNG-PED-A05+002-Z-NJ01__01_profile.json",
+  "source_profile": "outputs/double_wire_demo_3/wqxDR__SHLNG-PED-A05+002-Z-NJ01__01_profile.json",
   "band_width": 21,
   "film_type": "negative",
   "num_wire_pairs": 7,
   "wire_pairs": [
     {
       "group": 1,
-      "valley_a_idx": 125,
-      "peak_idx": 158,
-      "valley_b_idx": 163,
-      "valley_a_gray": 201.09117043859615,
-      "peak_gray": 132.17930941243316,
-      "valley_b_gray": 197.8448587959412
+      "valley_a_idx": 14,
+      "peak_idx": 46,
+      "valley_b_idx": 51,
+      "valley_a_gray": 201.67852123392063,
+      "peak_gray": 133.9381027383195,
+      "valley_b_gray": 198.15149600069884
     },
     {
       "group": 2,
-      "valley_a_idx": 163,
-      "peak_idx": 196,
-      "valley_b_idx": 199,
-      "valley_a_gray": 197.8448587959412,
-      "peak_gray": 152.15461499047618,
-      "valley_b_gray": 200.59397662408082
+      "valley_a_idx": 51,
+      "peak_idx": 84,
+      "valley_b_idx": 88,
+      "valley_a_gray": 198.15149600069884,
+      "peak_gray": 153.1173441653032,
+      "valley_b_gray": 201.43558135943525
     },
     {
       "group": 3,
-      "valley_a_idx": 199,
-      "peak_idx": 233,
-      "valley_b_idx": 236,
-      "valley_a_gray": 200.59397662408082,
-      "peak_gray": 159.47097053810253,
-      "valley_b_gray": 201.7511997866973
+      "valley_a_idx": 88,
+      "peak_idx": 122,
+      "valley_b_idx": 125,
+      "valley_a_gray": 201.43558135943525,
+      "peak_gray": 161.87255588889175,
+      "valley_b_gray": 200.08043531224524
     },
     {
       "group": 4,
-      "valley_a_idx": 236,
-      "peak_idx": 263,
-      "valley_b_idx": 265,
-      "valley_a_gray": 201.7511997866973,
-      "peak_gray": 176.55932293050228,
-      "valley_b_gray": 204.81482314652345
+      "valley_a_idx": 125,
+      "peak_idx": 151,
+      "valley_b_idx": 154,
+      "valley_a_gray": 200.08043531224524,
+      "peak_gray": 179.44268080954959,
+      "valley_b_gray": 204.72684705166043
     },
     {
       "group": 5,
-      "valley_a_idx": 265,
-      "peak_idx": 293,
-      "valley_b_idx": 295,
-      "valley_a_gray": 204.81482314652345,
-      "peak_gray": 192.44844572492894,
-      "valley_b_gray": 208.17342143372736
+      "valley_a_idx": 154,
+      "peak_idx": 181,
+      "valley_b_idx": 183,
+      "valley_a_gray": 204.72684705166043,
+      "peak_gray": 195.8349845012058,
+      "valley_b_gray": 207.33328073668912
     },
     {
       "group": 6,
-      "valley_a_idx": 295,
-      "peak_idx": 323,
-      "valley_b_idx": 324,
-      "valley_a_gray": 208.17342143372736,
-      "peak_gray": 205.4356468224342,
-      "valley_b_gray": 213.7761871562204
+      "valley_a_idx": 183,
+      "peak_idx": 211,
+      "valley_b_idx": 213,
+      "valley_a_gray": 207.33328073668912,
+      "peak_gray": 206.25884694307064,
+      "valley_b_gray": 213.00552906194133
     },
     {
       "group": 7,
-      "valley_a_idx": 324,
-      "peak_idx": 352,
-      "valley_b_idx": 353,
-      "valley_a_gray": 213.7761871562204,
-      "peak_gray": 213.83888448852545,
-      "valley_b_gray": 214.91352579923918
+      "valley_a_idx": 213,
+      "peak_idx": 241,
+      "valley_b_idx": 242,
+      "valley_a_gray": 213.00552906194133,
+      "peak_gray": 213.51297649337798,
+      "valley_b_gray": 216.24428971047195
     }
   ],
   "all_peaks": [
     {
-      "idx": 120,
-      "gray": 123.57731257529362
+      "idx": 8,
+      "gray": 124.77098386976537
     },
     {
-      "idx": 132,
-      "gray": 120.26622999381202
+      "idx": 20,
+      "gray": 120.17722303387167
     },
     {
-      "idx": 158,
-      "gray": 132.17930941243316
+      "idx": 46,
+      "gray": 133.9381027383195
     },
     {
-      "idx": 167,
-      "gray": 133.11547958654933
+      "idx": 56,
+      "gray": 132.63854305447188
     },
     {
-      "idx": 196,
-      "gray": 152.15461499047618
+      "idx": 84,
+      "gray": 153.1173441653032
     },
     {
-      "idx": 203,
-      "gray": 151.10775843565594
+      "idx": 91,
+      "gray": 154.31636435184868
     },
     {
-      "idx": 233,
-      "gray": 159.47097053810253
+      "idx": 122,
+      "gray": 161.87255588889175
     },
     {
-      "idx": 239,
-      "gray": 160.86940817116613
+      "idx": 127,
+      "gray": 163.71543027608283
     },
     {
-      "idx": 263,
-      "gray": 176.55932293050228
+      "idx": 151,
+      "gray": 179.44268080954959
     },
     {
-      "idx": 268,
-      "gray": 178.0369733778336
+      "idx": 156,
+      "gray": 178.33403930326833
     },
     {
-      "idx": 293,
-      "gray": 192.44844572492894
+      "idx": 181,
+      "gray": 195.8349845012058
     },
     {
-      "idx": 297,
-      "gray": 193.8789263771769
+      "idx": 185,
+      "gray": 192.97072365832398
     },
     {
-      "idx": 323,
-      "gray": 205.4356468224342
+      "idx": 211,
+      "gray": 206.25884694307064
     },
     {
-      "idx": 326,
-      "gray": 207.5467838550332
+      "idx": 214,
+      "gray": 206.91442847021997
     },
     {
-      "idx": 352,
-      "gray": 213.83888448852545
+      "idx": 241,
+      "gray": 213.51297649337798
     },
     {
-      "idx": 355,
-      "gray": 213.8080106642615
+      "idx": 243,
+      "gray": 212.2340494133216
     }
   ],
   "all_valleys": [
     {
+      "idx": 14,
+      "gray": 201.67852123392063
+    },
+    {
+      "idx": 51,
+      "gray": 198.15149600069884
+    },
+    {
+      "idx": 88,
+      "gray": 201.43558135943525
+    },
+    {
       "idx": 125,
-      "gray": 201.09117043859615
+      "gray": 200.08043531224524
     },
     {
-      "idx": 163,
-      "gray": 197.8448587959412
+      "idx": 154,
+      "gray": 204.72684705166043
     },
     {
-      "idx": 199,
-      "gray": 200.59397662408082
+      "idx": 183,
+      "gray": 207.33328073668912
     },
     {
-      "idx": 236,
-      "gray": 201.7511997866973
+      "idx": 213,
+      "gray": 213.00552906194133
     },
     {
-      "idx": 265,
-      "gray": 204.81482314652345
-    },
-    {
-      "idx": 295,
-      "gray": 208.17342143372736
-    },
-    {
-      "idx": 324,
-      "gray": 213.7761871562204
-    },
-    {
-      "idx": 353,
-      "gray": 214.91352579923918
+      "idx": 242,
+      "gray": 216.24428971047195
     }
   ],
-  "annotated_at": "2026-05-31T02:44:17.566772+00:00"
+  "annotated_at": "2026-06-01T11:49:55.164987+00:00"
 }
