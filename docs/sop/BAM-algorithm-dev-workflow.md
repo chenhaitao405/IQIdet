@@ -124,9 +124,19 @@ python -m unittest tests.test_double_wire_profile -v
 python scripts/debug/validate_bam_gt.py "${PROFILE}" "${GT}"
 ```
 
+**附加 `--vis` 可输出可视化图表：**
+
+```bash
+python scripts/debug/validate_bam_gt.py "${PROFILE}" "${GT}" --vis
+```
+
 **产出：**
 - 终端输出：配对对比、位置误差、dip 值、参数敏感度
 - `${OUT_DIR}/validation_report.txt`（报告文本）
+- `${OUT_DIR}/validation_vis.png`（可视化，仅 `--vis` 时）：
+  - Panel 1 — 去趋势对比（原始剖面 + 二次趋势 + 去趋势峰谷检测）
+  - Panel 2 — 算法配对概览（SG 背景 + 丝对阴影 + dip 标注）
+  - Panel 3 — GT vs 算法叠加对比
 
 ---
 
