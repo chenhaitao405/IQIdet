@@ -47,7 +47,6 @@ from gauge.imaging.profile import (
     extract_profile_band,
     fit_obb_and_midline,
     unwarp_obb_region,
-    detect_peaks_valleys,
     compute_contrast,
     find_first_unresolved_group,
 )
@@ -153,8 +152,6 @@ class DoubleWireDemo:
         # Profile data
         self.profile_line: Optional[Tuple[Tuple[float, float], Tuple[float, float]]] = None
         self.profile: Optional[np.ndarray] = None
-        self.peak_indices: Optional[np.ndarray] = None
-        self.valley_indices: Optional[np.ndarray] = None
 
         # BAM analysis
         self.bam_result: Optional[ComputeContrastResult] = None
@@ -278,9 +275,6 @@ class DoubleWireDemo:
         self.profile = extract_profile_band(
             self.image_raw, self.profile_line[0], self.profile_line[1],
             band_width=self.band_width, num_samples=uw,
-        )
-        self.peak_indices, self.valley_indices = detect_peaks_valleys(
-            self.profile, min_distance=10, prominence=0.05,
         )
         # BAM double-wire analysis
         self.bam_result = compute_contrast(
@@ -409,22 +403,6 @@ class DoubleWireDemo:
         y_min = self.profile.min() - 0.05 * prof_range
         y_max = self.profile.max() + 0.05 * prof_range
 
-        # Peak and valley markers
-        if self.peak_indices is not None and len(self.peak_indices) > 0:
-            peaks = self.peak_indices
-            self.ax_bottom.plot(peaks, self.profile[peaks], "r^", markersize=8, label="Peaks")
-            for p in peaks:
-                val = self.profile[p]
-                self.ax_bottom.annotate(f"{val:.2f}", (p, val), textcoords="offset points",
-                                        xytext=(0, 8), fontsize=7, color="red", ha="center")
-        if self.valley_indices is not None and len(self.valley_indices) > 0:
-            valleys = self.valley_indices
-            self.ax_bottom.plot(valleys, self.profile[valleys], "bv", markersize=8, label="Valleys")
-            for v in valleys:
-                val = self.profile[v]
-                self.ax_bottom.annotate(f"{val:.2f}", (v, val), textcoords="offset points",
-                                        xytext=(0, -12), fontsize=7, color="blue", ha="center")
-
         # BAM dip overlay (wire pair markers + dip labels)
         if self.bam_result is not None and len(self.bam_result.pairs) > 0:
             dips = self.bam_result.dips
@@ -512,8 +490,6 @@ class DoubleWireDemo:
             "band_width": self.band_width,
             "profile_offset_pct": self.profile_offset_pct,
             "profile_values": self.profile.tolist() if self.profile is not None else [],
-            "peak_indices": self.peak_indices.tolist() if self.peak_indices is not None else [],
-            "valley_indices": self.valley_indices.tolist() if self.valley_indices is not None else [],
         }
         # ── BAM analysis fields ──
         if self.bam_result is not None:
@@ -557,8 +533,6 @@ class DoubleWireDemo:
                 self.obb_corners_disp = None
                 self.profile_line = None
                 self.profile = None
-                self.peak_indices = None
-                self.valley_indices = None
                 cv2.setTrackbarPos(self.trackbar_name, self.window_name, 50)
                 self.profile_offset_pct = 50
                 self.fig.clear()
