@@ -205,8 +205,7 @@ class ComputeContrastResult:
     Attributes:
         dips: Dip (modulation depth) for each wire pair, in percent [0, 100].
         pairs: Detected (wire_a_idx, gap_idx, wire_b_idx) triplets.
-            Conventions follow positive-film semantics (valley, peak, valley),
-            matching the naming in ``groundtruth.json``.
+            The tuple uses neutral wire/gap semantics independent of film type.
         background: Quadratic background fit values, same length as the input
             profile.
         film_type: ``"positive"`` or ``"negative"``.
@@ -228,8 +227,8 @@ def _detect_film_type(
     largest amplitude swing.  The dominant wire pair produces the largest
     swing, and its pattern reveals the film type:
 
-    - v-p-v with deep valleys → positive film  (wires are dark valleys)
-    - p-v-p with tall peaks   → negative film (wires are bright peaks)
+    - p-v-p with tall peaks   → positive film (wires are bright peaks)
+    - v-p-v with deep valleys → negative film (wires are dark valleys)
 
     Args:
         profile: 1D band-averaged gray profile.
@@ -269,9 +268,9 @@ def _detect_film_type(
                 best_swing = swing
                 best_type = t1
 
-    if best_type == "v":
-        return "positive"
     if best_type == "p":
+        return "positive"
+    if best_type == "v":
         return "negative"
     return "positive"
 
@@ -387,10 +386,10 @@ def _pair_wires_and_compute_dips(
 
     Args:
         profile: 1D band-averaged gray profile.
-        wire_positions: Sorted indices of wire positions (valleys for
-            positive film, peaks for negative).
-        gap_positions: Sorted indices of gap positions (peaks for positive,
-            valleys for negative).
+        wire_positions: Sorted indices of wire positions (peaks for
+            positive film, valleys for negative).
+        gap_positions: Sorted indices of gap positions (valleys for positive,
+            peaks for negative).
         background: Quadratic background fit, same length as *profile*.
         half_w: Half-window for neighbourhood-averaged dip computation.
         dist_factor: Maximum allowed multiple of the first-pair spacing
@@ -425,7 +424,7 @@ def _pair_wires_and_compute_dips(
             gap_mask = (gap_positions > w1) & (gap_positions < w2)
             gaps_between = gap_positions[gap_mask]
             if len(gaps_between) >= 1:
-                if film_type == "negative":
+                if film_type == "positive":
                     c = int(gaps_between[np.argmin(profile[gaps_between])])
                 else:
                     c = int(gaps_between[np.argmax(profile[gaps_between])])
@@ -471,7 +470,7 @@ def _pair_direction_scores(
     """Return per-pair contrast direction scores for film-type selection."""
     scores: List[float] = []
     for w1, gap, w2 in pairs:
-        if film_type == "negative":
+        if film_type == "positive":
             score = min(float(profile[w1] - profile[gap]), float(profile[w2] - profile[gap]))
         else:
             score = min(float(profile[gap] - profile[w1]), float(profile[gap] - profile[w2]))
@@ -491,8 +490,8 @@ def _pair_adjacent_wires_with_gaps(
 ) -> Tuple[List[float], List[Tuple[int, int, int]]]:
     """Pair adjacent wire extrema using the BAM first-spacing rule.
 
-    Positive film uses dark adjacent valleys with the brightest peak between
-    them. Negative film uses bright adjacent peaks with the darkest valley
+    Positive film uses bright adjacent peaks with the darkest valley between
+    them. Negative film uses dark adjacent valleys with the brightest peak
     between them.
     """
     if len(wire_positions) < 2 or len(gap_positions) == 0:
@@ -510,7 +509,7 @@ def _pair_adjacent_wires_with_gaps(
         if len(gaps_between) == 0:
             continue
 
-        if film_type == "negative":
+        if film_type == "positive":
             gap = int(gaps_between[np.argmin(profile[gaps_between])])
             if not (profile[gap] < profile[w1] and profile[gap] < profile[w2]):
                 continue
@@ -758,8 +757,8 @@ def compute_contrast(
         )
 
     # 2. Film-type determination. Build the positive-film candidate first
-    #    because dark-wire / bright-gap samples can be misclassified when
-    #    background plateau peaks dominate the largest alternating triple.
+    #    because bright-wire / dark-gap samples can be misclassified when
+    #    background valley noise dominates the largest alternating triple.
     fine_peaks, fine_valleys = detect_peaks_valleys(
         detrended,
         min_distance=1,
@@ -768,10 +767,10 @@ def compute_contrast(
     dip_half_w = 0
 
     positive_background = _fit_quadratic_background(
-        profile, fine_valleys, inverted=True,
+        profile, fine_peaks, inverted=False,
     )
     positive_dips, positive_pairs = _pair_adjacent_wires_with_gaps(
-        profile, fine_valleys, fine_peaks, positive_background,
+        profile, fine_peaks, fine_valleys, positive_background,
         half_w=dip_half_w,
         film_type="positive",
     )
@@ -793,11 +792,11 @@ def compute_contrast(
 
     # 3. Assign wire / gap roles
     if is_negative:
-        wire_positions = peaks
-        gap_positions = valleys
-    else:
         wire_positions = valleys
         gap_positions = peaks
+    else:
+        wire_positions = peaks
+        gap_positions = valleys
 
     # 4. Quadratic background fit (masking wire regions)
     background = _fit_quadratic_background(
@@ -807,7 +806,7 @@ def compute_contrast(
     # 5. Pair wires and compute dips
     if ft == "positive":
         dips, pairs = _pair_adjacent_wires_with_gaps(
-            profile, fine_valleys, fine_peaks, background,
+            profile, fine_peaks, fine_valleys, background,
             half_w=dip_half_w,
             film_type=ft,
         )
@@ -880,3 +879,184 @@ def find_first_unresolved_group(
         return spacings.index(crossing_val) + 1
 
     return None
+
+
+# ---------------------------------------------------------------------------
+# OBB geometry helpers
+# ---------------------------------------------------------------------------
+
+def normalize_profile_obb(
+    corners: np.ndarray,
+) -> Tuple[Tuple[Tuple[float, float], Tuple[float, float]], Tuple[Tuple[float, float], Tuple[float, float]]]:
+    """Normalize double-wire OBB so profile width follows the long edge.
+
+    The interactive clicks may start on either the long or short rectangle edge.
+    The profile scan direction should follow the longer edge across the wires.
+
+    Args:
+        corners: 4×2 array of OBB corners in any cyclic order.
+
+    Returns:
+        (normalized_corners, midline) where midline is
+        ((start_x, start_y), (end_x, end_y)).
+    """
+    normalized = np.asarray(corners, dtype=np.float32).reshape(4, 2)
+    edge_01 = float(np.linalg.norm(normalized[1] - normalized[0]))
+    edge_12 = float(np.linalg.norm(normalized[2] - normalized[1]))
+
+    if edge_01 < edge_12:
+        normalized = np.roll(normalized, -1, axis=0)
+
+    tl, tr, br, bl = normalized
+    start = (
+        float((bl[0] + tl[0]) / 2.0),
+        float((bl[1] + tl[1]) / 2.0),
+    )
+    end = (
+        float((tr[0] + br[0]) / 2.0),
+        float((tr[1] + br[1]) / 2.0),
+    )
+    return normalized, (start, end)
+
+
+def bam_pair_marker_indices(
+    pairs: list[tuple[int, int, int]] | list[list[int]],
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Return BAM wire and gap marker indices for profile plotting.
+
+    Args:
+        pairs: List of (wire_a_idx, gap_idx, wire_b_idx) triplets.
+
+    Returns:
+        (wire_indices, gap_indices) as sorted numpy arrays.
+    """
+    if not pairs:
+        return np.array([], dtype=int), np.array([], dtype=int)
+    wire_indices: list[int] = []
+    gap_indices: list[int] = []
+    for w1, gap, w2 in pairs:
+        wire_indices.extend([int(w1), int(w2)])
+        gap_indices.append(int(gap))
+    return np.array(sorted(set(wire_indices)), dtype=int), np.array(gap_indices, dtype=int)
+
+
+# ---------------------------------------------------------------------------
+# Ground truth construction
+# ---------------------------------------------------------------------------
+
+def pair_wire_markers(
+    profile_values: np.ndarray,
+    wire_markers: list[dict],
+    gap_markers: list[dict],
+    *,
+    wire_type: str,
+) -> list[dict]:
+    """Pair adjacent wire markers and choose the strongest gap between them.
+
+    Args:
+        profile_values: 1-D profile grayscale values.
+        wire_markers: List of ``{"idx": int, "type": "peak"|"valley"}`` dicts.
+        gap_markers: List of ``{"idx": int, "type": "peak"|"valley"}`` dicts.
+        wire_type: ``"peak"`` for positive film (bright wires), ``"valley"``
+            for negative film (dark wires).
+
+    Returns:
+        List of wire-pair dicts with keys ``group``, ``wire_a_idx``,
+        ``gap_idx``, ``wire_b_idx``, ``wire_a_gray``, ``gap_gray``,
+        ``wire_b_gray``.
+    """
+    wire_markers = sorted(wire_markers, key=lambda m: m["idx"])
+    gap_markers = sorted(gap_markers, key=lambda m: m["idx"])
+
+    wire_pairs = []
+    for i in range(len(wire_markers) - 1):
+        w1 = wire_markers[i]
+        w2 = wire_markers[i + 1]
+        between = [g for g in gap_markers if w1["idx"] < g["idx"] < w2["idx"]]
+        if not between:
+            continue
+
+        if wire_type == "peak":
+            gap_idx = min(between, key=lambda g: profile_values[g["idx"]])["idx"]
+        else:
+            gap_idx = max(between, key=lambda g: profile_values[g["idx"]])["idx"]
+
+        wire_pairs.append({
+            "group": len(wire_pairs) + 1,
+            "wire_a_idx": int(w1["idx"]),
+            "gap_idx": int(gap_idx),
+            "wire_b_idx": int(w2["idx"]),
+            "wire_a_gray": float(profile_values[w1["idx"]]),
+            "gap_gray": float(profile_values[gap_idx]),
+            "wire_b_gray": float(profile_values[w2["idx"]]),
+        })
+
+    return wire_pairs
+
+
+def build_groundtruth_payload(
+    profile_values: np.ndarray,
+    markers: list[dict],
+    *,
+    source_profile: str,
+    band_width: int,
+    film_type: str | None = None,
+) -> dict:
+    """Build neutral wire/gap ground-truth payload from manual markers.
+
+    Positive film uses bright wires around a dark gap (peak-valley-peak).
+    Negative film uses dark wires around a bright gap (valley-peak-valley).
+
+    Args:
+        profile_values: 1-D profile grayscale values.
+        markers: List of ``{"type": "peak"|"valley", "idx": int}`` dicts.
+        source_profile: Path to the source profile JSON (for provenance).
+        band_width: Band width used when extracting the profile.
+        film_type: ``"positive"``, ``"negative"``, or ``None`` (auto-detect).
+            Auto selects the type that produces more pairs.
+
+    Returns:
+        Ground-truth payload dict.
+    """
+    from datetime import datetime, timezone
+
+    profile_values = np.asarray(profile_values, dtype=np.float64)
+    peaks = sorted([m for m in markers if m["type"] == "peak"], key=lambda m: m["idx"])
+    valleys = sorted([m for m in markers if m["type"] == "valley"], key=lambda m: m["idx"])
+
+    positive_pairs = pair_wire_markers(
+        profile_values, peaks, valleys, wire_type="peak",
+    )
+    negative_pairs = pair_wire_markers(
+        profile_values, valleys, peaks, wire_type="valley",
+    )
+
+    if film_type is None or film_type == "auto":
+        if len(positive_pairs) >= len(negative_pairs) and positive_pairs:
+            film_type = "positive"
+            wire_pairs = positive_pairs
+        elif negative_pairs:
+            film_type = "negative"
+            wire_pairs = negative_pairs
+        else:
+            film_type = "unknown"
+            wire_pairs = []
+    elif film_type == "positive":
+        wire_pairs = positive_pairs
+    elif film_type == "negative":
+        wire_pairs = negative_pairs
+    else:
+        raise ValueError(f"Unsupported film_type: {film_type}")
+
+    return {
+        "source_profile": str(source_profile),
+        "band_width": band_width,
+        "film_type": film_type,
+        "num_wire_pairs": len(wire_pairs),
+        "wire_pairs": wire_pairs,
+        "all_peaks": [{"idx": int(m["idx"]), "gray": float(profile_values[m["idx"]])}
+                      for m in peaks],
+        "all_valleys": [{"idx": int(m["idx"]), "gray": float(profile_values[m["idx"]])}
+                        for m in valleys],
+        "annotated_at": datetime.now(timezone.utc).isoformat(),
+    }
