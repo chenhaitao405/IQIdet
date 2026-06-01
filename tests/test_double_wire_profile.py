@@ -781,6 +781,23 @@ class TestComputeContrast(unittest.TestCase):
         self.assertLessEqual(max_triplet_err, 5.0)
         self.assertLessEqual(mean_err, 3.0)
 
+    def test_bam_gt_profile_uses_single_point_dips(self):
+        """真实 BAM 剖面 dip 暂统一使用单点极值，避免细丝被窗口均值抹平。"""
+        import json
+        from gauge.imaging.profile import compute_contrast
+
+        profile_path = REPO_ROOT / "outputs/double_wire_demo_3/wqxDR__SHLNG-PED-A05+002-Z-NJ01__01_profile.json"
+        gt_path = REPO_ROOT / "outputs/double_wire_demo_3/wqxDR__SHLNG-PED-A05+002-Z-NJ01__01_groundtruth.json"
+        if not profile_path.exists() or not gt_path.exists():
+            self.skipTest("BAM GT validation fixture is not present")
+
+        with open(profile_path, encoding="utf-8") as f:
+            profile = np.asarray(json.load(f)["profile_values"], dtype=np.float64)
+
+        result = compute_contrast(profile, film_type="auto", min_distance=5, prominence=0.03)
+
+        self.assertGreater(result.dips[2], 80.0)
+
 
 class TestFindFirstUnresolvedGroup(unittest.TestCase):
     """Tests for find_first_unresolved_group()."""

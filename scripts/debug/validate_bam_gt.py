@@ -307,12 +307,12 @@ log(f"  {'-'*70}")
 gt_dips_viz: list[dict] = []
 for i, gp in enumerate(gt["wire_pairs"]):
     w1, gap, w2 = gp["valley_a_idx"], gp["peak_idx"], gp["valley_b_idx"]
-    dip = _compute_dip(profile, w1, gap, w2, bg_gt, half_w=3)
+    dip = _compute_dip(profile, w1, gap, w2, bg_gt, half_w=0)
 
     L = len(profile)
     def _region_mean(center):
-        lo = max(0, center - 3)
-        hi = min(L - 1, center + 3)
+        lo = center
+        hi = center
         return float(profile[lo:hi + 1].mean())
 
     a_mean = _region_mean(w1)
@@ -327,8 +327,8 @@ for i, gp in enumerate(gt["wire_pairs"]):
     gt_dips_viz.append({"w1": w1, "gap": gap, "w2": w2, "dip": dip})
 
 log()
-log("  Observation: For D1-D2, C >> A,B => dip clamped to 0.")
-log("  For D3-D7, dip rises as C decreases (gap fills in).")
+log("  Observation: This diagnostic uses single extrema points (half_w=0),")
+log("  matching the current compute_contrast dip path.")
 log()
 
 # 4h: Parameter sweep

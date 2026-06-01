@@ -714,9 +714,9 @@ def compute_contrast(
         wire_spacings: Nominal spacings (mm) of the wire pairs, e.g. the
             JBT 7902 D1-D13 sequence.  Accepted for forward compatibility;
             not used internally by this function.
-        window_half_width: Half-width of the neighbourhood window for
-            computing the a / b / c region means.  0 degenerates to
-            single-pixel values.
+        window_half_width: Accepted for API compatibility.  The current BAM
+            pairing path computes dips from single extrema points
+            (``half_w=0``) to avoid smearing fine wire pairs.
         film_type: ``"positive"``, ``"negative"``, or ``"auto"``.  When
             ``"auto"`` the type is detected from the first wire pair.
         min_distance: Minimum pixel distance between adjacent peaks,
@@ -765,13 +765,14 @@ def compute_contrast(
         min_distance=1,
         prominence=max(0.005, prominence * 0.5),
     )
+    dip_half_w = 0
 
     positive_background = _fit_quadratic_background(
         profile, fine_valleys, inverted=True,
     )
     positive_dips, positive_pairs = _pair_adjacent_wires_with_gaps(
         profile, fine_valleys, fine_peaks, positive_background,
-        half_w=window_half_width,
+        half_w=dip_half_w,
         film_type="positive",
     )
 
@@ -807,13 +808,13 @@ def compute_contrast(
     if ft == "positive":
         dips, pairs = _pair_adjacent_wires_with_gaps(
             profile, fine_valleys, fine_peaks, background,
-            half_w=window_half_width,
+            half_w=dip_half_w,
             film_type=ft,
         )
     else:
         dips, pairs = _pair_wires_and_compute_dips(
             profile, wire_positions, gap_positions, background,
-            half_w=window_half_width,
+            half_w=dip_half_w,
             dist_factor=1.05,
             film_type=ft,
         )
