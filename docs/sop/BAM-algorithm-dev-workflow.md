@@ -2,6 +2,7 @@
 
 **适用分支**: `feature/BAM-validation-fix`（或任意 feature 分支）
 **前置环境**: `conda activate weld-gpu`
+**工作目录**: 仓库根目录（以下所有命令均在仓库根目录执行，路径均为相对路径）
 
 ---
 
@@ -28,10 +29,9 @@
 ## Step 1: 采集剖面数据
 
 ```bash
-cd /home/cht/code/IQIdet && PYTHONPATH=/home/cht/code/IQIdet:/home/cht/code/IQIdet/src \
-  python scripts/debug/double_wire_demo.py \
-    outputs/候选双丝像质计/wqxDR__SHLNG-PED-A05+002-Z-NJ01__01.jpg \
-    --output-dir outputs/double_wire_demo_3
+PYTHONPATH=.:./src python scripts/debug/double_wire_demo.py \
+  outputs/候选双丝像质计/wqxDR__SHLNG-PED-A05+002-Z-NJ01__01.jpg \
+  --output-dir outputs/double_wire_demo_3
 ```
 
 **交互操作：**
@@ -50,9 +50,8 @@ cd /home/cht/code/IQIdet && PYTHONPATH=/home/cht/code/IQIdet:/home/cht/code/IQId
 ## Step 2: 人工标注 Ground Truth
 
 ```bash
-cd /home/cht/code/IQIdet && PYTHONPATH=/home/cht/code/IQIdet:/home/cht/code/IQIdet/src \
-  python scripts/debug/annotate_profile.py \
-    outputs/double_wire_demo_3/wqxDR__SHLNG-PED-A05+002-Z-NJ01__01_profile.json
+PYTHONPATH=.:./src python scripts/debug/annotate_profile.py \
+  outputs/double_wire_demo_3/wqxDR__SHLNG-PED-A05+002-Z-NJ01__01_profile.json
 ```
 
 **交互操作：**
@@ -95,14 +94,13 @@ src/gauge/imaging/profile.py
 **修改后检查编译：**
 
 ```bash
-cd /home/cht/code/IQIdet && python -m py_compile src/gauge/imaging/profile.py
+python -m py_compile src/gauge/imaging/profile.py
 ```
 
 **运行单元测试：**
 
 ```bash
-cd /home/cht/code/IQIdet && PYTHONPATH=/home/cht/code/IQIdet:/home/cht/code/IQIdet/src \
-  python -m unittest tests.test_double_wire_profile -v
+PYTHONPATH=.:./src python -m unittest tests.test_double_wire_profile -v
 ```
 
 ---
@@ -110,21 +108,19 @@ cd /home/cht/code/IQIdet && PYTHONPATH=/home/cht/code/IQIdet:/home/cht/code/IQId
 ## Step 4: 验证
 
 ```bash
-cd /home/cht/code/IQIdet && PYTHONPATH=/home/cht/code/IQIdet:/home/cht/code/IQIdet/src \
-  python scripts/debug/validate_bam_gt.py
+PYTHONPATH=.:./src python scripts/debug/validate_bam_gt.py
 ```
 
 **验证脚本读取：**
 - `outputs/double_wire_demo/groundtruth.json`（GT 数据）
 
-**注意**：验证脚本硬编码了 GT 路径。如果用新的 `double_wire_demo_3` 目录，需要：
+**注意**：验证脚本硬编码了 GT 路径。如果用新的 `double_wire_demo_3` 目录，需要将新标注复制过去：
 
 ```bash
-# 将新标注的 groundtruth 复制（或软链接）到脚本预期的路径
 cp outputs/double_wire_demo_3/*_groundtruth.json outputs/double_wire_demo/groundtruth.json
 ```
 
-或者修改 `scripts/debug/validate_bam_gt.py` 第 49 行的 `gt_path`。
+或修改 `scripts/debug/validate_bam_gt.py` 中的 `gt_path`。
 
 **产出：**
 - 终端输出：配对对比、位置误差、dip 值、参数敏感度
@@ -142,10 +138,10 @@ vim src/gauge/imaging/profile.py
 python -m py_compile src/gauge/imaging/profile.py
 
 # 3. 单元测试
-PYTHONPATH=/home/cht/code/IQIdet:/home/cht/code/IQIdet/src python -m unittest tests.test_double_wire_profile -v
+PYTHONPATH=.:./src python -m unittest tests.test_double_wire_profile -v
 
 # 4. GT 验证
-PYTHONPATH=/home/cht/code/IQIdet:/home/cht/code/IQIdet/src python scripts/debug/validate_bam_gt.py
+PYTHONPATH=.:./src python scripts/debug/validate_bam_gt.py
 
 # 5. 提交
 git add -A && git commit -m "fix(BAM): ..."
