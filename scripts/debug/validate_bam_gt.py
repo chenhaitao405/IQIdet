@@ -392,39 +392,64 @@ if args.vis:
         print("ERROR: matplotlib not installed. Install with: pip install matplotlib")
         sys.exit(1)
 
-    fig, axes = plt.subplots(3, 1, figsize=(14, 10), sharex=True)
+    fig = plt.figure(figsize=(16, 12))
     x = np.arange(len(profile), dtype=np.float64)
     prof_min, prof_max = float(profile.min()), float(profile.max())
     y_pad = (prof_max - prof_min) * 0.08
 
-    # --- Panel 1: Detrending ---
-    ax1 = axes[0]
-    coeffs = np.polyfit(x, profile.astype(np.float64), 2)
-    trend = np.polyval(coeffs, x)
-    detrended = profile.astype(np.float64) - trend
+    n_compare = min(len(result.pairs), len(gt["wire_pairs"]))
+    n_cols = min(4, n_compare)
+    n_rows = max(1, (n_compare + n_cols - 1) // n_cols)
 
-    ax1.plot(x, profile, color="#4C78A8", linewidth=0.8, alpha=0.7, label="Raw profile")
-    ax1.plot(x, trend, color="#E45756", linewidth=1.5, linestyle="--", label="Quadratic trend")
-    ax1.plot(x, detrended + np.mean(trend), color="#72B7B2", linewidth=0.8, alpha=0.6, label="Detrended (shifted)")
+    # --- Panel 1: Per-pair GT vs Algorithm comparison ---
+    gs = fig.add_gridspec(3, 1, height_ratios=[max(2, n_rows), 3, 2], hspace=0.35)
+    top_gs = gs[0].subgridspec(n_rows, n_cols, wspace=0.3, hspace=0.5)
 
-    # Mark detected peaks/valleys on detrended
-    dt_peaks, dt_valleys = detect_peaks_valleys(detrended, min_distance=5, prominence=0.03)
-    dt_shifted = detrended + np.mean(trend)
-    if len(dt_peaks) > 0:
-        ax1.plot(dt_peaks, dt_shifted[dt_peaks], "rv", markersize=5, label=f"Detrended peaks ({len(dt_peaks)})")
-    if len(dt_valleys) > 0:
-        ax1.plot(dt_valleys, dt_shifted[dt_valleys], "b^", markersize=5, label=f"Detrended valleys ({len(dt_valleys)})")
+    for pair_idx in range(n_compare):
+        row, col = divmod(pair_idx, n_cols)
+        ax_pair = fig.add_subplot(top_gs[row, col])
 
-    # Mark GT wire/gap positions
-    for wp in gt["wire_pairs"][:1]:
-        ax1.axvline(wp["valley_a_idx"], color="green", alpha=0.4, linewidth=0.8, linestyle=":")
-    ax1.set_ylabel("Gray value")
-    ax1.set_title("Panel 1 — Detrending: quadratic trend removal + peak/valley detection on detrended signal")
-    ax1.legend(fontsize=7, loc="upper right", ncol=2)
-    ax1.set_ylim(prof_min - y_pad, prof_max + y_pad * 3)
+        algo_w1, algo_g, algo_w2 = result.pairs[pair_idx]
+        dip = result.dips[pair_idx]
+        gp = gt["wire_pairs"][pair_idx]
+        gt_w1, gt_g, gt_w2 = gp["valley_a_idx"], gp["peak_idx"], gp["valley_b_idx"]
 
-    # --- Panel 2: Background + Algorithm pairs ---
-    ax2 = axes[1]
+        # Zoom window around this pair
+        margin = 10
+        x_lo = max(0, min(algo_w1, gt_w1) - margin)
+        x_hi = min(len(profile), max(algo_w2, gt_w2) + margin)
+        xs = np.arange(x_lo, x_hi)
+        ax_pair.plot(xs, profile[xs], color="#4C78A8", linewidth=1.2, label=None)
+
+        # GT markers (solid vertical lines with labels)
+        ax_pair.axvline(gt_w1, color="#54A24B", linewidth=1.5, linestyle="-", alpha=0.8)
+        ax_pair.axvline(gt_g, color="#F58518", linewidth=1.5, linestyle="-", alpha=0.8)
+        ax_pair.axvline(gt_w2, color="#54A24B", linewidth=1.5, linestyle="-", alpha=0.8)
+
+        # Algorithm markers (dashed vertical lines)
+        ax_pair.axvline(algo_w1, color="#E45756", linewidth=1.2, linestyle="--", alpha=0.8)
+        ax_pair.axvline(algo_g, color="#4C78A8", linewidth=1.2, linestyle="--", alpha=0.8)
+        ax_pair.axvline(algo_w2, color="#E45756", linewidth=1.2, linestyle="--", alpha=0.8)
+
+        err1, errg, err2 = abs(algo_w1 - gt_w1), abs(algo_g - gt_g), abs(algo_w2 - gt_w2)
+        grp_label = gp.get("group", pair_idx + 1)
+        ax_pair.set_title(f"D{grp_label}  dip={dip:.0f}%  Δ=({err1},{errg},{err2})px", fontsize=7.5)
+        ax_pair.tick_params(labelsize=6)
+
+    # Legend on last subplot (or first if only 1)
+    legend_ax = fig.add_subplot(top_gs[0, -1]) if n_compare > 1 else fig.add_subplot(top_gs[0, 0])
+    legend_ax.plot([], [], color="#54A24B", linewidth=1.5, linestyle="-", label="GT wire")
+    legend_ax.plot([], [], color="#F58518", linewidth=1.5, linestyle="-", label="GT gap")
+    legend_ax.plot([], [], color="#E45756", linewidth=1.2, linestyle="--", label="Algo wire")
+    legend_ax.plot([], [], color="#4C78A8", linewidth=1.2, linestyle="--", label="Algo gap")
+    legend_ax.legend(fontsize=6, loc="center")
+    legend_ax.axis("off")
+
+    fig.text(0.5, 0.96, "Panel 1 — Per-pair GT vs Algorithm Comparison", fontsize=10,
+             ha="center", weight="bold")
+
+    # --- Panel 2: Background + Algorithm pairs (full profile) ---
+    ax2 = fig.add_subplot(gs[1])
     ax2.plot(x, profile, color="#4C78A8", linewidth=0.8, alpha=0.6, label="Profile")
     ax2.plot(x, result.background, color="#F58518", linewidth=1.5, label="SG background")
 
@@ -437,59 +462,43 @@ if args.vis:
                      textcoords="offset points", xytext=(0, 14),
                      fontsize=6.5, color=color, ha="center", weight="bold")
 
-    # Mark algo pair points
     for w1, g, w2 in result.pairs:
         ax2.plot(w1, profile[w1], "r.", markersize=4, alpha=0.7)
         ax2.plot(g, profile[g], "b.", markersize=4, alpha=0.7)
         ax2.plot(w2, profile[w2], "r.", markersize=4, alpha=0.7)
 
-    ax2.set_ylabel("Gray value")
     unresolved_str = f"D{find_first_unresolved_group(result.dips)}" if find_first_unresolved_group(result.dips) else "none"
-    ax2.set_title(f"Panel 2 — Algorithm pairs (film={result.film_type}, "
-                  f"{len(result.pairs)} pairs, 1st unresolved={unresolved_str})")
+    ax2.set_title(f"Panel 2 — Algorithm overview: {len(result.pairs)} pairs, film={result.film_type}, "
+                  f"1st unresolved={unresolved_str}", fontsize=9)
     ax2.legend(fontsize=7, loc="upper right")
 
-    # --- Panel 3: Algorithm vs GT overlay (zoom on wire region) ---
-    ax3 = axes[2]
+    # --- Panel 3: GT vs Algorithm full overlay ---
+    ax3 = fig.add_subplot(gs[2], sharex=ax2)
     ax3.plot(x, profile, color="#4C78A8", linewidth=0.8, alpha=0.5, label="Profile")
 
-    # GT pairs
     for gp in gt["wire_pairs"]:
         g_va, g_pk, g_vb = gp["valley_a_idx"], gp["peak_idx"], gp["valley_b_idx"]
-        ax3.axvline(g_va, color="green", alpha=0.5, linewidth=1.0, linestyle="--")
-        ax3.axvline(g_pk, color="orange", alpha=0.5, linewidth=1.0, linestyle="--")
-        ax3.axvline(g_vb, color="green", alpha=0.5, linewidth=1.0, linestyle="--")
-        label_y = prof_max + y_pad * 0.5
-        ax3.text((g_va + g_vb) / 2, label_y, f"D{gp['group']}", fontsize=7,
-                 ha="center", color="green", alpha=0.7)
+        ax3.axvline(g_va, color="#54A24B", alpha=0.6, linewidth=1.2, linestyle="-")
+        ax3.axvline(g_pk, color="#F58518", alpha=0.6, linewidth=1.2, linestyle="-")
+        ax3.axvline(g_vb, color="#54A24B", alpha=0.6, linewidth=1.2, linestyle="-")
 
-    # Algo pairs
     for i, ((w1, g, w2), dip) in enumerate(zip(result.pairs, result.dips)):
-        ax3.axvline(w1, color="red", alpha=0.5, linewidth=0.8, linestyle=":")
-        ax3.axvline(g, color="blue", alpha=0.5, linewidth=0.8, linestyle=":")
-        ax3.axvline(w2, color="red", alpha=0.5, linewidth=0.8, linestyle=":")
-        label_y = prof_max + y_pad * 1.2
-        ax3.text((w1 + w2) / 2, label_y, f"A{i+1}", fontsize=7,
-                 ha="center", color="red", alpha=0.7)
+        ax3.axvline(w1, color="#E45756", alpha=0.5, linewidth=0.8, linestyle=":")
+        ax3.axvline(g, color="#4C78A8", alpha=0.5, linewidth=0.8, linestyle=":")
+        ax3.axvline(w2, color="#E45756", alpha=0.5, linewidth=0.8, linestyle=":")
 
-    # Dummy lines for legend
-    ax3.plot([], [], "r:", alpha=0.5, label="Algo wires")
-    ax3.plot([], [], "b:", alpha=0.5, label="Algo gaps")
-    ax3.plot([], [], "g--", alpha=0.5, label="GT wires")
-    ax3.plot([], [], color="orange", linestyle="--", alpha=0.5, label="GT gaps")
-
-    ax3.set_xlabel("Profile position (px)")
-    ax3.set_ylabel("Gray value")
-    ax3.set_title(f"Panel 3 — GT ({gt['film_type']}, {gt['num_wire_pairs']} pairs) vs Algorithm overlay")
+    ax3.plot([], [], color="#54A24B", linewidth=1.2, linestyle="-", label="GT wires / gaps")
+    ax3.plot([], [], color="#E45756", linewidth=0.8, linestyle=":", label="Algo wires / gaps")
+    ax3.set_title(f"Panel 3 — GT ({gt['film_type']}, {gt['num_wire_pairs']} pairs) vs Algorithm "
+                  f"({result.film_type}, {len(result.pairs)} pairs)", fontsize=9)
     ax3.legend(fontsize=7, loc="upper right", ncol=2)
 
-    # Zoom to wire region (skip leading/trailing flat areas)
     if len(result.pairs) > 0:
         wire_start = max(0, result.pairs[0][0] - 20)
         wire_end = min(len(profile), result.pairs[-1][2] + 20)
         ax3.set_xlim(wire_start, wire_end)
 
-    fig.tight_layout()
+    fig.tight_layout(rect=[0, 0, 1, 0.95])
     fig.savefig(str(vis_path), dpi=150, bbox_inches="tight")
     plt.close(fig)
     log(f"Visualization saved to: {vis_path}")
