@@ -437,6 +437,109 @@ def _pair_wires_and_compute_dips(
     return dips, pairs
 
 
+def _trim_pairs_to_stable_center_prefix(
+    pairs: Sequence[Tuple[int, int, int]],
+) -> List[Tuple[int, int, int]]:
+    """Keep the physically ordered prefix before a large center-spacing jump."""
+    if len(pairs) <= 2:
+        return list(pairs)
+
+    kept = [pairs[0]]
+    center_gaps: List[int] = []
+    prev_center = pairs[0][1]
+
+    for pair in pairs[1:]:
+        center = pair[1]
+        delta = center - prev_center
+        if center_gaps:
+            ref = float(np.median(center_gaps))
+            if delta > max(ref * 1.8, ref + 20.0):
+                break
+        center_gaps.append(delta)
+        kept.append(pair)
+        prev_center = center
+
+    return kept
+
+
+def _pair_direction_scores(
+    profile: np.ndarray,
+    pairs: Sequence[Tuple[int, int, int]],
+    *,
+    film_type: str,
+) -> List[float]:
+    """Return per-pair contrast direction scores for film-type selection."""
+    scores: List[float] = []
+    for w1, gap, w2 in pairs:
+        if film_type == "negative":
+            score = min(float(profile[w1] - profile[gap]), float(profile[w2] - profile[gap]))
+        else:
+            score = min(float(profile[gap] - profile[w1]), float(profile[gap] - profile[w2]))
+        scores.append(score)
+    return scores
+
+
+def _pair_adjacent_wires_with_gaps(
+    profile: np.ndarray,
+    wire_positions: np.ndarray,
+    gap_positions: np.ndarray,
+    background: np.ndarray,
+    half_w: int,
+    *,
+    film_type: str,
+    dist_factor: float = 1.05,
+) -> Tuple[List[float], List[Tuple[int, int, int]]]:
+    """Pair adjacent wire extrema using the BAM first-spacing rule.
+
+    Positive film uses dark adjacent valleys with the brightest peak between
+    them. Negative film uses bright adjacent peaks with the darkest valley
+    between them.
+    """
+    if len(wire_positions) < 2 or len(gap_positions) == 0:
+        return [], []
+
+    wire_positions = np.asarray(sorted(int(v) for v in wire_positions), dtype=int)
+    gap_positions = np.asarray(sorted(int(v) for v in gap_positions), dtype=int)
+
+    candidates: List[Tuple[int, int, int]] = []
+    candidate_dists: List[int] = []
+    for idx in range(len(wire_positions) - 1):
+        w1 = int(wire_positions[idx])
+        w2 = int(wire_positions[idx + 1])
+        gaps_between = gap_positions[(gap_positions > w1) & (gap_positions < w2)]
+        if len(gaps_between) == 0:
+            continue
+
+        if film_type == "negative":
+            gap = int(gaps_between[np.argmin(profile[gaps_between])])
+            if not (profile[gap] < profile[w1] and profile[gap] < profile[w2]):
+                continue
+        else:
+            gap = int(gaps_between[np.argmax(profile[gaps_between])])
+            if not (profile[gap] > profile[w1] and profile[gap] > profile[w2]):
+                continue
+
+        candidates.append((w1, gap, w2))
+        candidate_dists.append(w2 - w1)
+
+    if not candidates:
+        return [], []
+
+    ref_dist = float(candidate_dists[0])
+    dist_max = max(2.0, ref_dist * dist_factor)
+    filtered = [
+        pair for pair, dist in zip(candidates, candidate_dists)
+        if dist <= dist_max
+    ]
+    filtered = _trim_pairs_to_stable_center_prefix(filtered)
+
+    dips = [
+        _compute_dip(profile, w1, gap, w2, background, half_w)
+        for w1, gap, w2 in filtered
+    ]
+    return dips, filtered
+
+
 def _cleanup_dips_monotonic(
     dips: Sequence[float],
     spacings: Sequence[float],
@@ -654,9 +757,34 @@ def compute_contrast(
             film_type=film_type if film_type != "auto" else "positive",
         )
 
-    # 2. Film-type determination
+    # 2. Film-type determination. Build the positive-film candidate first
+    #    because dark-wire / bright-gap samples can be misclassified when
+    #    background plateau peaks dominate the largest alternating triple.
+    fine_peaks, fine_valleys = detect_peaks_valleys(
+        detrended,
+        min_distance=1,
+        prominence=max(0.005, prominence * 0.5),
+    )
+
+    positive_background = _fit_quadratic_background(
+        profile, fine_valleys, inverted=True,
+    )
+    positive_dips, positive_pairs = _pair_adjacent_wires_with_gaps(
+        profile, fine_valleys, fine_peaks, positive_background,
+        half_w=window_half_width,
+        film_type="positive",
+    )
+
     if film_type == "auto":
-        ft = _detect_film_type(profile, valleys, peaks)
+        triple_ft = _detect_film_type(profile, valleys, peaks)
+        positive_scores = _pair_direction_scores(profile, positive_pairs, film_type="positive")
+        min_positive_score = 0.08 * float(np.max(profile) - np.min(profile))
+        has_strong_positive_series = (
+            len(positive_pairs) >= max(3, len(peaks) // 3)
+            and len(positive_scores) > 0
+            and float(np.median(positive_scores)) >= min_positive_score
+        )
+        ft = "positive" if has_strong_positive_series else triple_ft
     else:
         ft = film_type
 
@@ -676,12 +804,19 @@ def compute_contrast(
     )
 
     # 5. Pair wires and compute dips
-    dips, pairs = _pair_wires_and_compute_dips(
-        profile, wire_positions, gap_positions, background,
-        half_w=window_half_width,
-        dist_factor=1.05,
-        film_type=ft,
-    )
+    if ft == "positive":
+        dips, pairs = _pair_adjacent_wires_with_gaps(
+            profile, fine_valleys, fine_peaks, background,
+            half_w=window_half_width,
+            film_type=ft,
+        )
+    else:
+        dips, pairs = _pair_wires_and_compute_dips(
+            profile, wire_positions, gap_positions, background,
+            half_w=window_half_width,
+            dist_factor=1.05,
+            film_type=ft,
+        )
 
     return ComputeContrastResult(
         dips=dips,

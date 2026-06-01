@@ -42,6 +42,25 @@ def _fmt_err(e: float) -> str:
     return f"{e:.0f}" if e == int(e) else f"{e:.1f}"
 
 
+def _pair_metrics(algo_pairs: list[tuple[int, int, int]], gt_pairs: list[dict]) -> dict:
+    point_errors: list[float] = []
+    triplet_max_errors: list[float] = []
+    for algo_pair, gp in zip(algo_pairs, gt_pairs):
+        gt_triplet = (gp["valley_a_idx"], gp["peak_idx"], gp["valley_b_idx"])
+        errs = [abs(int(a) - int(g)) for a, g in zip(algo_pair, gt_triplet)]
+        point_errors.extend(errs)
+        triplet_max_errors.append(max(errs))
+    mean_err = float(np.mean(point_errors)) if point_errors else float("inf")
+    max_triplet_err = float(max(triplet_max_errors)) if triplet_max_errors else float("inf")
+    return {
+        "matched_pairs": min(len(algo_pairs), len(gt_pairs)),
+        "extra_pairs": max(0, len(algo_pairs) - len(gt_pairs)),
+        "missing_pairs": max(0, len(gt_pairs) - len(algo_pairs)),
+        "mean_point_error": mean_err,
+        "max_triplet_error": max_triplet_err,
+    }
+
+
 # ---------------------------------------------------------------------------
 # Step 1: Parse args & load data
 # ---------------------------------------------------------------------------
@@ -81,6 +100,19 @@ log("=" * 80)
 log()
 
 result = compute_contrast(profile, film_type="auto", min_distance=5, prominence=0.03)
+metrics = _pair_metrics(result.pairs, gt["wire_pairs"])
+film_type_ok = result.film_type == gt["film_type"]
+pair_count_ok = len(result.pairs) == gt["num_wire_pairs"]
+no_extra_missing_ok = metrics["extra_pairs"] == 0 and metrics["missing_pairs"] == 0
+max_error_ok = metrics["max_triplet_error"] <= 5.0
+mean_error_ok = metrics["mean_point_error"] <= 3.0
+validation_pass = all([
+    film_type_ok,
+    pair_count_ok,
+    no_extra_missing_ok,
+    max_error_ok,
+    mean_error_ok,
+])
 
 # 2a. Film type
 log(f"Algorithm film_type: {result.film_type}")
@@ -91,6 +123,11 @@ log()
 
 # 2b. Pair count
 log(f"Detected {len(result.dips)} wire pairs, GT has {gt['num_wire_pairs']}")
+log(f"Matched GT pairs: {metrics['matched_pairs']}/{gt['num_wire_pairs']}")
+log(f"Extra pairs:      {metrics['extra_pairs']}")
+log(f"Missing pairs:    {metrics['missing_pairs']}")
+log(f"Mean point error: {metrics['mean_point_error']:.3f}px  (PASS <= 3.000px)")
+log(f"Max triplet err:  {metrics['max_triplet_error']:.3f}px  (PASS <= 5.000px)")
 log()
 
 # 2c. Extrema detection
@@ -146,9 +183,9 @@ log()
 log("=" * 80)
 log("PAIR-BY-PAIR COMPARISON")
 log("=" * 80)
-log("  GT naming convention (inverted relative to signal processing):")
-log("    GT valley_a/b_idx = signal PEAK   = wire position (bright in negative film)")
-log("    GT peak_idx        = signal VALLEY = gap position  (dark in negative film)")
+log("  GT naming convention:")
+log("    positive film: valley_a/b_idx = dark wire, peak_idx = bright gap")
+log("    negative film: valley_a/b_idx = bright wire, peak_idx = dark gap")
 log()
 
 w1_errors: list[float] = []
@@ -179,12 +216,10 @@ for i, (algo_pair, gp) in enumerate(zip(result.pairs, gt["wire_pairs"])):
         f"gap={_fmt_err(gap_err):>3}px{fg}  "
         f"w2={_fmt_err(w2_err):>3}px{f2}")
 
-log()
-log("NOTE: Since algorithm detected 11 vs GT 7 pairs, a simple positional")
-log("comparison by index is misleading. Each algorithm pair matches the GT")
-log("pair at the same list position, but the actual physical correspondence")
-log("is lost due to spurious extra pairs.")
-log()
+if metrics["extra_pairs"] or metrics["missing_pairs"]:
+    log()
+    log("NOTE: Pair count mismatch makes index-by-index comparison diagnostic only.")
+    log()
 
 
 # ---------------------------------------------------------------------------
@@ -192,7 +227,7 @@ log()
 # ---------------------------------------------------------------------------
 
 log("=" * 80)
-log("ROOT CAUSE ANALYSIS")
+log("DIAGNOSTICS")
 log("=" * 80)
 log()
 
@@ -243,11 +278,9 @@ log()
 
 # 4f: Pairing chain
 log("Pairing chain effect:")
-log("  _pair_wires_and_compute_dips computes dist_max from first peak-pair")
-log("  spacing. With spurious peak at index 49 (background), the first pair")
-log("  (49,120,126) sets dist_max=1.05*(126-49)=81px, which is too large")
-log("  and pairs all adjacent detected peaks. This creates 11 spurious pairs")
-log("  from 16 detected peaks.")
+log("  Current compute_contrast uses fine local extrema for positive-film")
+log("  adjacent-wire pairing, then trims the physically ordered prefix.")
+log("  Raw extrema above are shown only as diagnostics.")
 log()
 
 # 4g: Dip with GT positions
@@ -312,9 +345,8 @@ for prom in [0.05, 0.08, 0.10, 0.15, 0.20]:
             f"{hit:3d}/{len(gt_signal_peaks):d}  {dip_str}")
 
 log()
-log("  No (prominence, min_distance) combination correctly detects all 8")
-log("  wire peaks. The best (prom=0.05, mind=10) detects 16 peaks with")
-log("  only 4/8 matching GT wire positions.")
+log("  Parameter sweep is diagnostic only; PASS/FAIL is based on pair triplet")
+log("  positions against GT, not raw extrema overlap.")
 log()
 
 
@@ -327,43 +359,16 @@ log("SUMMARY")
 log("=" * 80)
 log()
 
-log("Validation result: FAIL")
+log(f"Validation result: {'PASS' if validation_pass else 'FAIL'}")
 log()
-log("Key findings:")
-log()
-log("1. Film type detection: PASS")
-log("   Algorithm correctly detects 'negative' matching GT annotation.")
-log()
-log("2. Peak/valley detection on non-detrended profile: FAIL")
-log("   16 peaks detected vs 8 expected (2x over-detection)")
-log("   Only 4/8 GT wire positions are correctly identified.")
-log("   11 pairs produced instead of 7 (57% over-count)")
-log()
-log("3. Pairing logic: FAIL")
-log("   Spurious background peaks pollute dist_max computation,")
-log("   causing all 16 peaks to be paired into non-existent pairs.")
-log()
-log("4. Dip formula on correct positions: WARNING")
-log("   D1-D2 give 0% dip even with GT positions (gap deviation >> wire deviation)")
-log("   Dip values increase for finer pairs (inverted response)")
-log()
-log("5. Parameter sensitivity: POOR")
-log("   No (prominence, min_distance) tuning produces correct 7-pair output.")
-log()
-log("Root causes:")
-log()
-log("  RC-1 (PRIMARY): No profile detrending before peak detection.")
-log("    The profile has a ~126px global trend (55% of full range).")
-log("    find_peaks on the raw profile treats this trend as signal,")
-log("    generating spurious extrema everywhere.")
-log()
-log("  RC-2: min_distance parameter is global, not adaptive.")
-log()
-log("  RC-3: dist_max in _pair_wires_and_compute_dips depends on first pair.")
-log()
-log("  RC-4: Dip formula background estimation overshoots in strongly")
-log("    modulated regions, inverting dip ordering.")
-log()
+log("Acceptance checks:")
+log(f"  film_type matches GT:        {'PASS' if film_type_ok else 'FAIL'}")
+log(f"  pair count equals GT:        {'PASS' if pair_count_ok else 'FAIL'}")
+log(f"  no extra/missing pairs:      {'PASS' if no_extra_missing_ok else 'FAIL'}")
+log(f"  max triplet error <= 5 px:   {'PASS' if max_error_ok else 'FAIL'} "
+    f"({metrics['max_triplet_error']:.3f}px)")
+log(f"  mean point error <= 3 px:    {'PASS' if mean_error_ok else 'FAIL'} "
+    f"({metrics['mean_point_error']:.3f}px)")
 
 log("=" * 80)
 log("END OF REPORT")

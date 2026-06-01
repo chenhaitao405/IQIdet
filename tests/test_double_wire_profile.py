@@ -21,6 +21,26 @@ from gauge.imaging.profile import (
 )
 
 
+def _profile_gt_pair_metrics(result_pairs, gt_pairs):
+    """Return positional validation metrics for algorithm pairs vs GT pairs."""
+    n_compare = min(len(result_pairs), len(gt_pairs))
+    errors = []
+    max_triplet_errors = []
+    for algo_pair, gt_pair in zip(result_pairs[:n_compare], gt_pairs[:n_compare]):
+        gt_triplet = (
+            gt_pair["valley_a_idx"],
+            gt_pair["peak_idx"],
+            gt_pair["valley_b_idx"],
+        )
+        triplet_errors = [abs(int(a) - int(g)) for a, g in zip(algo_pair, gt_triplet)]
+        errors.extend(triplet_errors)
+        max_triplet_errors.append(max(triplet_errors))
+
+    if not errors:
+        return float("inf"), float("inf")
+    return float(np.mean(errors)), float(max(max_triplet_errors))
+
+
 class TestExtractProfileBand(unittest.TestCase):
     """Tests for extract_profile_band()."""
 
@@ -737,6 +757,29 @@ class TestComputeContrast(unittest.TestCase):
         flat = np.ones(200, dtype=np.float64) * 100.0
         result = compute_contrast(flat)
         self.assertEqual(len(result.dips), 0)
+
+    def test_bam_gt_profile_pairs_match_groundtruth_positions(self):
+        """真实 BAM 剖面应按 GT 一一配对，第一阶段只校验点位。"""
+        import json
+        from gauge.imaging.profile import compute_contrast
+
+        profile_path = REPO_ROOT / "outputs/double_wire_demo_3/wqxDR__SHLNG-PED-A05+002-Z-NJ01__01_profile.json"
+        gt_path = REPO_ROOT / "outputs/double_wire_demo_3/wqxDR__SHLNG-PED-A05+002-Z-NJ01__01_groundtruth.json"
+        if not profile_path.exists() or not gt_path.exists():
+            self.skipTest("BAM GT validation fixture is not present")
+
+        with open(profile_path, encoding="utf-8") as f:
+            profile = np.asarray(json.load(f)["profile_values"], dtype=np.float64)
+        with open(gt_path, encoding="utf-8") as f:
+            gt = json.load(f)
+
+        result = compute_contrast(profile, film_type="auto", min_distance=5, prominence=0.03)
+        mean_err, max_triplet_err = _profile_gt_pair_metrics(result.pairs, gt["wire_pairs"])
+
+        self.assertEqual(result.film_type, gt["film_type"])
+        self.assertEqual(len(result.pairs), gt["num_wire_pairs"])
+        self.assertLessEqual(max_triplet_err, 5.0)
+        self.assertLessEqual(mean_err, 3.0)
 
 
 class TestFindFirstUnresolvedGroup(unittest.TestCase):
