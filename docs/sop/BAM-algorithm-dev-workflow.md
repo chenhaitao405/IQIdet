@@ -11,10 +11,10 @@
 修改路径时只需改下面 `export` 的值，后续命令直接复制使用。
 
 ```bash
-export IMG="outputs/候选双丝像质计/wqxDR__SHLNG-PED-A05+002-Z-NJ01__01.jpg"
-export OUT_DIR="outputs/double_wire_demo_3"
-export PROFILE="${OUT_DIR}/wqxDR__SHLNG-PED-A05+002-Z-NJ01__01_profile.json"
-export GT="${OUT_DIR}/wqxDR__SHLNG-PED-A05+002-Z-NJ01__01_groundtruth.json"
+export IMG="outputs/候选双丝像质计/wqxDR__SHLNG-PED-A06+005-Z-NJ01__01_negative.jpg"
+export OUT_DIR="outputs/double_wire_demo_negativeoutputs/候选双丝像质计/wqxDR__SHLNG-PED-A06+005-Z-NJ01__01_negative.jpg"
+export PROFILE="${OUT_DIR}/wqxDR__SHLNG-PED-A06+005-Z-NJ01__01_negative_profile.json"
+export GT="${OUT_DIR}/wqxDR__SHLNG-PED-A06+005-Z-NJ01__01_negative_groundtruth.json"
 export PYTHONPATH=".:./src"
 ```
 
@@ -24,33 +24,36 @@ export PYTHONPATH=".:./src"
 
 ```
 ┌─────────────────────────────────────────┐
-│ Step 1: double_wire_demo.py             │
-│   交互选 OBB → 锁定 → S 保存剖面 JSON    │
+│ Step 1: annotate.py                      │
+│   交互选 OBB → 锁定 → A 标注峰/谷 → S    │
+│   保存 profile.json + groundtruth.json   │
 ├─────────────────────────────────────────┤
-│ Step 2: annotate_profile.py             │
-│   交互标注峰/谷 → S 保存 groundtruth     │
-├─────────────────────────────────────────┤
-│ Step 3: 修改 src/gauge/imaging/         │
+│ Step 2: 修改 src/gauge/imaging/          │
 │   profile.py 中的算法逻辑               │
 ├─────────────────────────────────────────┤
-│ Step 4: validate_bam_gt.py              │
+│ Step 3: validate_bam_gt.py               │
 │   算法 vs groundtruth → 验证报告         │
 └─────────────────────────────────────────┘
 ```
 
 ---
 
-## Step 1: 采集剖面数据
+## Step 1: 采集剖面数据 + 标注 Ground Truth
 
 ```bash
-python scripts/debug/double_wire_demo.py "${IMG}" --output-dir "${OUT_DIR}"
+python scripts/double_wire/annotate.py "${IMG}" --output-dir "${OUT_DIR}"
 ```
 
 **交互操作：**
 1. 左键依次点击 OBB 四角（TL→TR→BR→BL，沿丝对排列方向）
 2. Enter 锁定 OBB
 3. 拖动 trackbar 调节剖面偏移位置，使剖面线穿过丝对中心
-4. 按 **S** 保存结果
+4. 按 **A** 进入标注模式：
+   - **p 键** → peak 模式，左键在剖面曲线上标注丝峰（亮区）
+   - **v 键** → valley 模式，左键标注间隙谷（暗区）
+   - 右键删除误标，**u 键**撤销
+   - **A 或 ESC** 退出标注模式
+5. 按 **S** 同时保存 profile.json + groundtruth.json
 
 **产出文件（`${OUT_DIR}/`）：**
 - `*_profile.json` — 剖面数据 + 峰谷检测 + BAM dips
@@ -59,23 +62,6 @@ python scripts/debug/double_wire_demo.py "${IMG}" --output-dir "${OUT_DIR}"
 
 ---
 
-## Step 2: 人工标注 Ground Truth
-
-```bash
-python scripts/debug/annotate_profile.py "${PROFILE}"
-```
-
-**交互操作：**
-1. **p 键** → peak 模式，左键在剖面曲线上标注丝峰（亮区）
-2. **v 键** → valley 模式，左键标注间隙谷（暗区）
-3. 右键删除误标，**u 键**撤销
-4. 标注完所有 7 组丝对后，按 **S** 保存
-
-**产出文件：**
-- 默认生成在输入 `*_profile.json` 的同目录下，文件名为同 stem 的 `*_groundtruth.json`
-  - 示例：`${GT}`
-- 如需指定其他位置，使用 `--output <path>`
-
 **GT 标注规则：**
 - 负片：丝 = 亮区（peak），间隙 = 暗区（valley）
 - 每组标注 3 个点：左丝—间隙—右丝
@@ -83,7 +69,7 @@ python scripts/debug/annotate_profile.py "${PROFILE}"
 
 ---
 
-## Step 3: 修改算法
+## Step 2: 修改算法
 
 算法代码位于：
 
@@ -118,16 +104,16 @@ python -m unittest tests.test_double_wire_profile -v
 
 ---
 
-## Step 4: 验证
+## Step 3: 验证
 
 ```bash
-python scripts/debug/validate_bam_gt.py "${PROFILE}" "${GT}"
+python scripts/double_wire/validate_bam_gt.py "${PROFILE}" "${GT}"
 ```
 
 **附加 `--vis` 可输出可视化图表：**
 
 ```bash
-python scripts/debug/validate_bam_gt.py "${PROFILE}" "${GT}" --vis
+python scripts/double_wire/validate_bam_gt.py "${PROFILE}" "${GT}" --vis
 ```
 
 **产出：**
@@ -140,7 +126,7 @@ python scripts/debug/validate_bam_gt.py "${PROFILE}" "${GT}" --vis
 
 ---
 
-## 快速迭代（steps 3→4 循环）
+## 快速迭代（Step 2→3 循环）
 
 ```bash
 # 1. 改代码
@@ -150,10 +136,10 @@ vim src/gauge/imaging/profile.py
 python -m py_compile src/gauge/imaging/profile.py
 
 # 3. 单元测试
-python -m unittest tests.test_double_wire_profile -v
+PYTHONPATH=/home/cht/code/IQIdet:/home/cht/code/IQIdet/src python tests/test_double_wire_profile.py
 
 # 4. GT 验证
-python scripts/debug/validate_bam_gt.py "${PROFILE}" "${GT}"
+python scripts/double_wire/validate_bam_gt.py "${PROFILE}" "${GT}"
 
 # 5. 提交
 git add -A && git commit -m "fix(BAM): ..."

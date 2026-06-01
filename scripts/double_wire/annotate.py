@@ -38,21 +38,21 @@ from docopt import docopt
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SRC_ROOT = REPO_ROOT / "src"
-_LOCAL_SRC = Path(__file__).resolve().parent / "src"
-for p in (str(REPO_ROOT), str(SRC_ROOT), str(_LOCAL_SRC)):
+_DW_DIR = str(Path(__file__).resolve().parent)
+for p in (str(REPO_ROOT), str(SRC_ROOT), _DW_DIR):
     if p not in sys.path:
         sys.path.insert(0, p)
 
-from src.io_utils import (
+from _dwlib.io_utils import (
     load_image,
     save_obb_image,
     save_overlay_image,
     save_profile_json,
     save_groundtruth_json,
 )
-from src.obb_ui import OBBSelector, compute_profile_line
-from src.profile_view import ProfileView
-from src.annotation import Annotator
+from _dwlib.obb_ui import OBBSelector, compute_profile_line
+from _dwlib.profile_view import ProfileView
+from _dwlib.annotation import Annotator
 
 from gauge.imaging.profile import (
     extract_profile_band,

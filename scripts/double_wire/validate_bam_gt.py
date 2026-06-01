@@ -6,11 +6,12 @@ Compares compute_contrast() and find_first_unresolved_group() output
 against manually annotated groundtruth.json.
 
 Usage:
-    python scripts/debug/validate_bam_gt.py <profile_json> <groundtruth_json>
-    python scripts/debug/validate_bam_gt.py <profile_json> <groundtruth_json> --vis
+    python scripts/double_wire/validate_bam_gt.py <profile_json> <groundtruth_json>
+    python scripts/double_wire/validate_bam_gt.py <profile_json> <groundtruth_json> --vis
 
 Options:
-    --vis   输出可视化图表（3-panel PNG），保存在 profile 同目录下
+    --vis                 输出可视化图表（3-panel PNG），保存在 profile 同目录下
+    --save-intermediates  保存算法中间结果 JSON，用于原理文档
 """
 
 import argparse
@@ -32,6 +33,9 @@ from gauge.imaging.profile import (
     _compute_dip,
     _fit_quadratic_background,
     _detect_film_type,
+    _pair_adjacent_wires_with_gaps,
+    _pair_direction_scores,
+    _pair_wires_and_compute_dips,
 )
 
 # ---------------------------------------------------------------------------
@@ -42,11 +46,17 @@ def _fmt_err(e: float) -> str:
     return f"{e:.0f}" if e == int(e) else f"{e:.1f}"
 
 
+def _gt_triplet(gp: dict) -> tuple[int, int, int]:
+    if "wire_a_idx" in gp:
+        return int(gp["wire_a_idx"]), int(gp["gap_idx"]), int(gp["wire_b_idx"])
+    return int(gp["valley_a_idx"]), int(gp["peak_idx"]), int(gp["valley_b_idx"])
+
+
 def _pair_metrics(algo_pairs: list[tuple[int, int, int]], gt_pairs: list[dict]) -> dict:
     point_errors: list[float] = []
     triplet_max_errors: list[float] = []
     for algo_pair, gp in zip(algo_pairs, gt_pairs):
-        gt_triplet = (gp["valley_a_idx"], gp["peak_idx"], gp["valley_b_idx"])
+        gt_triplet = _gt_triplet(gp)
         errs = [abs(int(a) - int(g)) for a, g in zip(algo_pair, gt_triplet)]
         point_errors.extend(errs)
         triplet_max_errors.append(max(errs))
@@ -69,6 +79,8 @@ parser = argparse.ArgumentParser(description="BAM double-wire GT validation")
 parser.add_argument("profile_json", type=str, help="Path to profile JSON")
 parser.add_argument("groundtruth_json", type=str, help="Path to groundtruth JSON")
 parser.add_argument("--vis", action="store_true", help="Generate visualization PNG")
+parser.add_argument("--save-intermediates", action="store_true",
+                    help="Save intermediate algorithm results as JSON")
 args = parser.parse_args()
 
 profile_path = Path(args.profile_json)
@@ -134,14 +146,22 @@ log()
 algo_peaks, algo_valleys = detect_peaks_valleys(
     profile, min_distance=10, prominence=0.05,
 )
-gt_signal_valleys = sorted([p["idx"] for p in gt["all_peaks"]])
-gt_signal_peaks   = sorted([v["idx"] for v in gt["all_valleys"]])
+gt_wire_positions = sorted({
+    idx
+    for gp in gt["wire_pairs"]
+    for idx in (_gt_triplet(gp)[0], _gt_triplet(gp)[2])
+})
+gt_gap_positions = sorted({_gt_triplet(gp)[1] for gp in gt["wire_pairs"]})
+gt_signal_peaks = sorted([p["idx"] for p in gt["all_peaks"]])
+gt_signal_valleys = sorted([v["idx"] for v in gt["all_valleys"]])
 
 log("Raw extrema (detect_peaks_valleys on non-detrended profile):")
 log(f"  Algorithm peaks:   {algo_peaks.tolist()}")
 log(f"  Algorithm valleys: {algo_valleys.tolist()}")
-log(f"  GT signal peaks    (wire positions):              {gt_signal_peaks}")
-log(f"  GT signal valleys  (gap candidates):              {gt_signal_valleys}")
+log(f"  GT signal peaks    (manual maxima):               {gt_signal_peaks}")
+log(f"  GT signal valleys  (manual minima):               {gt_signal_valleys}")
+log(f"  GT wire positions:                                {gt_wire_positions}")
+log(f"  GT gap positions:                                 {gt_gap_positions}")
 log()
 
 algo_p_set = set(algo_peaks.tolist())
@@ -156,7 +176,7 @@ common_valleys = algo_v_set & gt_v_set
 missing_valleys = gt_v_set - algo_v_set
 extra_valleys   = algo_v_set - gt_v_set
 
-log(f"Peak (signal maxima / wire) match:  {len(common_peaks)}/{len(gt_signal_peaks)}  "
+log(f"Peak (signal maxima) match:         {len(common_peaks)}/{len(gt_signal_peaks)}  "
     f"({len(common_peaks)/max(len(gt_signal_peaks),1)*100:.0f}%)")
 if missing_peaks:
     log(f"  GT peaks MISSED:   {sorted(missing_peaks)}  "
@@ -165,7 +185,7 @@ if extra_peaks:
     log(f"  EXTRA algorithm peaks:  {sorted(extra_peaks)}  "
         f"(noise/fluctuations on descending profile slope)")
 
-log(f"Valley (signal minima / gap) match: {len(common_valleys)}/{len(gt_signal_valleys)}  "
+log(f"Valley (signal minima) match:       {len(common_valleys)}/{len(gt_signal_valleys)}  "
     f"({len(common_valleys)/max(len(gt_signal_valleys),1)*100:.0f}%)")
 if missing_valleys:
     log(f"  GT valleys MISSED:  {sorted(missing_valleys)}  "
@@ -184,8 +204,8 @@ log("=" * 80)
 log("PAIR-BY-PAIR COMPARISON")
 log("=" * 80)
 log("  GT naming convention:")
-log("    positive film: valley_a/b_idx = dark wire, peak_idx = bright gap")
-log("    negative film: valley_a/b_idx = bright wire, peak_idx = dark gap")
+log("    positive film: wire_a/b_idx = bright peaks, gap_idx = dark valley")
+log("    negative film: wire_a/b_idx = dark valleys, gap_idx = bright peak")
 log()
 
 w1_errors: list[float] = []
@@ -194,9 +214,7 @@ w2_errors: list[float] = []
 
 for i, (algo_pair, gp) in enumerate(zip(result.pairs, gt["wire_pairs"])):
     a_w1, a_gap, a_w2 = algo_pair
-    g_va = gp["valley_a_idx"]
-    g_pk = gp["peak_idx"]
-    g_vb = gp["valley_b_idx"]
+    g_va, g_pk, g_vb = _gt_triplet(gp)
 
     w1_err  = abs(a_w1 - g_va)
     gap_err = abs(a_gap - g_pk)
@@ -290,10 +308,11 @@ if len(result.pairs) > 0 and len(result.pairs[0]) >= 3:
     # Use first detected pair's wire positions to anchor the GT comparison
     gt_wires_alt = []
     for wp in gt["wire_pairs"]:
-        gt_wires_alt.append(wp["valley_a_idx"])
-        gt_wires_alt.append(wp["valley_b_idx"])
+        w1, _gap, w2 = _gt_triplet(wp)
+        gt_wires_alt.append(w1)
+        gt_wires_alt.append(w2)
     gt_wire_pos = np.array(sorted(set(gt_wires_alt)))
-gt_gap_pos = np.array([wp["peak_idx"] for wp in gt["wire_pairs"]])
+gt_gap_pos = np.array([_gt_triplet(wp)[1] for wp in gt["wire_pairs"]])
 
 bg_gt = _fit_quadratic_background(profile, gt_wire_pos, inverted=False)
 log(f"  Quadratic background range: {bg_gt.min():.1f} - {bg_gt.max():.1f}")
@@ -306,7 +325,7 @@ log(f"  {'Pair':>6} {'dip':>8} {'A':>8} {'B':>8} {'C':>8} {'profile[gap]':>12} {
 log(f"  {'-'*70}")
 gt_dips_viz: list[dict] = []
 for i, gp in enumerate(gt["wire_pairs"]):
-    w1, gap, w2 = gp["valley_a_idx"], gp["peak_idx"], gp["valley_b_idx"]
+    w1, gap, w2 = _gt_triplet(gp)
     dip = _compute_dip(profile, w1, gap, w2, bg_gt, half_w=0)
 
     L = len(profile)
@@ -417,7 +436,7 @@ if args.vis:
         algo_w1, algo_g, algo_w2 = result.pairs[pair_idx]
         dip = result.dips[pair_idx]
         gp = gt["wire_pairs"][pair_idx]
-        gt_w1, gt_g, gt_w2 = gp["valley_a_idx"], gp["peak_idx"], gp["valley_b_idx"]
+        gt_w1, gt_g, gt_w2 = _gt_triplet(gp)
 
         # Zoom window around this pair
         margin = 10
@@ -482,7 +501,7 @@ if args.vis:
     ax3.plot(x, profile, color="#4C78A8", linewidth=0.8, alpha=0.5, label="Profile")
 
     for gp in gt["wire_pairs"]:
-        g_va, g_pk, g_vb = gp["valley_a_idx"], gp["peak_idx"], gp["valley_b_idx"]
+        g_va, g_pk, g_vb = _gt_triplet(gp)
         ax3.axvline(g_va, color="#54A24B", alpha=0.6, linewidth=1.2, linestyle="-")
         ax3.axvline(g_pk, color="#F58518", alpha=0.6, linewidth=1.2, linestyle="-")
         ax3.axvline(g_vb, color="#54A24B", alpha=0.6, linewidth=1.2, linestyle="-")
@@ -507,3 +526,280 @@ if args.vis:
     fig.savefig(str(vis_path), dpi=150, bbox_inches="tight")
     plt.close(fig)
     log(f"Visualization saved to: {vis_path}")
+
+
+# ---------------------------------------------------------------------------
+# Intermediate results capture (--save-intermediates)
+# ---------------------------------------------------------------------------
+
+if args.save_intermediates:
+    import copy as _copy
+    from scipy.signal import savgol_filter
+
+    intermediates: dict = {}
+    n = len(profile)
+
+    # === Step 1: Raw profile ===
+    intermediates["step1_raw_profile"] = {
+        "length": n,
+        "values": profile.tolist(),
+        "stats": {
+            "min": float(profile.min()),
+            "max": float(profile.max()),
+            "range": float(profile.max() - profile.min()),
+            "mean": float(profile.mean()),
+            "std": float(profile.std()),
+        },
+    }
+
+    # === Step 2: Detrending (quadratic polyfit) ===
+    x_arr = np.arange(n, dtype=np.float64)
+    coeffs_detrend = np.polyfit(x_arr, profile.astype(np.float64), 2)
+    trend = np.polyval(coeffs_detrend, x_arr)
+    detrended = profile.astype(np.float64) - trend
+
+    intermediates["step2_detrending"] = {
+        "method": "quadratic polynomial fit (degree=2)",
+        "formula": "f(x) = a·x² + b·x + c  →  detrended = profile - f(x)",
+        "coefficients": {
+            "a": float(coeffs_detrend[0]),
+            "b": float(coeffs_detrend[1]),
+            "c": float(coeffs_detrend[2]),
+        },
+        "trend_values": trend.tolist(),
+        "detrended_values": detrended.tolist(),
+        "detrended_stats": {
+            "min": float(detrended.min()),
+            "max": float(detrended.max()),
+            "range": float(detrended.max() - detrended.min()),
+            "mean": float(detrended.mean()),
+        },
+    }
+
+    # === Step 3: Coarse peak/valley detection ===
+    md_coarse = 5
+    prom_coarse = 0.03
+    coarse_peaks, coarse_valleys = detect_peaks_valleys(
+        detrended, min_distance=md_coarse, prominence=prom_coarse,
+    )
+    data_range_detrend = float(detrended.max() - detrended.min())
+    abs_prom_coarse = prom_coarse * data_range_detrend
+
+    intermediates["step3_coarse_extrema"] = {
+        "method": "scipy.signal.find_peaks on detrended profile",
+        "parameters": {
+            "min_distance": md_coarse,
+            "prominence_relative": prom_coarse,
+            "prominence_absolute": float(abs_prom_coarse),
+        },
+        "peaks": [{"idx": int(p), "gray": float(profile[p])} for p in coarse_peaks],
+        "valleys": [{"idx": int(v), "gray": float(profile[v])} for v in coarse_valleys],
+        "peak_count": int(len(coarse_peaks)),
+        "valley_count": int(len(coarse_valleys)),
+    }
+
+    # === Step 4: Fine peak/valley detection ===
+    md_fine = 1
+    prom_fine = max(0.005, prom_coarse * 0.5)
+    fine_peaks, fine_valleys = detect_peaks_valleys(
+        detrended, min_distance=md_fine, prominence=prom_fine,
+    )
+    abs_prom_fine = prom_fine * data_range_detrend
+
+    intermediates["step4_fine_extrema"] = {
+        "method": "scipy.signal.find_peaks on detrended profile (relaxed params)",
+        "reason": "双丝越往细组，wire-gap 间距仅 1~4px，粗检测 min_distance=5 会漏掉一侧 valley",
+        "parameters": {
+            "min_distance": md_fine,
+            "prominence_relative": float(prom_fine),
+            "prominence_absolute": float(abs_prom_fine),
+        },
+        "peaks": [{"idx": int(p), "gray": float(profile[p])} for p in fine_peaks],
+        "valleys": [{"idx": int(v), "gray": float(profile[v])} for v in fine_valleys],
+        "peak_count": int(len(fine_peaks)),
+        "valley_count": int(len(fine_valleys)),
+    }
+
+    # === Step 5: Film-type determination ===
+    triple_ft = _detect_film_type(profile, coarse_valleys, coarse_peaks)
+
+    # Build positive candidate (used for film-type correction)
+    pos_bg = _fit_quadratic_background(profile, fine_peaks, inverted=False)
+    pos_dips, pos_pairs = _pair_adjacent_wires_with_gaps(
+        profile, fine_peaks, fine_valleys, pos_bg,
+        half_w=0, film_type="positive",
+    )
+    pos_scores = _pair_direction_scores(profile, pos_pairs, film_type="positive")
+
+    profile_range = float(profile.max() - profile.min())
+    min_positive_score = 0.08 * profile_range
+    has_strong_positive = (
+        len(pos_pairs) >= max(3, len(coarse_peaks) // 3)
+        and len(pos_scores) > 0
+        and float(np.median(pos_scores)) >= min_positive_score
+    )
+    final_ft = "positive" if has_strong_positive else triple_ft
+
+    intermediates["step5_film_type_detection"] = {
+        "method": "基础三元组 + positive 候选序列显著性校正",
+        "basic_triplet_result": triple_ft,
+        "basic_triplet_rationale": (
+            "positive" if triple_ft == "positive"
+            else "negative (p-v-p / v-p-v 最大振幅三元组判定)"
+        ),
+        "positive_candidate_pairs": [
+            {"wire_a": int(w1), "gap": int(g), "wire_b": int(w2)}
+            for w1, g, w2 in pos_pairs
+        ],
+        "positive_candidate_count": len(pos_pairs),
+        "positive_direction_scores": [float(s) for s in pos_scores],
+        "min_positive_score_threshold": float(min_positive_score),
+        "has_strong_positive_series": has_strong_positive,
+        "correction_applied": has_strong_positive and triple_ft != "positive",
+        "final_film_type": final_ft,
+    }
+
+    # === Step 6: Role assignment ===
+    is_negative = (final_ft == "negative")
+    if is_negative:
+        wire_positions = coarse_valleys
+        gap_positions = coarse_peaks
+    else:
+        wire_positions = coarse_peaks
+        gap_positions = coarse_valleys
+
+    intermediates["step6_role_assignment"] = {
+        "film_type": final_ft,
+        "is_negative": is_negative,
+        "rule": "正片: wire=peaks, gap=valleys; 负片: wire=valleys, gap=peaks",
+        "wire_positions_used": [int(w) for w in wire_positions],
+    }
+
+    # === Step 7: Background fitting (Savitzky-Golay) ===
+    win = min(n // 8 * 2 + 1, 201)
+    if win < 9:
+        win = 9
+    if win % 2 == 0:
+        win += 1
+    if win > n:
+        win = n if n % 2 == 1 else n - 1
+    background = savgol_filter(profile.astype(np.float64), win, 2, mode='mirror')
+    background = background.astype(np.float64)
+
+    intermediates["step7_background_fitting"] = {
+        "method": "Savitzky-Golay low-pass filter",
+        "reason": "用宽窗口 SG 低通滤波替代全局二次拟合，避免 wire 强调制区 overshoot",
+        "window_size": int(win),
+        "polynomial_order": 2,
+        "formula_window": "min(n // 8 * 2 + 1, 201), forced odd, ≥ 9",
+        "background_values": background.tolist(),
+        "background_stats": {
+            "min": float(background.min()),
+            "max": float(background.max()),
+        },
+    }
+
+    # === Step 8: Pairing + Dip computation ===
+    dip_half_w = 0
+    if final_ft == "positive":
+        dips, pairs = _pair_adjacent_wires_with_gaps(
+            profile, fine_peaks, fine_valleys, background,
+            half_w=dip_half_w, film_type=final_ft,
+        )
+    else:
+        dips, pairs = _pair_wires_and_compute_dips(
+            profile, wire_positions, gap_positions, background,
+            half_w=dip_half_w, dist_factor=1.05, film_type=final_ft,
+        )
+
+    # Compute per-pair details (A, B, C for each)
+    pair_details = []
+    for i, ((w1, g, w2), dip_val) in enumerate(zip(pairs, dips)):
+        a_mean = float(profile[w1])
+        c_mean = float(profile[g])
+        b_mean = float(profile[w2])
+        A = abs(float(background[w1]) - a_mean)
+        B = abs(float(background[w2]) - b_mean)
+        C = abs(float(background[g]) - c_mean)
+        numerator = A + B - 2.0 * C
+        denom = A + B
+
+        pair_details.append({
+            "pair_index": i,
+            "wire_a_idx": int(w1),
+            "gap_idx": int(g),
+            "wire_b_idx": int(w2),
+            "wire_a_gray": a_mean,
+            "gap_gray": c_mean,
+            "wire_b_gray": b_mean,
+            "bg_wire_a": float(background[w1]),
+            "bg_gap": float(background[g]),
+            "bg_wire_b": float(background[w2]),
+            "A": float(A),
+            "B": float(B),
+            "C": float(C),
+            "numerator": float(numerator),
+            "denominator": float(denom),
+            "dip_percent": float(dip_val),
+            "formula": f"100 × ({A:.4f} + {B:.4f} - 2×{C:.4f}) / ({A:.4f} + {B:.4f}) = {dip_val:.2f}%",
+        })
+
+    # BAM-style reference distance
+    fine_wire_positions = fine_valleys if final_ft == "negative" else fine_peaks
+    if len(fine_wire_positions) >= 2:
+        dist_wires = np.diff(np.asarray(sorted(int(v) for v in fine_wire_positions), dtype=int))
+        k_m = min(5, len(dist_wires))
+        ref_dist = float(np.median(dist_wires[:k_m]))
+        if ref_dist < 1.0:
+            ref_dist = float(dist_wires[0])
+    else:
+        ref_dist = 0.0
+
+    intermediates["step8_pairing_and_dip"] = {
+        "pairing_strategy": (
+            "positive: 相邻 peak-valley-peak 三元组 + 灰度方向检查 + 首组间距锚点 + 中心距前缀截断"
+            if final_ft == "positive"
+            else "negative: 相邻 valley-peak-valley 三元组 + 1.05× 首组间距过滤"
+        ),
+        "dip_half_w": dip_half_w,
+        "dip_formula": "100 × (A + B - 2C) / (A + B)",
+        "dip_formula_detail": {
+            "A": "|background[wire_a] - profile[wire_a]|",
+            "B": "|background[wire_b] - profile[wire_b]|",
+            "C": "|background[gap] - profile[gap]|",
+        },
+        "reference_distance_px": float(ref_dist),
+        "distance_threshold": f"1.05 × {ref_dist:.1f} = {1.05 * ref_dist:.1f}px",
+        "num_pairs": len(pairs),
+        "pairs": pair_details,
+        "dips": [float(d) for d in dips],
+    }
+
+    # === Step 9: Resolution determination ===
+    from gauge.imaging.profile import _DEFAULT_WIRE_SPACINGS
+    unresolved = find_first_unresolved_group(dips)
+    if unresolved is None:
+        resolution_note = "全部线对可分辨，分辨率优于 D13 (0.05mm)"
+    else:
+        idx = unresolved - 1
+        if idx < len(_DEFAULT_WIRE_SPACINGS):
+            spacing = _DEFAULT_WIRE_SPACINGS[idx]
+            resolution_note = f"D{unresolved} (丝径 {spacing}mm) 不可分辨，SRb = {spacing}mm"
+        else:
+            resolution_note = f"D{unresolved} (超出标准 D13 范围)"
+
+    intermediates["step9_resolution"] = {
+        "threshold_dip": 20.0,
+        "criterion": "Dip < 20% → 该线对不可分辨",
+        "first_unresolved_group": unresolved,
+        "note": resolution_note,
+        "gt_num_wire_pairs": gt["num_wire_pairs"],
+        "validation_mae_px": metrics["mean_point_error"],
+        "validation_max_err_px": metrics["max_triplet_error"],
+    }
+
+    # --- Save intermediates JSON ---
+    intermediates_path = profile_path.parent / "intermediates.json"
+    with open(intermediates_path, "w") as f:
+        json.dump(intermediates, f, indent=2, ensure_ascii=False)
+    log(f"Intermediate results saved to: {intermediates_path}")
