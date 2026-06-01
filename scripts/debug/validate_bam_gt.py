@@ -3,14 +3,17 @@
 Phase 3: BAM 双丝算法 Ground Truth 验证
 
 Compares compute_contrast() and find_first_unresolved_group() output
-against manually annotated groundtruth.json for a single-wire-pair profile.
+against manually annotated groundtruth.json.
 
 Usage:
-    cd /home/cht/code/IQIdet && \
-    PYTHONPATH=/home/cht/code/IQIdet:/home/cht/code/IQIdet/src \
-    python scripts/debug/validate_bam_gt.py
+    python scripts/debug/validate_bam_gt.py <profile_json> <groundtruth_json>
 
-Output: outputs/double_wire_demo/validation_report.txt
+    python scripts/debug/validate_bam_gt.py \
+        outputs/double_wire_demo_3/wqxDR__SHLNG-PED-A05+002-Z-NJ01__01_profile.json \
+        outputs/double_wire_demo_3/wqxDR__SHLNG-PED-A05+002-Z-NJ01__01_groundtruth.json
+
+Output:
+    <profile_dir>/validation_report.txt
 """
 
 import json
@@ -45,8 +48,12 @@ def _fmt_err(e: float) -> str:
 # Step 1: Load data
 # ---------------------------------------------------------------------------
 
-profile_path = REPO_ROOT / "outputs/double_wire_demo/wqxDR__SHLNG-PED-A05+002-Z-NJ01__01_profile.json"
-gt_path = REPO_ROOT / "outputs/double_wire_demo/groundtruth.json"
+if len(sys.argv) < 3:
+    print("Usage: validate_bam_gt.py <profile_json> <groundtruth_json>")
+    sys.exit(1)
+
+profile_path = Path(sys.argv[1])
+gt_path = Path(sys.argv[2])
 
 with open(profile_path) as f:
     profile_data = json.load(f)
@@ -55,7 +62,7 @@ profile = np.array(profile_data["profile_values"], dtype=np.float64)
 with open(gt_path) as f:
     gt = json.load(f)
 
-out_path = REPO_ROOT / "outputs/double_wire_demo/validation_report.txt"
+out_path = profile_path.parent / "validation_report.txt"
 out_lines: list[str] = []
 
 def log(msg: str = ""):

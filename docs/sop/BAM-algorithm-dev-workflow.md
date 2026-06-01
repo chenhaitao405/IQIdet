@@ -2,7 +2,30 @@
 
 **适用分支**: `feature/BAM-validation-fix`（或任意 feature 分支）
 **前置环境**: `conda activate weld-gpu`
-**工作目录**: 仓库根目录（以下所有命令均在仓库根目录执行，路径均为相对路径）
+**工作目录**: 仓库根目录
+
+---
+
+## 环境变量
+
+修改路径时只需改下面 `export` 的值，后续命令直接复制使用。
+
+```bash
+# 输入图像
+export IMG="outputs/候选双丝像质计/wqxDR__SHLNG-PED-A05+002-Z-NJ01__01.jpg"
+
+# 输出目录（Step 1 产出）
+export OUT_DIR="outputs/double_wire_demo_3"
+
+# 剖面 JSON（Step 1 产出 → Step 2 输入）
+export PROFILE="${OUT_DIR}/wqxDR__SHLNG-PED-A05+002-Z-NJ01__01_profile.json"
+
+# Ground Truth（Step 2 产出 → Step 4 输入）
+export GT="${OUT_DIR}/wqxDR__SHLNG-PED-A05+002-Z-NJ01__01_groundtruth.json"
+
+# Python 路径
+export PYTHONPATH=".:./src"
+```
 
 ---
 
@@ -29,9 +52,7 @@
 ## Step 1: 采集剖面数据
 
 ```bash
-PYTHONPATH=.:./src python scripts/debug/double_wire_demo.py \
-  outputs/候选双丝像质计/wqxDR__SHLNG-PED-A05+002-Z-NJ01__01.jpg \
-  --output-dir outputs/double_wire_demo_3
+python scripts/debug/double_wire_demo.py "${IMG}" --output-dir "${OUT_DIR}"
 ```
 
 **交互操作：**
@@ -40,7 +61,7 @@ PYTHONPATH=.:./src python scripts/debug/double_wire_demo.py \
 3. 拖动 trackbar 调节剖面偏移位置，使剖面线穿过丝对中心
 4. 按 **S** 保存结果
 
-**产出文件（`outputs/double_wire_demo_3/`）：**
+**产出文件（`${OUT_DIR}/`）：**
 - `*_profile.json` — 剖面数据 + 峰谷检测 + BAM dips
 - `*_obb.png` — unwarp OBB 图像
 - `*_overlay.png` — 标注叠加图
@@ -50,8 +71,7 @@ PYTHONPATH=.:./src python scripts/debug/double_wire_demo.py \
 ## Step 2: 人工标注 Ground Truth
 
 ```bash
-PYTHONPATH=.:./src python scripts/debug/annotate_profile.py \
-  outputs/double_wire_demo_3/wqxDR__SHLNG-PED-A05+002-Z-NJ01__01_profile.json
+python scripts/debug/annotate_profile.py "${PROFILE}"
 ```
 
 **交互操作：**
@@ -61,7 +81,9 @@ PYTHONPATH=.:./src python scripts/debug/annotate_profile.py \
 4. 标注完所有 7 组丝对后，按 **S** 保存
 
 **产出文件：**
-- `*_groundtruth.json`（自动生成在同目录下）
+- 默认生成在输入 `*_profile.json` 的同目录下，文件名为同 stem 的 `*_groundtruth.json`
+  - 示例：`${GT}`
+- 如需指定其他位置，使用 `--output <path>`
 
 **GT 标注规则：**
 - 负片：丝 = 亮区（peak），间隙 = 暗区（valley）
@@ -100,7 +122,7 @@ python -m py_compile src/gauge/imaging/profile.py
 **运行单元测试：**
 
 ```bash
-PYTHONPATH=.:./src python -m unittest tests.test_double_wire_profile -v
+python -m unittest tests.test_double_wire_profile -v
 ```
 
 ---
@@ -108,19 +130,8 @@ PYTHONPATH=.:./src python -m unittest tests.test_double_wire_profile -v
 ## Step 4: 验证
 
 ```bash
-PYTHONPATH=.:./src python scripts/debug/validate_bam_gt.py
+python scripts/debug/validate_bam_gt.py "${PROFILE}" "${GT}"
 ```
-
-**验证脚本读取：**
-- `outputs/double_wire_demo/groundtruth.json`（GT 数据）
-
-**注意**：验证脚本硬编码了 GT 路径。如果用新的 `double_wire_demo_3` 目录，需要将新标注复制过去：
-
-```bash
-cp outputs/double_wire_demo_3/*_groundtruth.json outputs/double_wire_demo/groundtruth.json
-```
-
-或修改 `scripts/debug/validate_bam_gt.py` 中的 `gt_path`。
 
 **产出：**
 - 终端输出：配对对比、位置误差、dip 值、参数敏感度
@@ -141,7 +152,7 @@ python -m py_compile src/gauge/imaging/profile.py
 PYTHONPATH=.:./src python -m unittest tests.test_double_wire_profile -v
 
 # 4. GT 验证
-PYTHONPATH=.:./src python scripts/debug/validate_bam_gt.py
+python scripts/debug/validate_bam_gt.py "${PROFILE}" "${GT}"
 
 # 5. 提交
 git add -A && git commit -m "fix(BAM): ..."
