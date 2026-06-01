@@ -62,6 +62,20 @@ COLOR_BLACK = (0, 0, 0)
 PROFILE_COLOR = "#4C78A8"
 
 
+def bam_pair_marker_indices(
+    pairs: list[tuple[int, int, int]] | list[list[int]],
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Return BAM wire and gap marker indices for profile plotting."""
+    if not pairs:
+        return np.array([], dtype=int), np.array([], dtype=int)
+    wire_indices: list[int] = []
+    gap_indices: list[int] = []
+    for w1, gap, w2 in pairs:
+        wire_indices.extend([int(w1), int(w2)])
+        gap_indices.append(int(gap))
+    return np.array(sorted(set(wire_indices)), dtype=int), np.array(gap_indices, dtype=int)
+
+
 def normalize_profile_obb(
     corners: np.ndarray,
 ) -> Tuple[np.ndarray, Tuple[Tuple[float, float], Tuple[float, float]]]:
@@ -411,15 +425,21 @@ class DoubleWireDemo:
                 self.ax_bottom.annotate(f"{val:.2f}", (v, val), textcoords="offset points",
                                         xytext=(0, -12), fontsize=7, color="blue", ha="center")
 
-        self.ax_bottom.set_ylim(y_min, y_max)
-        self.ax_bottom.set_xlabel("Profile position (px) — aligned with image above")
-        self.ax_bottom.set_ylabel("Gray value")
-        self.ax_bottom.legend(fontsize=7, loc="upper right")
-
         # BAM dip overlay (wire pair markers + dip labels)
         if self.bam_result is not None and len(self.bam_result.pairs) > 0:
             dips = self.bam_result.dips
             pairs = self.bam_result.pairs
+            bam_wires, bam_gaps = bam_pair_marker_indices(pairs)
+            self.ax_bottom.plot(
+                bam_wires, self.profile[bam_wires],
+                "co", markersize=5, fillstyle="none", markeredgewidth=1.2,
+                label="BAM wires",
+            )
+            self.ax_bottom.plot(
+                bam_gaps, self.profile[bam_gaps],
+                "mo", markersize=5, fillstyle="none", markeredgewidth=1.2,
+                label="BAM gaps",
+            )
             for i, ((w1, g, w2), dip) in enumerate(zip(pairs, dips)):
                 color = "green" if dip >= 20.0 else "orange"
                 self.ax_bottom.axvspan(w1, w2, alpha=0.12, color=color)
@@ -429,6 +449,11 @@ class DoubleWireDemo:
                     textcoords="offset points", xytext=(0, 16),
                     fontsize=6, color=color, ha="center",
                 )
+
+        self.ax_bottom.set_ylim(y_min, y_max)
+        self.ax_bottom.set_xlabel("Profile position (px) — aligned with image above")
+        self.ax_bottom.set_ylabel("Gray value")
+        self.ax_bottom.legend(fontsize=7, loc="upper right")
 
         # Title
         stem = self.image_path.stem

@@ -2,9 +2,27 @@ import unittest
 
 import numpy as np
 
-from scripts.debug.double_wire_demo import normalize_profile_obb
+try:
+    from scripts.debug.double_wire_demo import bam_pair_marker_indices, normalize_profile_obb
+except ModuleNotFoundError as exc:
+    if exc.name not in {"matplotlib", "docopt", "cv2"}:
+        raise
+    bam_pair_marker_indices = None
+    normalize_profile_obb = None
 
 
+@unittest.skipIf(bam_pair_marker_indices is None, "double_wire_demo GUI dependencies not installed")
+class TestDoubleWireDemoMarkers(unittest.TestCase):
+    def test_bam_pair_marker_indices_include_both_wire_points(self):
+        pairs = [[10, 16, 22], [86, 90, 94], [243, 244, 245]]
+
+        wires, gaps = bam_pair_marker_indices(pairs)
+
+        self.assertEqual(wires.tolist(), [10, 22, 86, 94, 243, 245])
+        self.assertEqual(gaps.tolist(), [16, 90, 244])
+
+
+@unittest.skipIf(normalize_profile_obb is None, "double_wire_demo GUI dependencies not installed")
 class TestDoubleWireDemoOBB(unittest.TestCase):
     def test_normalize_profile_obb_keeps_long_first_edge_as_profile_width(self):
         corners = np.array(
