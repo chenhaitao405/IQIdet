@@ -88,7 +88,6 @@ class BAMAnnotator:
         self._profile_line = None
         self._uw: int = 0
         self._annotating: bool = False
-        self._toggle_cooldown: int = 0
 
     # -- Profile update ----------------------------------------------------
 
@@ -136,7 +135,6 @@ class BAMAnnotator:
     def _toggle_annotation(self) -> None:
         if self.view is None or self.annotator is None:
             return
-        self._toggle_cooldown = 15  # ~500ms, prevent double-fire from focus switch
         if self._annotating:
             self.annotator.deactivate()
             self._annotating = False
@@ -301,25 +299,32 @@ class BAMAnnotator:
             overlay = self.obb.draw_overlay(annotating=self._annotating)
             cv2.imshow(self.obb.window_name, overlay)
 
-            raw_key = cv2.waitKey(30) & 0xFF
-            key = raw_key
+            key = cv2.waitKey(30) & 0xFF
 
-            # Cooldown after toggle to prevent double-fire from focus switch
-            if self._toggle_cooldown > 0:
-                self._toggle_cooldown -= 1
-                if key in (ord("a"), ord("s"), ord("n"), ord("q"), 27, ord("r"), ord("h")):
-                    continue  # suppress action keys during cooldown
+            # ── When annotating, keyboard belongs to matplotlib figure ──
+            # OpenCV only handles escape-hatch keys; p/v/u/a go via mpl
+            if self._annotating:
+                if key == ord("n"):
+                    self._toggle_annotation()  # exit annotation cleanly
+                    print("[annotate] Next image")
+                    cv2.destroyAllWindows()
+                    plt.close("all")
+                    return "next"
+                elif key in (ord("q"), 27):
+                    print("[annotate] Quit")
+                    cv2.destroyAllWindows()
+                    plt.close("all")
+                    return "quit"
+                continue
 
+            # ── When NOT annotating, OpenCV owns keyboard ──
             if key in (13, 32):  # Enter / Space
                 if self.obb.state == OBBSelector.STATE_CONFIRM:
                     self.obb.state = OBBSelector.STATE_LOCKED
                     self._update_profile()
             elif key == ord("r"):
-                if self._annotating:
-                    self._toggle_annotation()
                 self.obb.reset()
                 self.view.clear()
-                self._annotating = False
                 cv2.setTrackbarPos(self.obb.trackbar_name, self.obb.window_name, 50)
             elif key == ord("a"):
                 if self.obb.state == OBBSelector.STATE_LOCKED:
