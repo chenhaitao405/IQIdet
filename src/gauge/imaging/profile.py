@@ -461,6 +461,60 @@ def _trim_pairs_to_stable_center_prefix(
     return kept
 
 
+def _remove_overlapping_pairs(
+    pairs: List[Tuple[int, int, int]],
+    profile: np.ndarray,
+    *,
+    film_type: str,
+) -> List[Tuple[int, int, int]]:
+    """Remove spurious pairs that share a wire position with a neighbour.
+
+    When two consecutive candidate pairs share the same wire index (the
+    first pair's wire_b equals the second pair's wire_a), one of them is
+    a spurious detection.  The pair with the stronger gap–wire contrast
+    (more likely to be a real wire pair) is kept.
+    """
+    if len(pairs) <= 1:
+        return list(pairs)
+
+    keep = [True] * len(pairs)
+    for i in range(len(pairs) - 1):
+        if not keep[i]:
+            continue
+        _, _, w1_b = pairs[i]
+        w2_a, _, _ = pairs[i + 1]
+        if w1_b != w2_a:
+            continue
+
+        # Compute contrast score: gap–wire deviation per the film type.
+        w1_a, w1_g, _ = pairs[i]
+        _, w2_g, w2_b = pairs[i + 1]
+        if film_type == "positive":
+            s1 = min(
+                float(profile[w1_a]) - float(profile[w1_g]),
+                float(profile[w1_b]) - float(profile[w1_g]),
+            )
+            s2 = min(
+                float(profile[w2_a]) - float(profile[w2_g]),
+                float(profile[w2_b]) - float(profile[w2_g]),
+            )
+        else:
+            s1 = min(
+                float(profile[w1_g]) - float(profile[w1_a]),
+                float(profile[w1_g]) - float(profile[w1_b]),
+            )
+            s2 = min(
+                float(profile[w2_g]) - float(profile[w2_a]),
+                float(profile[w2_g]) - float(profile[w2_b]),
+            )
+        if s1 >= s2:
+            keep[i + 1] = False
+        else:
+            keep[i] = False
+
+    return [p for i, p in enumerate(pairs) if keep[i]]
+
+
 def _pair_direction_scores(
     profile: np.ndarray,
     pairs: Sequence[Tuple[int, int, int]],
@@ -476,6 +530,116 @@ def _pair_direction_scores(
             score = min(float(profile[gap] - profile[w1]), float(profile[gap] - profile[w2]))
         scores.append(score)
     return scores
+
+
+def _recover_tail_pair(
+    profile: np.ndarray,
+    pairs: List[Tuple[int, int, int]],
+    background: np.ndarray,
+    half_w: int,
+    *,
+    film_type: str,
+) -> List[Tuple[int, int, int]]:
+    """Try to recover the finest wire pair missing after the last detected one.
+
+    The fine-prominence extrema detection can miss the very last (finest)
+    wire pair because its modulation is too shallow to meet the prominence
+    threshold.  When the last detected pair is far enough from the profile
+    end, this function scans the tail region with relaxed criteria to
+    recover the missing pair.
+    """
+    if len(pairs) < 2:
+        return pairs
+
+    last_w1, last_gap, last_w2 = pairs[-1]
+
+    # Estimate expected next-pair position from the centre-spacing trend.
+    centers = [p[1] for p in pairs]
+    if len(centers) >= 3:
+        # Use the median of the last three centre spacings
+        recent_deltas = [centers[i + 1] - centers[i] for i in range(len(centers) - 3, len(centers) - 1)]
+        expected_delta = float(np.median(recent_deltas)) if recent_deltas else 30.0
+    else:
+        expected_delta = float(centers[-1] - centers[-2])
+
+    search_start = last_w2 + 3
+    search_end = min(len(profile), centers[-1] + int(expected_delta * 1.5))
+
+    if search_end - search_start < 5:
+        return pairs
+
+    # In the tail region, find all local extrema with minimal filtering.
+    tail = profile[search_start:search_end]
+    tail_range = float(tail.max() - tail.min())
+    if tail_range < 1e-10:
+        return pairs
+
+    # Use a very low prominence threshold restricted to the tail.
+    tail_peaks, _ = find_peaks(tail, distance=1, prominence=tail_range * 0.01)
+    tail_valleys, _ = find_peaks(-tail, distance=1, prominence=tail_range * 0.01)
+
+    if len(tail_peaks) == 0 or len(tail_valleys) == 0:
+        return pairs
+
+    # Map back to global indices
+    tail_peaks_g = np.asarray([int(p) + search_start for p in tail_peaks], dtype=int)
+    tail_valleys_g = np.asarray([int(v) + search_start for v in tail_valleys], dtype=int)
+
+    # Build candidate triplets from adjacent wires.
+    if film_type == "negative":
+        wire_pos = tail_valleys_g
+        gap_pos = tail_peaks_g
+    else:
+        wire_pos = tail_peaks_g
+        gap_pos = tail_valleys_g
+
+    best_pair = None
+    best_score = -1.0
+    for i in range(len(wire_pos) - 1):
+        w1 = int(wire_pos[i])
+        w2 = int(wire_pos[i + 1])
+        gaps = gap_pos[(gap_pos > w1) & (gap_pos < w2)]
+        if len(gaps) == 0:
+            continue
+
+        if film_type == "positive":
+            gap = int(gaps[np.argmin(profile[gaps])])
+            if not (profile[gap] < profile[w1] and profile[gap] < profile[w2]):
+                continue
+            score = min(float(profile[w1] - profile[gap]), float(profile[w2] - profile[gap]))
+        else:
+            gap = int(gaps[np.argmax(profile[gaps])])
+            if not (profile[gap] > profile[w1] and profile[gap] > profile[w2]):
+                continue
+            score = min(float(profile[gap] - profile[w1]), float(profile[gap] - profile[w2]))
+
+        # Prefer the pair closest to the expected centre position with
+        # reasonable spacing.
+        center = gap
+        pos_score = -abs(center - (centers[-1] + expected_delta))
+        combined = score + 0.1 * pos_score
+        if combined > best_score:
+            best_score = combined
+            best_pair = (w1, gap, w2)
+
+    if best_pair is not None:
+        # Verify the new pair is a plausible successor.
+        new_center = best_pair[1]
+        expected_center = centers[-1] + expected_delta
+        if new_center > pairs[-1][1] and abs(new_center - expected_center) <= expected_delta * 0.6:
+            w1, gap, w2 = best_pair
+            dip = _compute_dip(profile, w1, gap, w2, background, half_w)
+            # The dip should be lower than (or close to) the last real
+            # pair's dip — finer wire pairs have less modulation, so a
+            # large upward jump indicates a spurious detection.
+            last_dip = _compute_dip(
+                profile, pairs[-1][0], pairs[-1][1], pairs[-1][2],
+                background, half_w,
+            )
+            if dip >= 2.0 and dip <= last_dip * 1.2:
+                pairs.append(best_pair)
+
+    return pairs
 
 
 def _pair_adjacent_wires_with_gaps(
@@ -826,6 +990,22 @@ def compute_contrast(
     else:
         dips, pairs = neg_dips, neg_pairs
         background = neg_bg
+
+    # 4. Remove spurious overlapping pairs (pairs that share a wire
+    #    position with a neighbour — one of them is a noise artefact).
+    pairs = _remove_overlapping_pairs(pairs, profile, film_type=pairing_ft)
+
+    # 5. Try to recover the finest wire pair that may have been missed
+    #    because its modulation is below the fine prominence threshold.
+    pairs = _recover_tail_pair(
+        profile, pairs, background, dip_half_w, film_type=pairing_ft,
+    )
+
+    # Recompute dips for the cleaned pair list
+    dips = [
+        _compute_dip(profile, w1, gap, w2, background, dip_half_w)
+        for w1, gap, w2 in pairs
+    ]
 
     return ComputeContrastResult(
         dips=dips,
