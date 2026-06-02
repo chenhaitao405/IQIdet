@@ -142,14 +142,18 @@ class Annotator:
 
     def activate(self, fig: plt.Figure, ax: plt.Axes) -> None:
         """Connect event handlers and start annotation mode."""
+        import time
         self._fig = fig
         self._ax = ax
+        self._last_toggle_ts = time.time()
         self._click_cid = fig.canvas.mpl_connect("button_press_event", self._on_click)
         self._key_cid = fig.canvas.mpl_connect("key_press_event", self._on_key)
         print("[annotate] Annotation mode ON (p=peak, v=valley, u=undo)")
 
     def deactivate(self) -> None:
         """Disconnect event handlers and exit annotation mode."""
+        import time
+        self._last_toggle_ts = time.time()
         if self._click_cid is not None and self._fig is not None:
             self._fig.canvas.mpl_disconnect(self._click_cid)
         if self._key_cid is not None and self._fig is not None:
@@ -192,8 +196,12 @@ class Annotator:
         elif event.key == "u":
             self.undo_last()
             self._redraw()
-        elif event.key == "escape":
-            if self._on_toggle:
+        elif event.key in ("a", "escape"):
+            # Gate: prevent double-fire when same key reaches both windows
+            import time
+            now = time.time()
+            if self._on_toggle and (now - getattr(self, '_last_toggle_ts', 0)) > 0.5:
+                self._last_toggle_ts = now
                 self._on_toggle()
         elif event.key == "s":
             if self._on_save:
