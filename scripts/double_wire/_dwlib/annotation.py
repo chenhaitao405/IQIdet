@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from typing import Callable, Optional
 
 import matplotlib.pyplot as plt
@@ -32,6 +33,7 @@ class Annotator:
         on_save: Optional[Callable[[], None]] = None,
         on_toggle: Optional[Callable[[], None]] = None,
         on_quit: Optional[Callable[[], None]] = None,
+        on_next: Optional[Callable[[], None]] = None,
     ):
         self.profile_values = np.asarray(profile_values, dtype=np.float64)
         self.band_width = band_width
@@ -41,11 +43,15 @@ class Annotator:
         self._on_save = on_save
         self._on_toggle = on_toggle
         self._on_quit = on_quit
+        self._on_next = on_next
 
         self._click_cid: Optional[int] = None
         self._key_cid: Optional[int] = None
         self._fig: Optional[plt.Figure] = None
         self._ax: Optional[plt.Axes] = None
+        self._last_callback_key: Optional[str] = None
+        self._last_callback_ts: float = 0.0
+        self._callback_dedupe_sec: float = 0.15
 
     # -- Marker management --------------------------------------------------
 
@@ -142,18 +148,18 @@ class Annotator:
 
     def activate(self, fig: plt.Figure, ax: plt.Axes) -> None:
         """Connect event handlers and start annotation mode."""
-        import time
+        if self._click_cid is not None and self._fig is not None:
+            self._fig.canvas.mpl_disconnect(self._click_cid)
+        if self._key_cid is not None and self._fig is not None:
+            self._fig.canvas.mpl_disconnect(self._key_cid)
         self._fig = fig
         self._ax = ax
-        self._last_toggle_ts = time.time()
         self._click_cid = fig.canvas.mpl_connect("button_press_event", self._on_click)
         self._key_cid = fig.canvas.mpl_connect("key_press_event", self._on_key)
-        print("[annotate] Annotation mode ON (p=peak, v=valley, u=undo)")
+        print("[annotate] Annotation mode ON (p=peak, v=valley, u=undo, s=save, Esc=exit)")
 
     def deactivate(self) -> None:
         """Disconnect event handlers and exit annotation mode."""
-        import time
-        self._last_toggle_ts = time.time()
         if self._click_cid is not None and self._fig is not None:
             self._fig.canvas.mpl_disconnect(self._click_cid)
         if self._key_cid is not None and self._fig is not None:
@@ -186,26 +192,58 @@ class Annotator:
             if self.remove_nearest(event.xdata):
                 self._redraw()
 
-    def _on_key(self, event) -> None:
-        if event.key == "p":
+    def _dedupe_callback_key(self, key: str) -> bool:
+        now = time.monotonic()
+        if (
+            self._last_callback_key == key
+            and now - self._last_callback_ts < self._callback_dedupe_sec
+        ):
+            return True
+        self._last_callback_key = key
+        self._last_callback_ts = now
+        return False
+
+    def handle_key(self, key: str | None) -> bool:
+        """Handle an annotation key from either matplotlib or OpenCV.
+
+        Returns True when the key belongs to annotation mode.  This lets the
+        OpenCV event loop forward keys without depending on matplotlib window
+        focus, while still keeping matplotlib key events as a fallback.
+        """
+        if key is None:
+            return False
+        norm_key = str(key).lower()
+
+        if norm_key == "p":
             self.mode = self.MODE_PEAK
             print("[annotate] Mode: PEAK")
-        elif event.key == "v":
+            return True
+        if norm_key == "v":
             self.mode = self.MODE_VALLEY
             print("[annotate] Mode: VALLEY")
-        elif event.key == "u":
-            self.undo_last()
-            self._redraw()
-        elif event.key in ("a", "escape"):
-            # Gate: prevent double-fire when same key reaches both windows
-            import time
-            now = time.time()
-            if self._on_toggle and (now - getattr(self, '_last_toggle_ts', 0)) > 0.5:
-                self._last_toggle_ts = now
-                self._on_toggle()
-        elif event.key == "s":
-            if self._on_save:
+            return True
+        if norm_key == "u":
+            if not self._dedupe_callback_key(norm_key):
+                self.undo_last()
+                self._redraw()
+            return True
+        if norm_key == "s":
+            if self._on_save and not self._dedupe_callback_key(norm_key):
                 self._on_save()
-        elif event.key in ("q",):
-            if self._on_quit:
+            return True
+        if norm_key == "escape":
+            if self._on_toggle and not self._dedupe_callback_key(norm_key):
+                self._on_toggle()
+            return True
+        if norm_key == "q":
+            if self._on_quit and not self._dedupe_callback_key(norm_key):
                 self._on_quit()
+            return True
+        if norm_key == "n":
+            if self._on_next and not self._dedupe_callback_key(norm_key):
+                self._on_next()
+            return True
+        return False
+
+    def _on_key(self, event) -> None:
+        self.handle_key(event.key)

@@ -26,7 +26,9 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SRC_ROOT = REPO_ROOT / "src"
+_DW_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SRC_ROOT))
+sys.path.insert(0, str(_DW_DIR))
 
 import numpy as np
 from scipy.signal import find_peaks
@@ -42,6 +44,7 @@ from gauge.imaging.profile import (
     _pair_direction_scores,
     _pair_wires_and_compute_dips,
 )
+from _dwlib.io_utils import find_profile_groundtruth_pairs
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -93,19 +96,8 @@ path_a = Path(args.path_a)
 
 
 def _find_profile_gt_pairs(directory: Path) -> list[tuple[Path, Path]]:
-    """Find matching (*_profile.json, *_groundtruth.json) pairs in a directory."""
-    profiles = sorted(directory.glob("*_profile.json"))
-    pairs = []
-    for prof in profiles:
-        stem = prof.stem
-        if stem.endswith("_profile"):
-            gt_name = stem[:-len("_profile")] + "_groundtruth.json"
-        else:
-            gt_name = stem + "_groundtruth.json"
-        gt = prof.with_name(gt_name)
-        if gt.is_file():
-            pairs.append((prof, gt))
-    return pairs
+    """Find matching profile/GT pairs using the shared artifact layout."""
+    return find_profile_groundtruth_pairs(directory)
 
 
 def _validate_one(profile_path: Path, gt_path: Path, *,
@@ -886,7 +878,12 @@ if path_a.is_dir():
     print(f"{'Profile':<50} {'Pass':>5} {'pairs':>6} {'MAE':>6} {'maxE':>6}")
     print(f"{'-'*80}")
     for r in results:
-        name = Path(r["profile"]).name[:48]
+        profile_path = Path(r["profile"])
+        try:
+            name = profile_path.relative_to(path_a).as_posix()
+        except ValueError:
+            name = profile_path.name
+        name = name[:48]
         pairs_str = f"{r['num_pairs']}/{r['gt_num_pairs']}"
         mae = f"{r['mean_point_error']:.1f}" if r['mean_point_error'] != float('inf') else "inf"
         maxe = f"{r['max_triplet_error']:.1f}" if r['max_triplet_error'] != float('inf') else "inf"

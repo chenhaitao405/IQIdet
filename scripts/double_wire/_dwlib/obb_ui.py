@@ -215,15 +215,16 @@ class OBBSelector:
                 mid_e = (int(ex_d), int(ey_d))
                 cv2.line(vis, mid_s, mid_e, COLOR_RED, 1, cv2.LINE_AA)
 
+        locked_status = f"Locked | offset={self.profile_offset_pct}% | band={self.band_width}"
+        if annotating:
+            locked_status += " | [ANNOTATING] P/V mode  U undo  S save  Esc exit  N next  Q quit"
+        else:
+            locked_status += " | A=annotate  S=save  Q=quit"
         status_map = {
             self.STATE_IDLE: "Ready",
             self.STATE_COLLECTING: f"Points {len(self.obb_points)}/4",
             self.STATE_CONFIRM: "CONFIRM - Enter to accept, R to retry, RMB to undo",
-            self.STATE_LOCKED: (
-                f"Locked | offset={self.profile_offset_pct}% | band={self.band_width}"
-                f"{' | [ANNOTATING]' if annotating else ''}"
-                f" | A=annotate  S=save  Q=quit"
-            ),
+            self.STATE_LOCKED: locked_status,
         }
         status = status_map.get(self.state, "")
         cv2.putText(vis, status, (10, vis.shape[0] - 12),
@@ -234,6 +235,7 @@ class OBBSelector:
                 "L-click: add OBB vertex (4 to confirm)",
                 "R-click: undo last vertex",
                 "R: reset OBB   A: annotate   S: save   Q/ESC: quit",
+                "Annotating: P/V mode   U undo   S save   Esc exit   N next   Q quit",
                 "H: hide help",
                 f"Trackbar: adjust offset | band_width={self.band_width}",
             ]

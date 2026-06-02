@@ -27,11 +27,18 @@ def _profile_gt_pair_metrics(result_pairs, gt_pairs):
     errors = []
     max_triplet_errors = []
     for algo_pair, gt_pair in zip(result_pairs[:n_compare], gt_pairs[:n_compare]):
-        gt_triplet = (
-            gt_pair["valley_a_idx"],
-            gt_pair["peak_idx"],
-            gt_pair["valley_b_idx"],
-        )
+        if "wire_a_idx" in gt_pair:
+            gt_triplet = (
+                gt_pair["wire_a_idx"],
+                gt_pair["gap_idx"],
+                gt_pair["wire_b_idx"],
+            )
+        else:
+            gt_triplet = (
+                gt_pair["valley_a_idx"],
+                gt_pair["peak_idx"],
+                gt_pair["valley_b_idx"],
+            )
         triplet_errors = [abs(int(a) - int(g)) for a, g in zip(algo_pair, gt_triplet)]
         errors.extend(triplet_errors)
         max_triplet_errors.append(max(triplet_errors))
@@ -440,24 +447,24 @@ class TestBAMHelpers(unittest.TestCase):
     """Unit tests for BAM internal helpers."""
 
     def test_detect_film_type_positive(self):
-        """正片: valley(丝·暗) < peak(间隙·亮) → film_type='positive'."""
+        """正片: peak(亮丝) - valley(暗谷) - peak(亮丝) → film_type='positive'."""
         from gauge.imaging.profile import _detect_film_type
-        valleys = np.array([10, 50])
-        peaks = np.array([30, 70])
+        valleys = np.array([30])
+        peaks = np.array([10, 50])
         profile = np.ones(100, dtype=np.float64) * 100.0
-        profile[valleys] = 50.0   # 暗丝(dark wires)
-        profile[peaks] = 200.0    # 亮间隙(bright gaps)
+        profile[peaks] = 200.0
+        profile[valleys] = 50.0
         result = _detect_film_type(profile, valleys, peaks)
         self.assertEqual(result, "positive")
 
     def test_detect_film_type_negative(self):
-        """负片: peaks=wire(bright), valleys=gap(dark) → film_type='negative'."""
+        """负片: valley(暗丝) - peak(亮谷) - valley(暗丝) → film_type='negative'."""
         from gauge.imaging.profile import _detect_film_type
-        valleys = np.array([30, 70])   # gaps (dark minima)
-        peaks = np.array([10, 50])     # wires (bright maxima)
+        valleys = np.array([10, 50])
+        peaks = np.array([30])
         profile = np.ones(100, dtype=np.float64) * 100.0
-        profile[peaks] = 200.0   # bright wires
-        profile[valleys] = 50.0  # dark gaps
+        profile[valleys] = 50.0
+        profile[peaks] = 200.0
         result = _detect_film_type(profile, valleys, peaks)
         self.assertEqual(result, "negative")
 
@@ -565,15 +572,15 @@ class TestBAMHelpers(unittest.TestCase):
         self.assertAlmostEqual(dip, 0.0)
 
     def test_pair_wires_positive(self):
-        """正片: wires=valleys, gaps=peaks, 相邻 valley 间距≤1.05*首对间距."""
+        """正片: wires=peaks, gaps=valleys."""
         from gauge.imaging.profile import _pair_wires_and_compute_dips
         x = np.linspace(0, 6 * np.pi, 300)
-        profile = (-np.sin(x) * 30.0 + 100.0).astype(np.float64)
+        profile = (np.sin(x) * 30.0 + 100.0).astype(np.float64)
         background = np.ones(300, dtype=np.float64) * 100.0
         peaks, valleys = detect_peaks_valleys(profile, min_distance=30, prominence=0.05)
 
         dips, pairs = _pair_wires_and_compute_dips(
-            profile, valleys, peaks, background, half_w=1,
+            profile, peaks, valleys, background, half_w=1,
             dist_factor=1.05, film_type="positive",
         )
         self.assertGreater(len(dips), 0)
@@ -583,15 +590,15 @@ class TestBAMHelpers(unittest.TestCase):
             self.assertLess(g, w2)
 
     def test_pair_wires_negative(self):
-        """负片: wires=peaks, gaps=valleys."""
+        """负片: wires=valleys, gaps=peaks."""
         from gauge.imaging.profile import _pair_wires_and_compute_dips
         x = np.linspace(0, 6 * np.pi, 300)
-        profile = (np.sin(x) * 30.0 + 100.0).astype(np.float64)
+        profile = (-np.sin(x) * 30.0 + 100.0).astype(np.float64)
         background = np.ones(300, dtype=np.float64) * 100.0
         peaks, valleys = detect_peaks_valleys(profile, min_distance=30, prominence=0.05)
 
         dips, pairs = _pair_wires_and_compute_dips(
-            profile, peaks, valleys, background, half_w=1,
+            profile, valleys, peaks, background, half_w=1,
             dist_factor=1.05, film_type="negative",
         )
         self.assertGreater(len(dips), 0)
@@ -689,7 +696,7 @@ class TestComputeContrast(unittest.TestCase):
     """Tests for compute_contrast()."""
 
     def setUp(self):
-        """Create synthetic negative-film profile with 4 wire pairs (decreasing dip)."""
+        """Create synthetic positive-film profile with 4 wire pairs (decreasing dip)."""
         np.random.seed(42)
         x = np.arange(400, dtype=np.float64)
         bg = 0.0003 * x**2 + 150.0
@@ -713,10 +720,10 @@ class TestComputeContrast(unittest.TestCase):
         self.profile += np.random.normal(0, 1.5, 400).astype(np.float64)
 
     def test_auto_film_type(self):
-        """film_type='auto' 应检测为 negative."""
+        """film_type='auto' 应检测为 positive."""
         from gauge.imaging.profile import compute_contrast
         result = compute_contrast(self.profile, film_type="auto", min_distance=30)
-        self.assertEqual(result.film_type, "negative")
+        self.assertEqual(result.film_type, "positive")
 
     def test_explicit_film_type(self):
         """显式指定 film_type='positive' 应保留."""
@@ -727,7 +734,7 @@ class TestComputeContrast(unittest.TestCase):
     def test_produces_dips_and_pairs(self):
         """应产出 dips 和 pairs."""
         from gauge.imaging.profile import compute_contrast
-        result = compute_contrast(self.profile, film_type="negative", min_distance=30)
+        result = compute_contrast(self.profile, film_type="positive", min_distance=30)
         self.assertGreater(len(result.dips), 0)
         self.assertEqual(len(result.dips), len(result.pairs))
         # Verify all dips are in valid range (detrending + SG background may
@@ -772,6 +779,8 @@ class TestComputeContrast(unittest.TestCase):
             profile = np.asarray(json.load(f)["profile_values"], dtype=np.float64)
         with open(gt_path, encoding="utf-8") as f:
             gt = json.load(f)
+        if gt.get("wire_pairs") and "wire_a_idx" not in gt["wire_pairs"][0]:
+            self.skipTest("Legacy GT uses inverted valley/peak semantics; re-annotate first")
 
         result = compute_contrast(profile, film_type="auto", min_distance=5, prominence=0.03)
         mean_err, max_triplet_err = _profile_gt_pair_metrics(result.pairs, gt["wire_pairs"])
@@ -793,6 +802,10 @@ class TestComputeContrast(unittest.TestCase):
 
         with open(profile_path, encoding="utf-8") as f:
             profile = np.asarray(json.load(f)["profile_values"], dtype=np.float64)
+        with open(gt_path, encoding="utf-8") as f:
+            gt = json.load(f)
+        if gt.get("wire_pairs") and "wire_a_idx" not in gt["wire_pairs"][0]:
+            self.skipTest("Legacy GT uses inverted valley/peak semantics; re-annotate first")
 
         result = compute_contrast(profile, film_type="auto", min_distance=5, prominence=0.03)
 
@@ -830,8 +843,8 @@ class TestFindFirstUnresolvedGroup(unittest.TestCase):
         result = find_first_unresolved_group(dips, dip_threshold=15.0)
         self.assertEqual(result, 4)
 
-    def test_end_to_end_negative_film(self):
-        """完整流程: 合成负片剖面 -> compute_contrast -> find_first_unresolved_group."""
+    def test_end_to_end_positive_film(self):
+        """完整流程: 合成正片剖面 -> compute_contrast -> find_first_unresolved_group."""
         from gauge.imaging.profile import compute_contrast, find_first_unresolved_group
 
         x = np.arange(400, dtype=np.float64)
@@ -855,7 +868,7 @@ class TestFindFirstUnresolvedGroup(unittest.TestCase):
         profile += np.random.default_rng(42).normal(0, 1.5, 400)
 
         result = compute_contrast(profile, film_type="auto", min_distance=30)
-        self.assertEqual(result.film_type, "negative")
+        self.assertEqual(result.film_type, "positive")
         self.assertGreaterEqual(len(result.dips), 2)
         for d in result.dips:
             self.assertGreaterEqual(d, 0.0)

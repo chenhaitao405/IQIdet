@@ -1,11 +1,49 @@
 """File I/O and path utilities for the double-wire annotation tool."""
 
+from dataclasses import dataclass
 import json
 from pathlib import Path
 from typing import Tuple
 
 import cv2
 import numpy as np
+
+ORIGINAL_VARIANT_DIR = "ori"
+INVERTED_VARIANT_DIR = "inver"
+
+
+@dataclass(frozen=True)
+class DoubleWireArtifactPaths:
+    """Canonical paths for one image/version's double-wire artifacts."""
+
+    image_dir: Path
+    variant_dir: Path
+    overlay: Path
+    obb: Path
+    profile: Path
+    groundtruth: Path
+
+
+def double_wire_artifact_paths(
+    output_dir: str | Path,
+    image_path: str | Path,
+    *,
+    inverted: bool = False,
+) -> DoubleWireArtifactPaths:
+    """Build canonical artifact paths grouped by image stem and variant."""
+    output_root = Path(output_dir)
+    image_stem = Path(image_path).stem
+    image_dir = output_root / image_stem
+    variant_dir = image_dir / (INVERTED_VARIANT_DIR if inverted else ORIGINAL_VARIANT_DIR)
+    suffix = "_inverted" if inverted else ""
+    return DoubleWireArtifactPaths(
+        image_dir=image_dir,
+        variant_dir=variant_dir,
+        overlay=image_dir / f"{image_stem}_overlay.png",
+        obb=variant_dir / f"{image_stem}{suffix}_obb.png",
+        profile=variant_dir / f"{image_stem}{suffix}_profile.json",
+        groundtruth=variant_dir / f"{image_stem}{suffix}_groundtruth.json",
+    )
 
 
 def load_image(
@@ -98,3 +136,14 @@ def default_groundtruth_path(profile_json_path: str | Path) -> Path:
     else:
         stem = stem + "_groundtruth"
     return profile_path.with_name(stem + ".json")
+
+
+def find_profile_groundtruth_pairs(directory: str | Path) -> list[tuple[Path, Path]]:
+    """Find matching profile/GT pairs recursively under a directory."""
+    root = Path(directory)
+    pairs: list[tuple[Path, Path]] = []
+    for profile_path in sorted(root.rglob("*_profile.json")):
+        gt_path = default_groundtruth_path(profile_path)
+        if gt_path.is_file():
+            pairs.append((profile_path, gt_path))
+    return pairs

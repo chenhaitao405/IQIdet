@@ -124,3 +124,10 @@ class ProfileView:
         self.fig.canvas.flush_events()
         self.ax_top = None
         self.ax_bottom = None
+
+    def flush_events(self) -> None:
+        """Process pending GUI events for the matplotlib window."""
+        try:
+            self.fig.canvas.flush_events()
+        except Exception:
+            pass

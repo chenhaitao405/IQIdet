@@ -2,8 +2,8 @@
 """Interactive BAM double-wire IQI annotation tool.
 
 Combines OBB selection, profile visualization, and ground-truth annotation
-in a single unified workflow.  Press **A** after locking the OBB to enter
-annotation mode; press **S** to save both profile data and ground truth.
+in a single unified workflow.  Annotation mode starts automatically after
+locking the OBB; press **S** to save both profile data and ground truth.
 
 Usage:
     annotate.py <image_path> [options]
@@ -44,6 +44,7 @@ for p in (str(REPO_ROOT), str(SRC_ROOT), _DW_DIR):
         sys.path.insert(0, p)
 
 from _dwlib.io_utils import (
+    double_wire_artifact_paths,
     load_image,
     save_obb_image,
     save_overlay_image,
@@ -62,18 +63,36 @@ from gauge.imaging.profile import (
 )
 
 
+DEFAULT_OUTPUT_DIR = "outputs/double_wire_demo"
+
+
+def _cv2_key_to_annotation_key(key: int) -> Optional[str]:
+    """Translate OpenCV waitKey codes used by annotation mode."""
+    if key < 0:
+        return None
+    if key == 27:
+        return "escape"
+    if ord("A") <= key <= ord("Z"):
+        key = key + 32
+    if 0 <= key <= 255:
+        ch = chr(key)
+        if ch in {"p", "v", "u", "s", "q"}:
+            return ch
+    return None
+
+
 class BAMAnnotator:
     """Orchestrates OBB selection, profile view, and ground-truth annotation."""
 
     def __init__(
         self,
         image_path: str,
-        output_dir: Optional[str] = None,
+        output_dir: Optional[str] = DEFAULT_OUTPUT_DIR,
         window_size: int = 1200,
         band_width: int = 21,
     ):
         self.image_path = Path(image_path)
-        self.output_dir = Path(output_dir) if output_dir else None
+        self.output_dir = Path(output_dir or DEFAULT_OUTPUT_DIR)
         self.window_size = int(window_size)
         self.band_width = int(band_width)
 
@@ -88,6 +107,7 @@ class BAMAnnotator:
         self._profile_line = None
         self._uw: int = 0
         self._annotating: bool = False
+        self._pending_result: Optional[str] = None
 
     # -- Profile update ----------------------------------------------------
 
@@ -155,27 +175,41 @@ class BAMAnnotator:
             except Exception:
                 pass
 
+    def _request_result(self, status: str) -> None:
+        self._pending_result = status
+
+    def _finish(self, status: str) -> str:
+        if status == "next":
+            if self._annotating:
+                self._toggle_annotation()
+            print("[annotate] Next image")
+        else:
+            print("[annotate] Quit")
+        cv2.destroyAllWindows()
+        plt.close("all")
+        return status
+
     # -- Save --------------------------------------------------------------
 
     def _save_one_version(
-        self, image: np.ndarray, suffix: str
+        self, image: np.ndarray, *, inverted: bool = False
     ) -> Optional[str]:
         """Save OBB image, profile JSON, and GT for one image version.
 
         Args:
             image: Raw grayscale image to extract profile from.
-            suffix: Filename suffix (e.g. ``""`` for original, ``"_inverted"``).
+            inverted: Whether this is the photometric-inverted version.
 
         Returns:
             Path to the saved profile JSON, or None if profile is unavailable.
         """
-        stem = self.image_path.stem
+        paths = double_wire_artifact_paths(self.output_dir, self.image_path, inverted=inverted)
+        paths.variant_dir.mkdir(parents=True, exist_ok=True)
         obb = self.obb.obb_corners_raw
 
         # OBB unwarp + image
         unwarped, (uw, uh) = unwarp_obb_region(image, obb)
-        obb_path = self.output_dir / f"{stem}{suffix}_obb.png"
-        save_obb_image(unwarped, (uw, uh), obb_path)
+        save_obb_image(unwarped, (uw, uh), paths.obb)
 
         # Profile extraction + BAM analysis
         profile_line = compute_profile_line(
@@ -189,7 +223,6 @@ class BAMAnnotator:
         unresolved = find_first_unresolved_group(result.dips)
 
         # Profile JSON
-        profile_path = self.output_dir / f"{stem}{suffix}_profile.json"
         payload = {
             "image_path": str(self.image_path),
             "obb_corners_raw": obb.tolist(),
@@ -209,13 +242,12 @@ class BAMAnnotator:
             ],
             "bam_unresolved_group": unresolved,
         }
-        save_profile_json(profile_path, payload)
+        save_profile_json(paths.profile, payload)
 
         # Ground truth JSON (rebuilt with this version's profile values)
         if self.annotator is not None and self.annotator.markers:
-            gt_path = self.output_dir / f"{stem}{suffix}_groundtruth.json"
-            gt_payload = self.annotator.build_groundtruth(str(profile_path))
-            save_groundtruth_json(gt_path, gt_payload)
+            gt_payload = self.annotator.build_groundtruth(str(paths.profile))
+            save_groundtruth_json(paths.groundtruth, gt_payload)
             print(f"  Film type: {gt_payload['film_type']}")
             print(f"  Wire pairs: {gt_payload['num_wire_pairs']}")
             for wp in gt_payload["wire_pairs"]:
@@ -226,7 +258,7 @@ class BAMAnnotator:
         else:
             print("[save] No annotation markers - skipping groundtruth.json")
 
-        return str(profile_path)
+        return str(paths.profile)
 
     def _invert_image(self) -> np.ndarray:
         """Create a photometric-inverted copy of the raw image."""
@@ -246,21 +278,21 @@ class BAMAnnotator:
             print("[save] No OBB fitted. Lock OBB first before saving.")
             return
 
-        self.output_dir.mkdir(parents=True, exist_ok=True)
+        paths = double_wire_artifact_paths(self.output_dir, self.image_path, inverted=False)
+        paths.image_dir.mkdir(parents=True, exist_ok=True)
 
         # Overlay image (once, shared)
-        overlay_path = self.output_dir / f"{self.image_path.stem}_overlay.png"
         overlay = self.obb.draw_overlay(annotating=self._annotating)
-        save_overlay_image(overlay, overlay_path)
+        save_overlay_image(overlay, paths.overlay)
 
         # Save original (positive/negative as-is)
         print("[save] --- Original ---")
-        self._save_one_version(self.image_raw, "")
+        self._save_one_version(self.image_raw, inverted=False)
 
         # Save inverted (255 - x)
         print("[save] --- Inverted (255-x) ---")
         inverted = self._invert_image()
-        self._save_one_version(inverted, "_inverted")
+        self._save_one_version(inverted, inverted=True)
 
     # -- Main loop ---------------------------------------------------------
 
@@ -282,6 +314,8 @@ class BAMAnnotator:
             band_width=self.band_width,
             on_save=self._save,
             on_toggle=self._toggle_annotation,
+            on_quit=lambda: self._request_result("quit"),
+            on_next=lambda: self._request_result("next"),
         )
 
         cv2.namedWindow(self.obb.window_name, cv2.WINDOW_NORMAL)
@@ -293,28 +327,30 @@ class BAMAnnotator:
         print(f"[annotate] Loaded: {self.image_path.name}")
         print(f"[annotate] Shape: {self.image_raw.shape}, dtype: {self.image_raw.dtype}")
         print(f"[annotate] band_width: {self.band_width}")
-        print("[annotate] L-click=add point  Enter=lock  R=reset  A=annotate  S=save  N=next  Q=quit  H=help")
+        print("[annotate] L-click=add point  Enter=lock  R=reset  S=save  N=next  Q=quit  H=help")
+        print("[annotate] Annotation: click profile to mark, P/V=mode, U=undo, S=save, Esc=exit")
 
         while True:
             overlay = self.obb.draw_overlay(annotating=self._annotating)
             cv2.imshow(self.obb.window_name, overlay)
+            self.view.flush_events()
+            if self._pending_result is not None:
+                pending = self._pending_result
+                self._pending_result = None
+                return self._finish(pending)
 
             key = cv2.waitKey(30) & 0xFF
 
             # ── When annotating, keyboard belongs to matplotlib figure ──
-            # OpenCV only handles escape-hatch keys; p/v/u/a go via mpl
+            # Route OpenCV keys too, because matplotlib focus is WM/backend
+            # dependent. Matplotlib events remain connected as a fallback.
             if self._annotating:
                 if key == ord("n"):
-                    self._toggle_annotation()  # exit annotation cleanly
-                    print("[annotate] Next image")
-                    cv2.destroyAllWindows()
-                    plt.close("all")
-                    return "next"
-                elif key in (ord("q"), 27):
-                    print("[annotate] Quit")
-                    cv2.destroyAllWindows()
-                    plt.close("all")
-                    return "quit"
+                    return self._finish("next")
+                elif key == ord("q"):
+                    return self._finish("quit")
+                elif self.annotator is not None:
+                    self.annotator.handle_key(_cv2_key_to_annotation_key(key))
                 continue
 
             # ── When NOT annotating, OpenCV owns keyboard ──
@@ -322,28 +358,22 @@ class BAMAnnotator:
                 if self.obb.state == OBBSelector.STATE_CONFIRM:
                     self.obb.state = OBBSelector.STATE_LOCKED
                     self._update_profile()
+                    self._toggle_annotation()
+                elif self.obb.state == OBBSelector.STATE_LOCKED:
+                    self._toggle_annotation()
             elif key == ord("r"):
                 self.obb.reset()
                 self.view.clear()
                 cv2.setTrackbarPos(self.obb.trackbar_name, self.obb.window_name, 50)
-            elif key == ord("a"):
-                if self.obb.state == OBBSelector.STATE_LOCKED:
-                    self._toggle_annotation()
             elif key == ord("s"):
                 if self.obb.state == OBBSelector.STATE_LOCKED:
                     self._save()
                 else:
                     print("[annotate] Lock OBB first (complete 4 points, press Enter)")
             elif key == ord("n"):
-                print("[annotate] Next image")
-                cv2.destroyAllWindows()
-                plt.close("all")
-                return "next"
+                return self._finish("next")
             elif key in (ord("q"), 27):
-                print("[annotate] Quit")
-                cv2.destroyAllWindows()
-                plt.close("all")
-                return "quit"
+                return self._finish("quit")
             elif key == ord("h"):
                 self.obb.show_help = not self.obb.show_help
 
