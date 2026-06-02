@@ -958,15 +958,20 @@ def compute_contrast(
             if profile_range > 1e-10 else 0.5
         )
 
-        # Pick the pairing direction with the stronger contrast signal.
-        if neg_med > pos_med:
+        # Pick the pairing direction.  When one direction produces very
+        # few pairs compared to the other its median score is unreliable
+        # — a handful of spurious pairs on a steep background slope can
+        # produce deceptively high contrast scores (RC-6).
+        if len(pos_pairs) >= 3 and len(neg_pairs) < 3:
+            pairing_ft = "positive"
+        elif len(neg_pairs) >= 3 and len(pos_pairs) < 3:
+            pairing_ft = "negative"
+        elif neg_med > pos_med:
             pairing_ft = "negative"
         elif pos_med > neg_med:
             pairing_ft = "positive"
         else:
             # Tie: use the global intensity distribution to disambiguate.
-            # A bright image (norm_mean ≥ 0.5) with a rising left→right
-            # trend is typical for negative film on the original profile.
             pairing_ft = "negative" if norm_mean >= 0.5 else "positive"
 
         # Determine the reported film_type label.  Photometric inversion
