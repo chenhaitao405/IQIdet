@@ -83,37 +83,60 @@ class Annotator:
     # -- Drawing ------------------------------------------------------------
 
     def draw_markers(self, ax: plt.Axes) -> None:
-        """Draw annotation markers on the given axes."""
+        """Draw annotation markers on the given axes.
+
+        Removes previously drawn annotation artists before re-drawing.
+        """
+        # Remove old annotation artists
+        for artist in getattr(self, '_marker_artists', []):
+            try:
+                artist.remove()
+            except Exception:
+                pass
+        self._marker_artists = []
+
         peak_idxs = [m["idx"] for m in self.markers if m["type"] == "peak"]
         valley_idxs = [m["idx"] for m in self.markers if m["type"] == "valley"]
 
         if peak_idxs:
-            ax.plot(
+            line = ax.plot(
                 peak_idxs, self.profile_values[peak_idxs],
                 PEAK_MARKER, color=PEAK_COLOR, markersize=10,
                 markeredgecolor="black", markeredgewidth=0.5,
                 label="peaks (manual)",
             )
+            self._marker_artists.extend(line)
             for idx in peak_idxs:
-                ax.annotate(
+                ann = ax.annotate(
                     str(idx), (idx, self.profile_values[idx]),
                     textcoords="offset points", xytext=(0, 8),
                     fontsize=7, color=PEAK_COLOR, ha="center",
                 )
+                self._marker_artists.append(ann)
 
         if valley_idxs:
-            ax.plot(
+            line = ax.plot(
                 valley_idxs, self.profile_values[valley_idxs],
                 VALLEY_MARKER, color=VALLEY_COLOR, markersize=10,
                 markeredgecolor="black", markeredgewidth=0.5,
                 label="valleys (manual)",
             )
+            self._marker_artists.extend(line)
             for idx in valley_idxs:
-                ax.annotate(
+                ann = ax.annotate(
                     str(idx), (idx, self.profile_values[idx]),
                     textcoords="offset points", xytext=(0, -12),
                     fontsize=7, color=VALLEY_COLOR, ha="center",
                 )
+                self._marker_artists.append(ann)
+
+    def _redraw(self) -> None:
+        """Redraw markers and flush canvas (call after state change)."""
+        if self._fig is None or self._ax is None:
+            return
+        self.draw_markers(self._ax)
+        self._fig.canvas.draw()
+        self._fig.canvas.flush_events()
 
     # -- Activation ---------------------------------------------------------
 
@@ -154,8 +177,10 @@ class Annotator:
         if event.button == MouseButton.LEFT:
             self.add_marker(idx)
             print(f"[annotate] Added {self.mode} at idx={idx}, gray={self.profile_values[idx]:.2f}")
+            self._redraw()
         elif event.button == MouseButton.RIGHT:
-            self.remove_nearest(event.xdata)
+            if self.remove_nearest(event.xdata):
+                self._redraw()
 
     def _on_key(self, event) -> None:
         if event.key == "p":
@@ -166,6 +191,7 @@ class Annotator:
             print("[annotate] Mode: VALLEY")
         elif event.key == "u":
             self.undo_last()
+            self._redraw()
         elif event.key == "escape":
             if self._on_toggle:
                 self._on_toggle()
