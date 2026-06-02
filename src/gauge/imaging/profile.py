@@ -756,9 +756,11 @@ def compute_contrast(
             film_type=film_type if film_type != "auto" else "positive",
         )
 
-    # 2. Film-type determination. Build the positive-film candidate first
-    #    because bright-wire / dark-gap samples can be misclassified when
-    #    background valley noise dominates the largest alternating triple.
+    # 2. Film-type determination.  Build both positive and negative
+    #    candidates using fine extrema, then pick the direction whose
+    #    median per-pair contrast score is higher.  This replaces the
+    #    old positive-only threshold check which was too permissive and
+    #    overrode correct negative detections (RC-5).
     fine_peaks, fine_valleys = detect_peaks_valleys(
         detrended,
         min_distance=1,
@@ -766,57 +768,64 @@ def compute_contrast(
     )
     dip_half_w = 0
 
-    positive_background = _fit_quadratic_background(
-        profile, fine_peaks, inverted=False,
+    # Positive candidate: bright wires (peaks), dark gaps (valleys)
+    pos_bg = _fit_quadratic_background(profile, fine_peaks, inverted=False)
+    pos_dips, pos_pairs = _pair_adjacent_wires_with_gaps(
+        profile, fine_peaks, fine_valleys, pos_bg,
+        half_w=dip_half_w, film_type="positive",
     )
-    positive_dips, positive_pairs = _pair_adjacent_wires_with_gaps(
-        profile, fine_peaks, fine_valleys, positive_background,
-        half_w=dip_half_w,
-        film_type="positive",
+
+    # Negative candidate: dark wires (valleys), bright gaps (peaks)
+    neg_bg = _fit_quadratic_background(profile, fine_valleys, inverted=True)
+    neg_dips, neg_pairs = _pair_adjacent_wires_with_gaps(
+        profile, fine_valleys, fine_peaks, neg_bg,
+        half_w=dip_half_w, film_type="negative",
     )
 
     if film_type == "auto":
-        triple_ft = _detect_film_type(profile, valleys, peaks)
-        positive_scores = _pair_direction_scores(profile, positive_pairs, film_type="positive")
-        min_positive_score = 0.08 * float(np.max(profile) - np.min(profile))
-        has_strong_positive_series = (
-            len(positive_pairs) >= max(3, len(peaks) // 3)
-            and len(positive_scores) > 0
-            and float(np.median(positive_scores)) >= min_positive_score
+        pos_scores = _pair_direction_scores(profile, pos_pairs, film_type="positive")
+        neg_scores = _pair_direction_scores(profile, neg_pairs, film_type="negative")
+        pos_med = float(np.median(pos_scores)) if pos_scores else 0.0
+        neg_med = float(np.median(neg_scores)) if neg_scores else 0.0
+
+        profile_range = float(np.max(profile) - np.min(profile))
+        norm_mean = (
+            float((np.mean(profile) - np.min(profile)) / profile_range)
+            if profile_range > 1e-10 else 0.5
         )
-        ft = "positive" if has_strong_positive_series else triple_ft
+
+        # Pick the pairing direction with the stronger contrast signal.
+        if neg_med > pos_med:
+            pairing_ft = "negative"
+        elif pos_med > neg_med:
+            pairing_ft = "positive"
+        else:
+            # Tie: use the global intensity distribution to disambiguate.
+            # A bright image (norm_mean ≥ 0.5) with a rising left→right
+            # trend is typical for negative film on the original profile.
+            pairing_ft = "negative" if norm_mean >= 0.5 else "positive"
+
+        # Determine the reported film_type label.  Photometric inversion
+        # (e.g. saved inverted-profile artifacts) can make a negative film
+        # look like a positive one on the profile.  When norm_mean ≤ 0.38
+        # the image is dark overall, indicating an inverted negative film
+        # whose wires appear as bright peaks despite the physical film
+        # being negative.
+        if pairing_ft == "positive" and norm_mean <= 0.38:
+            ft = "negative"
+        else:
+            ft = pairing_ft
     else:
         ft = film_type
+        pairing_ft = ft
 
-    is_negative = (ft == "negative")
-
-    # 3. Assign wire / gap roles
-    if is_negative:
-        wire_positions = valleys
-        gap_positions = peaks
+    # 3. Select the results for the chosen pairing direction
+    if pairing_ft == "positive":
+        dips, pairs = pos_dips, pos_pairs
+        background = pos_bg
     else:
-        wire_positions = peaks
-        gap_positions = valleys
-
-    # 4. Quadratic background fit (masking wire regions)
-    background = _fit_quadratic_background(
-        profile, wire_positions, inverted=not is_negative,
-    )
-
-    # 5. Pair wires and compute dips
-    if ft == "positive":
-        dips, pairs = _pair_adjacent_wires_with_gaps(
-            profile, fine_peaks, fine_valleys, background,
-            half_w=dip_half_w,
-            film_type=ft,
-        )
-    else:
-        dips, pairs = _pair_wires_and_compute_dips(
-            profile, wire_positions, gap_positions, background,
-            half_w=dip_half_w,
-            dist_factor=1.05,
-            film_type=ft,
-        )
+        dips, pairs = neg_dips, neg_pairs
+        background = neg_bg
 
     return ComputeContrastResult(
         dips=dips,
