@@ -103,3 +103,93 @@
 conda activate weld-gpu
 PYTHONPATH=$(pwd):$(pwd)/src python scripts/double_wire/validate_bam_gt.py "outputs/double_wire_demo"
 ```
+
+---
+
+## 下一步：OBB 扰动增强验证计划
+
+### 动机
+
+实际使用中发现 OBB 选点对算法结果影响很大——同一张图，OBB 角点差几个像素就可能导致识别失败。当前 14 个 profile 的验证集只覆盖了单一的 OBB 标注，不足以评估算法对 OBB 变化的鲁棒性。
+
+### 目标
+
+通过微扰动 OBB 角点生成 profile 变体，验证算法在 OBB 不确定性下的鲁棒性。**最终目标：原始 14 个 profile + 所有扰动变体 100% PASS。**
+
+### 数据布局
+
+```
+outputs/double_wire_demo/<样本名>/
+  ori/
+    *_profile.json        ← 含 obb_corners_raw（4×2 角点）、profile_values（1D）
+    *_groundtruth.json    ← 含 wire_pairs（每组 wire_a/gap/wire_b 的 profile 索引）
+  inver/
+    *_inverted_profile.json
+    *_inverted_groundtruth.json
+
+outputs/候选双丝像质计/<样本名>.jpg   ← 原始图像
+```
+
+### 执行步骤
+
+#### Step 1: GT 反投（profile 索引 → 原图坐标）
+
+- 从 `groundtruth.json` 读取每组 `wire_a_idx, gap_idx, wire_b_idx`（profile 坐标系索引）
+- 利用 `obb_corners_raw` 构建透视变换矩阵，做正向映射：
+  - profile 索引 i → unwarp 图像列坐标 x = i（profile 第 i 个采样点对应 unwarp 图像第 i 列）
+  - unwarp 列坐标 x → 原图坐标：通过 `cv2.getPerspectiveTransform` 的逆矩阵
+- 每个 GT 关键点（wire_a, gap, wire_b）映射为原图坐标 (u, v)
+- 保存为 `gt_image_points.json`（与原 profile 同级目录）
+
+#### Step 2: OBB 扰动生成
+
+对每个样本的 `obb_corners_raw`（4 个角点，TL-TR-BR-BL）生成 N 个变体（建议 N=5~8）：
+
+- 每个角点独立加高斯噪声（σ = 2~5 px），模拟人工点击误差
+- 可选：整体平移（±5~10 px）、整体旋转（±1~2°）
+- 要求扰动后的 OBB 仍构成合理四边形（不自交、面积不剧烈变化）
+
+#### Step 3: Profile 重提取 + GT 重投影
+
+对每个扰动 OBB 变体：
+- 用 `extract_profile_band()` 从原图重新提取 profile（`band_width=21`）
+- 用新 OBB 构建正向透视变换，将 Step 1 的 GT 原图坐标重新投影回 profile 索引
+- 生成新的 `*_profile.json` 和 `*_groundtruth.json`
+- 变体输出目录：`outputs/double_wire_obb_aug/<样本名>/<变体ID>/`
+
+#### Step 4: 全量验证
+
+```bash
+PYTHONPATH=$(pwd):$(pwd)/src \
+  python scripts/double_wire/validate_bam_gt.py "outputs/double_wire_obb_aug"
+```
+
+产出基线报告，标记所有 FAIL 的变体。
+
+#### Step 5: 诊断修复
+
+对每个 FAIL 变体，按分层优先级诊断：
+
+| Layer | 检查项 | 阈值 |
+|-------|--------|------|
+| L1 | 配对数量 == GT num_wire_pairs | exact |
+| L2 | film_type == GT film_type | exact |
+| L3 | max triplet err ≤ 5px, MAE ≤ 3px | 5px / 3px |
+
+优先修算法层（`profile.py`），避免为每个变体单独调整参数。
+
+### 实施脚本
+
+建议新建 `scripts/double_wire/augment_obb_variants.py`，包含：
+- `back_project_gt(profile_json, gt_json) -> gt_image_points` — GT 反投
+- `perturb_obb(corners, sigma, seed) -> perturbed_corners` — OBB 扰动
+- `reproject_gt(gt_image_points, perturbed_corners, image) -> new_gt` — GT 重投影
+- `generate_variants(sample_dir, n_variants) -> None` — 主流程
+
+### 提交规则
+
+| 阶段 | 提交内容 |
+|------|---------|
+| 脚本完成 + 基线报告 | OBB 扰动脚本 + `gt_image_points.json` + 基线验证结果 |
+| 每修复一类算法问题 | 至少一个变体从 FAIL→PASS，提交信息写明根因和修复 |
+| 最终 | 所有原始 + 变体全部 PASS
