@@ -88,6 +88,7 @@ class BAMAnnotator:
         self._profile_line = None
         self._uw: int = 0
         self._annotating: bool = False
+        self._toggle_cooldown: int = 0
 
     # -- Profile update ----------------------------------------------------
 
@@ -135,6 +136,7 @@ class BAMAnnotator:
     def _toggle_annotation(self) -> None:
         if self.view is None or self.annotator is None:
             return
+        self._toggle_cooldown = 15  # ~500ms, prevent double-fire from focus switch
         if self._annotating:
             self.annotator.deactivate()
             self._annotating = False
@@ -295,21 +297,18 @@ class BAMAnnotator:
         print(f"[annotate] band_width: {self.band_width}")
         print("[annotate] L-click=add point  Enter=lock  R=reset  A=annotate  S=save  N=next  Q=quit  H=help")
 
-        _held_keys: set[int] = set()
         while True:
             overlay = self.obb.draw_overlay(annotating=self._annotating)
             cv2.imshow(self.obb.window_name, overlay)
 
             raw_key = cv2.waitKey(30) & 0xFF
-
-            # Debounce: only process on first detection (key-up clears)
-            if raw_key == 255:  # no key pressed
-                _held_keys.clear()
-                continue
-            if raw_key in _held_keys:
-                continue
-            _held_keys.add(raw_key)
             key = raw_key
+
+            # Cooldown after toggle to prevent double-fire from focus switch
+            if self._toggle_cooldown > 0:
+                self._toggle_cooldown -= 1
+                if key in (ord("a"), ord("s"), ord("n"), ord("q"), 27, ord("r"), ord("h")):
+                    continue  # suppress action keys during cooldown
 
             if key in (13, 32):  # Enter / Space
                 if self.obb.state == OBBSelector.STATE_CONFIRM:
