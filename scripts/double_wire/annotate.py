@@ -265,6 +265,8 @@ class BAMAnnotator:
     # -- Main loop ---------------------------------------------------------
 
     def run(self) -> None:
+        plt.ion()  # Must be before ProfileView() — enables interactive figure windows
+
         self.image_raw, display, scale_x, scale_y = load_image(
             str(self.image_path), self.window_size,
         )
@@ -287,8 +289,6 @@ class BAMAnnotator:
         cv2.createTrackbar(
             self.obb.trackbar_name, self.obb.window_name, 50, 100, self.obb.on_trackbar,
         )
-
-        plt.ion()
 
         print(f"[annotate] Loaded: {self.image_path.name}")
         print(f"[annotate] Shape: {self.image_raw.shape}, dtype: {self.image_raw.dtype}")

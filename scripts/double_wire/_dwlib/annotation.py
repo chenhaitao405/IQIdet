@@ -166,7 +166,7 @@ class Annotator:
             print("[annotate] Mode: VALLEY")
         elif event.key == "u":
             self.undo_last()
-        elif event.key in ("a", "escape"):
+        elif event.key == "escape":
             if self._on_toggle:
                 self._on_toggle()
         elif event.key == "s":
