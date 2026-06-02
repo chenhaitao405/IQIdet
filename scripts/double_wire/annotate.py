@@ -149,6 +149,11 @@ class BAMAnnotator:
             self.annotator.draw_markers(self.view.profile_axes)
             self.view.fig.canvas.draw()
             self.view.fig.canvas.flush_events()
+            # Bring matplotlib figure to front
+            try:
+                self.view.fig.canvas.manager.window.raise_()
+            except Exception:
+                pass
 
     # -- Save --------------------------------------------------------------
 
@@ -290,11 +295,21 @@ class BAMAnnotator:
         print(f"[annotate] band_width: {self.band_width}")
         print("[annotate] L-click=add point  Enter=lock  R=reset  A=annotate  S=save  N=next  Q=quit  H=help")
 
+        _held_keys: set[int] = set()
         while True:
             overlay = self.obb.draw_overlay(annotating=self._annotating)
             cv2.imshow(self.obb.window_name, overlay)
 
-            key = cv2.waitKey(30) & 0xFF
+            raw_key = cv2.waitKey(30) & 0xFF
+
+            # Debounce: only process on first detection (key-up clears)
+            if raw_key == 255:  # no key pressed
+                _held_keys.clear()
+                continue
+            if raw_key in _held_keys:
+                continue
+            _held_keys.add(raw_key)
+            key = raw_key
 
             if key in (13, 32):  # Enter / Space
                 if self.obb.state == OBBSelector.STATE_CONFIRM:
