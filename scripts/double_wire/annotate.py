@@ -10,7 +10,7 @@ Usage:
     annotate.py (-h | --help)
 
 Arguments:
-    <image_path>              双丝像质计图像路径
+    <image_path>              双丝像质计图像路径，或包含图像的目录（批量模式）
 
 Options:
     -h --help                 显示帮助信息
@@ -152,6 +152,87 @@ class BAMAnnotator:
 
     # -- Save --------------------------------------------------------------
 
+    def _save_one_version(
+        self, image: np.ndarray, suffix: str
+    ) -> Optional[str]:
+        """Save OBB image, profile JSON, and GT for one image version.
+
+        Args:
+            image: Raw grayscale image to extract profile from.
+            suffix: Filename suffix (e.g. ``""`` for original, ``"_inverted"``).
+
+        Returns:
+            Path to the saved profile JSON, or None if profile is unavailable.
+        """
+        stem = self.image_path.stem
+        obb = self.obb.obb_corners_raw
+
+        # OBB unwarp + image
+        unwarped, (uw, uh) = unwarp_obb_region(image, obb)
+        obb_path = self.output_dir / f"{stem}{suffix}_obb.png"
+        save_obb_image(unwarped, (uw, uh), obb_path)
+
+        # Profile extraction + BAM analysis
+        profile_line = compute_profile_line(
+            obb, self.obb.obb_midline_raw, self.obb.profile_offset_pct,
+        )
+        profile = extract_profile_band(
+            image, profile_line[0], profile_line[1],
+            band_width=self.band_width, num_samples=uw,
+        )
+        result = compute_contrast(profile, film_type="auto", min_distance=5, prominence=0.03)
+        unresolved = find_first_unresolved_group(result.dips)
+
+        # Profile JSON
+        profile_path = self.output_dir / f"{stem}{suffix}_profile.json"
+        payload = {
+            "image_path": str(self.image_path),
+            "obb_corners_raw": obb.tolist(),
+            "obb_size": {"width": uw, "height": uh},
+            "obb_points": [[float(x), float(y)] for x, y in self.obb.obb_points],
+            "profile_midline": {
+                "start": list(profile_line[0]),
+                "end": list(profile_line[1]),
+            },
+            "band_width": self.band_width,
+            "profile_offset_pct": self.obb.profile_offset_pct,
+            "profile_values": profile.tolist(),
+            "bam_film_type": result.film_type,
+            "bam_dips": result.dips,
+            "bam_pairs": [
+                [int(w1), int(g), int(w2)] for w1, g, w2 in result.pairs
+            ],
+            "bam_unresolved_group": unresolved,
+        }
+        save_profile_json(profile_path, payload)
+
+        # Ground truth JSON (rebuilt with this version's profile values)
+        if self.annotator is not None and self.annotator.markers:
+            gt_path = self.output_dir / f"{stem}{suffix}_groundtruth.json"
+            gt_payload = self.annotator.build_groundtruth(str(profile_path))
+            save_groundtruth_json(gt_path, gt_payload)
+            print(f"  Film type: {gt_payload['film_type']}")
+            print(f"  Wire pairs: {gt_payload['num_wire_pairs']}")
+            for wp in gt_payload["wire_pairs"]:
+                print(
+                    f"    D{wp['group']:2d}: wire_a={wp['wire_a_idx']:4d}, "
+                    f"gap={wp['gap_idx']:4d}, wire_b={wp['wire_b_idx']:4d}"
+                )
+        else:
+            print("[save] No annotation markers - skipping groundtruth.json")
+
+        return str(profile_path)
+
+    def _invert_image(self) -> np.ndarray:
+        """Create a photometric-inverted copy of the raw image."""
+        raw = self.image_raw
+        if raw.dtype == np.uint8:
+            return 255 - raw
+        elif raw.dtype == np.uint16:
+            return 65535 - raw
+        else:
+            return raw.max() - raw
+
     def _save(self) -> None:
         if self.output_dir is None:
             print("[save] No output directory configured. Skipping.")
@@ -161,58 +242,20 @@ class BAMAnnotator:
             return
 
         self.output_dir.mkdir(parents=True, exist_ok=True)
-        stem = self.image_path.stem
 
-        # OBB image
-        unwarped, (uw, uh) = unwarp_obb_region(self.image_raw, self.obb.obb_corners_raw)
-        obb_path = self.output_dir / f"{stem}_obb.png"
-        save_obb_image(unwarped, (uw, uh), obb_path)
-
-        # Overlay image
-        overlay_path = self.output_dir / f"{stem}_overlay.png"
+        # Overlay image (once, shared)
+        overlay_path = self.output_dir / f"{self.image_path.stem}_overlay.png"
         overlay = self.obb.draw_overlay(annotating=self._annotating)
         save_overlay_image(overlay, overlay_path)
 
-        # Profile JSON
-        if self._profile is not None:
-            profile_path = self.output_dir / f"{stem}_profile.json"
-            payload = {
-                "image_path": str(self.image_path),
-                "obb_corners_raw": self.obb.obb_corners_raw.tolist(),
-                "obb_size": {"width": uw, "height": uh},
-                "obb_points": [[float(x), float(y)] for x, y in self.obb.obb_points],
-                "profile_midline": {
-                    "start": list(self._profile_line[0]) if self._profile_line else None,
-                    "end": list(self._profile_line[1]) if self._profile_line else None,
-                },
-                "band_width": self.band_width,
-                "profile_offset_pct": self.obb.profile_offset_pct,
-                "profile_values": self._profile.tolist(),
-            }
-            if self._bam_result is not None:
-                payload["bam_film_type"] = self._bam_result.film_type
-                payload["bam_dips"] = self._bam_result.dips
-                payload["bam_pairs"] = [
-                    [int(w1), int(g), int(w2)]
-                    for w1, g, w2 in self._bam_result.pairs
-                ]
-                payload["bam_unresolved_group"] = self._unresolved
-            save_profile_json(profile_path, payload)
+        # Save original (positive/negative as-is)
+        print("[save] --- Original ---")
+        self._save_one_version(self.image_raw, "")
 
-            # Ground truth JSON (if markers exist)
-            if self.annotator is not None and self.annotator.markers:
-                gt_path = self.output_dir / f"{stem}_groundtruth.json"
-                gt_payload = self.annotator.build_groundtruth(str(profile_path))
-                save_groundtruth_json(gt_path, gt_payload)
-                print(f"  Film type: {gt_payload['film_type']}")
-                print(f"  Wire pairs: {gt_payload['num_wire_pairs']}")
-                for wp in gt_payload["wire_pairs"]:
-                    print(
-                        f"    D{wp['group']:2d}: wire_a={wp['wire_a_idx']:4d}, "
-                        f"gap={wp['gap_idx']:4d}, wire_b={wp['wire_b_idx']:4d}"
-                    )
-            else:
-                print("[save] No annotation markers - skipping groundtruth.json")
+        # Save inverted (255 - x)
+        print("[save] --- Inverted (255-x) ---")
+        inverted = self._invert_image()
+        self._save_one_version(inverted, "_inverted")
 
     # -- Main loop ---------------------------------------------------------
 
@@ -245,7 +288,7 @@ class BAMAnnotator:
         print(f"[annotate] Loaded: {self.image_path.name}")
         print(f"[annotate] Shape: {self.image_raw.shape}, dtype: {self.image_raw.dtype}")
         print(f"[annotate] band_width: {self.band_width}")
-        print("[annotate] L-click=add point  Enter=lock  R=reset  A=annotate  S=save  Q=quit  H=help")
+        print("[annotate] L-click=add point  Enter=lock  R=reset  A=annotate  S=save  N=next  Q=quit  H=help")
 
         while True:
             overlay = self.obb.draw_overlay(annotating=self._annotating)
@@ -272,34 +315,80 @@ class BAMAnnotator:
                     self._save()
                 else:
                     print("[annotate] Lock OBB first (complete 4 points, press Enter)")
+            elif key == ord("n"):
+                print("[annotate] Next image")
+                cv2.destroyAllWindows()
+                plt.close("all")
+                return "next"
             elif key in (ord("q"), 27):
                 print("[annotate] Quit")
-                break
+                cv2.destroyAllWindows()
+                plt.close("all")
+                return "quit"
             elif key == ord("h"):
                 self.obb.show_help = not self.obb.show_help
 
         cv2.destroyAllWindows()
         plt.close("all")
+        return "quit"
+
+
+_IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff"}
+
+
+def _collect_images(path: Path) -> list[Path]:
+    """Collect image files from a file or directory path."""
+    if path.is_file():
+        return [path]
+    if path.is_dir():
+        images = sorted(
+            p for p in path.iterdir()
+            if p.suffix.lower() in _IMAGE_EXTS and p.is_file()
+        )
+        if not images:
+            print(f"Error: no images found in directory: {path}", file=sys.stderr)
+            sys.exit(1)
+        return images
+    print(f"Error: path not found: {path}", file=sys.stderr)
+    sys.exit(1)
 
 
 def main() -> None:
     args = docopt(__doc__)
-    image_path = args["<image_path>"]
+    input_path = Path(args["<image_path>"])
     output_dir = args["--output-dir"]
     window_size = int(args["--window-size"])
     band_width = int(args["--band-width"])
 
-    if not Path(image_path).is_file():
-        print(f"Error: image not found: {image_path}", file=sys.stderr)
-        sys.exit(1)
+    images = _collect_images(input_path)
 
-    app = BAMAnnotator(
-        image_path=image_path,
-        output_dir=output_dir,
-        window_size=window_size,
-        band_width=band_width,
-    )
-    app.run()
+    if len(images) > 1:
+        print(f"[annotate] Batch mode: {len(images)} images found")
+        print(f"[annotate] Output dir: {output_dir}")
+        print(f"[annotate] N=next image, Q=quit batch")
+        print()
+
+    processed = 0
+    for i, img_path in enumerate(images):
+        if len(images) > 1:
+            print(f"\n[annotate] === Image {i + 1}/{len(images)}: {img_path.name} ===")
+
+        app = BAMAnnotator(
+            image_path=str(img_path),
+            output_dir=output_dir,
+            window_size=window_size,
+            band_width=band_width,
+        )
+        status = app.run()
+        if status == "next":
+            processed += 1
+        elif status == "quit":
+            break
+        else:
+            processed += 1
+
+    if len(images) > 1:
+        print(f"\n[annotate] Batch complete: {processed}/{len(images)} images processed")
 
 
 if __name__ == "__main__":
