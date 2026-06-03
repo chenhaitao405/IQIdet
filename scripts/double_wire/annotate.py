@@ -17,7 +17,7 @@ Options:
     --output-dir <dir>        输出目录 [default: outputs/double_wire_demo]
     --window-size <size>      显示窗口最大尺寸 [default: 1200]
     --band-width <N>          剖面带平行线数量 [default: 21]
-    --expand <px>             剖面线上下扩展像素数 [default: 100]
+    --expand <px>             剖面线上下扩展像素数 [default: 60]
 """
 
 from __future__ import annotations
@@ -91,7 +91,7 @@ class BAMAnnotator:
         output_dir: Optional[str] = DEFAULT_OUTPUT_DIR,
         window_size: int = 1200,
         band_width: int = 21,
-        expand: int = 100,
+        expand: int = 60,
     ):
         self.image_path = Path(image_path)
         self.output_dir = Path(output_dir or DEFAULT_OUTPUT_DIR)
@@ -316,6 +316,7 @@ class BAMAnnotator:
 
         self.line_selector = LineSelector(
             display, scale_x, scale_y, expand=self.expand,
+            on_lock=lambda: self._update_profile(),
         )
         self.view = ProfileView()
 

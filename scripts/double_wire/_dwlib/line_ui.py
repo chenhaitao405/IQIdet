@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Optional, Tuple
+from typing import Callable, Optional, Tuple
 
 import cv2
 import numpy as np
@@ -40,7 +40,8 @@ class LineSelector:
         image_display: np.ndarray,
         scale_x: float,
         scale_y: float,
-        expand: int = 100,
+        expand: int = 60,
+        on_lock: Optional[Callable[[], None]] = None,
         window_name: str = "Double Wire Demo",
     ):
         self.image_display = image_display
@@ -48,6 +49,7 @@ class LineSelector:
         self.scale_y = scale_y
         self.expand = int(expand)
         self.window_name = window_name
+        self._on_lock = on_lock
 
         self.state: str = self.STATE_IDLE
         self.mouse_x: Optional[int] = None
@@ -98,6 +100,8 @@ class LineSelector:
         self.line_end = raw_pts[1]
         print(f"[annotate] Line locked: ({raw_pts[0][0]:.1f},{raw_pts[0][1]:.1f})"
               f" -> ({raw_pts[1][0]:.1f},{raw_pts[1][1]:.1f})")
+        if self._on_lock is not None:
+            self._on_lock()
 
     # -- Reset ---------------------------------------------------------------
 
@@ -132,6 +136,15 @@ class LineSelector:
             pts_int = [(int(x), int(y)) for x, y in self._pts_disp]
             for pt in pts_int:
                 cv2.circle(vis, pt, 5, COLOR_YELLOW, -1, cv2.LINE_AA)
+
+            # Rubber-band preview: line from last placed point to mouse
+            if (self.state == self.STATE_COLLECTING
+                    and len(pts_int) == 1
+                    and self.mouse_x is not None
+                    and self.mouse_y is not None):
+                cv2.line(vis, pts_int[0], (self.mouse_x, self.mouse_y),
+                         COLOR_YELLOW, 1, cv2.LINE_AA)
+
             if len(pts_int) >= 2:
                 cv2.line(vis, pts_int[0], pts_int[1], COLOR_YELLOW, 1, cv2.LINE_AA)
 
