@@ -133,6 +133,12 @@ def _validate_one(profile_path: Path, gt_path: Path, *,
     log("BAM DOUBLE-WIRE ALGORITHM -- GROUND TRUTH VALIDATION")
     log("=" * 80)
     log()
+    line_info = profile_data.get("profile_line", {})
+    log(f"Profile line: {line_info.get('start', 'N/A')} -> {line_info.get('end', 'N/A')}")
+    log(f"Line length: {profile_data.get('line_length_px', 'N/A')}px"
+        f"  |  expand: {profile_data.get('expand', 'N/A')}px"
+        f"  |  band: {profile_data.get('band_width', 'N/A')}")
+    log()
     
     result = compute_contrast(profile, film_type="auto", min_distance=5, prominence=0.03)
     metrics = _pair_metrics(result.pairs, gt["wire_pairs"])
@@ -443,6 +449,15 @@ def _validate_one(profile_path: Path, gt_path: Path, *,
         x = np.arange(len(profile), dtype=np.float64)
         prof_min, prof_max = float(profile.min()), float(profile.max())
         y_pad = (prof_max - prof_min) * 0.08
+
+        # Overall title with line info
+        line_info = profile_data.get("profile_line", {})
+        fig.suptitle(
+            f"BAM Validation — line: {profile_data.get('line_length_px', '?')}px"
+            f"  |  expand: {profile_data.get('expand', '?')}px"
+            f"  |  band: {profile_data.get('band_width', '?')}",
+            fontsize=11, weight="bold", y=0.99,
+        )
     
         n_compare = min(len(result.pairs), len(gt["wire_pairs"]))
         n_cols = min(4, n_compare)

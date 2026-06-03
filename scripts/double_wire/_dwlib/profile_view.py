@@ -1,4 +1,4 @@
-"""Profile visualization — matplotlib figure for OBB image + profile curve."""
+"""Profile visualization — matplotlib figure for strip image + profile curve."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ PROFILE_COLOR = "#4C78A8"
 
 
 class ProfileView:
-    """Manages the matplotlib figure for profile + OBB image display.
+    """Manages the matplotlib figure for strip image + profile display.
 
     Owns figure creation, profile curve rendering, and BAM dip overlay.
     Annotation markers are drawn separately by the Annotator.
@@ -29,32 +29,49 @@ class ProfileView:
 
     def update(
         self,
-        image_raw: np.ndarray,
-        obb_corners: np.ndarray,
+        strip_image: np.ndarray,
         profile: np.ndarray,
+        expand: int,
+        band_width: int,
         bam_result,  # ComputeContrastResult
         unresolved_group: Optional[int],
-        band_width: int,
-        offset_pct: int,
         image_stem: str,
     ) -> None:
-        """Update the figure with current profile and BAM analysis results."""
-        from gauge.imaging.profile import unwarp_obb_region, bam_pair_marker_indices
+        """Update the figure with current profile and BAM analysis results.
+
+        Args:
+            strip_image: 2D (2*expand, num_samples) float64 strip image.
+            profile: 1D band-averaged profile array.
+            expand: ±pixels expanded from the profile line.
+            band_width: number of lines averaged for the profile.
+            bam_result: ComputeContrastResult from BAM analysis.
+            unresolved_group: first unresolved wire group, or None.
+            image_stem: image filename stem for the title.
+        """
+        from gauge.imaging.profile import bam_pair_marker_indices
 
         self.fig.clear()
         self.ax_top = self.fig.add_subplot(2, 1, 1)
         self.ax_bottom = self.fig.add_subplot(2, 1, 2, sharex=self.ax_top)
 
-        # Top: unwarped OBB band image
-        unwarped, (uw, uh) = unwarp_obb_region(image_raw, obb_corners)
-        self.ax_top.imshow(unwarped, cmap="gray", aspect="auto")
+        strip_h, strip_w = strip_image.shape
+        half_h = strip_h // 2
 
-        band_y = uh / 2 + (offset_pct - 50) / 50.0 * uh * 0.45
+        # Top: strip image along profile line
+        self.ax_top.imshow(strip_image, cmap="gray", aspect="auto")
+
+        # Center line (the profile line itself)
+        self.ax_top.axhline(y=half_h, color="red", linewidth=1.0)
+        # Band edges for profile averaging
         half_band = (band_width - 1) / 2.0
-        self.ax_top.axhline(y=band_y, color="red", linewidth=1.0)
-        self.ax_top.axhline(y=band_y - half_band, color="red", linewidth=0.5, linestyle="--")
-        self.ax_top.axhline(y=band_y + half_band, color="red", linewidth=0.5, linestyle="--")
-        self.ax_top.set_ylabel("Across wires (px)")
+        self.ax_top.axhline(y=half_h - half_band, color="red", linewidth=0.5, linestyle="--")
+        self.ax_top.axhline(y=half_h + half_band, color="red", linewidth=0.5, linestyle="--")
+        self.ax_top.set_ylabel("Perpendicular (px)")
+        # Set y-ticks relative to center
+        y_ticks = [0, half_h, strip_h - 1]
+        y_labels = [f"-{expand}", "0", f"+{expand}"]
+        self.ax_top.set_yticks(y_ticks)
+        self.ax_top.set_yticklabels(y_labels)
 
         # Bottom: profile curve
         x = np.arange(len(profile))
@@ -95,14 +112,14 @@ class ProfileView:
 
         if bam_result is not None:
             title = (
-                f"{image_stem} | OBB: {uw}x{uh} | offset:{offset_pct}%"
-                f" | band:{band_width} | film:{bam_result.film_type}"
-                f" | pairs:{len(bam_result.pairs)}"
+                f"{image_stem} | line: {strip_w}px | expand: {expand}"
+                f" | band: {band_width} | film: {bam_result.film_type}"
+                f" | pairs: {len(bam_result.pairs)}"
             )
             if unresolved_group is not None:
-                title += f" | 1st unres.:D{unresolved_group}"
+                title += f" | 1st unres.: D{unresolved_group}"
         else:
-            title = f"{image_stem} | OBB: {uw}x{uh} | offset:{offset_pct}% | band:{band_width}"
+            title = f"{image_stem} | line: {strip_w}px | expand: {expand} | band: {band_width}"
         self.fig.suptitle(title, fontsize=9)
         self.fig.tight_layout()
         self.fig.canvas.draw()

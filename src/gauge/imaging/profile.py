@@ -110,6 +110,72 @@ def extract_profile_band(
     return profile
 
 
+def extract_profile_strip(
+    image: np.ndarray,
+    start_point: Tuple[float, float],
+    end_point: Tuple[float, float],
+    expand: int = 100,
+    num_samples: Optional[int] = None,
+) -> np.ndarray:
+    """Extract a 2D strip image along a line, expanded ±expand pixels.
+
+    Uses the same sub-pixel sampling grid as :func:`extract_profile_band`
+    but returns the full 2D grid without averaging, producing an image
+    of shape ``(2 * expand, num_samples)``. Row ``expand`` corresponds to
+    the profile midline; rows 0 and -1 are ±expand pixels away.
+
+    Args:
+        image: Input image (supports uint8, uint16, float32, float64).
+        start_point: Midline start coordinate (x, y).
+        end_point: Midline end coordinate (x, y).
+        expand: Number of pixels to expand perpendicularly on each side.
+        num_samples: Number of samples along the midline direction.
+            If None, auto-calculated as ``ceil(line_length)``.
+
+    Returns:
+        2D float64 array of shape ``(2 * expand, num_samples)``.
+    """
+    x0, y0 = float(start_point[0]), float(start_point[1])
+    x1, y1 = float(end_point[0]), float(end_point[1])
+
+    dx = x1 - x0
+    dy = y1 - y0
+    line_length = np.hypot(dx, dy)
+
+    if line_length < 1e-6:
+        return np.array([[]], dtype=np.float64)
+
+    if num_samples is None:
+        num_samples = max(1, int(np.ceil(line_length)))
+
+    # Unit vectors
+    ux = dx / line_length
+    uy = dy / line_length
+
+    # Perpendicular unit vector (rotated 90 degrees CCW)
+    px = -uy
+    py = ux
+
+    # Generate sampling coordinates for the band
+    t_vals = np.linspace(0, 1, num_samples)
+    band_width = 2 * expand
+    offsets = np.arange(band_width) - (band_width - 1) / 2.0
+
+    # Midline coordinates at each t
+    mid_x = x0 + t_vals * dx
+    mid_y = y0 + t_vals * dy
+
+    # Full coordinate grid: shape (band_width, num_samples)
+    y_coords = mid_y[np.newaxis, :] + offsets[:, np.newaxis] * py
+    x_coords = mid_x[np.newaxis, :] + offsets[:, np.newaxis] * px
+
+    coords = np.stack([y_coords.ravel(), x_coords.ravel()], axis=0)
+    sampled = map_coordinates(image.astype(np.float64), coords, order=1, mode="nearest")
+    sampled = sampled.reshape(band_width, num_samples)
+
+    return sampled
+
+
 def fit_obb_and_midline(
     points: np.ndarray,
 ) -> Tuple[np.ndarray, Tuple[Tuple[float, float], Tuple[float, float]]]:

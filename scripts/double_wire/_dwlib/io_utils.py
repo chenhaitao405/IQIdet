@@ -19,7 +19,7 @@ class DoubleWireArtifactPaths:
     image_dir: Path
     variant_dir: Path
     overlay: Path
-    obb: Path
+    strip: Path
     profile: Path
     groundtruth: Path
 
@@ -40,7 +40,7 @@ def double_wire_artifact_paths(
         image_dir=image_dir,
         variant_dir=variant_dir,
         overlay=image_dir / f"{image_stem}_overlay.png",
-        obb=variant_dir / f"{image_stem}{suffix}_obb.png",
+        strip=variant_dir / f"{image_stem}{suffix}_strip.png",
         profile=variant_dir / f"{image_stem}{suffix}_profile.json",
         groundtruth=variant_dir / f"{image_stem}{suffix}_groundtruth.json",
     )
@@ -85,21 +85,20 @@ def load_image(
     return raw, display, scale_x, scale_y
 
 
-def save_obb_image(
-    unwarped: np.ndarray,
-    obb_size: Tuple[int, int],
+def save_strip_image(
+    strip: np.ndarray,
     output_path: Path,
 ) -> None:
-    """Save unwarped OBB region as 8-bit PNG."""
-    uw, uh = obb_size
-    if unwarped.dtype in (np.uint16, np.int32):
-        obb_8u = cv2.normalize(unwarped, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
-    elif unwarped.dtype == np.uint8:
-        obb_8u = unwarped
+    """Save strip image (2D band along profile line) as 8-bit PNG."""
+    h, w = strip.shape
+    if strip.dtype in (np.uint16, np.int32, np.float64):
+        strip_8u = cv2.normalize(strip, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
+    elif strip.dtype == np.uint8:
+        strip_8u = strip
     else:
-        obb_8u = cv2.normalize(unwarped, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
-    cv2.imwrite(str(output_path), obb_8u)
-    print(f"[save] OBB image ({uw}x{uh}): {output_path}")
+        strip_8u = cv2.normalize(strip, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
+    cv2.imwrite(str(output_path), strip_8u)
+    print(f"[save] Strip image ({w}x{h}): {output_path}")
 
 
 def save_overlay_image(overlay: np.ndarray, output_path: Path) -> None:
