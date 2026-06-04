@@ -95,15 +95,21 @@ def extract_real_strip(profile_json_path: Path) -> Tuple[np.ndarray, dict]:
         line_length = max(1, int(np.ceil(np.hypot(
             end[0] - start[0], end[1] - start[1]))))
 
-    strip = extract_profile_strip(
+    full_strip = extract_profile_strip(
         raw, start, end, expand=expand, num_samples=line_length,
     )
+
+    # 窄条带：只取中线附近 band_width 行（与 annotate 一致）
+    half_h = full_strip.shape[0] // 2
+    half_bw = band_width // 2
+    strip = full_strip[half_h - half_bw : half_h + half_bw + 1, :]
 
     meta = {
         "image_stem": profile_json_path.stem.replace("_profile", ""),
         "source_profile": str(profile_json_path),
         "source_image": str(img_path),
         "band_width": band_width,
+        "strip_height": strip.shape[0],
         "expand": expand,
         "line_length_px": line_length,
     }
