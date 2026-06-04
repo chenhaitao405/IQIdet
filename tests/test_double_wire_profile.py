@@ -448,7 +448,7 @@ class TestBAMHelpers(unittest.TestCase):
 
     def test_detect_film_type_positive(self):
         """正片: peak(亮丝) - valley(暗谷) - peak(亮丝) → film_type='positive'."""
-        from gauge.imaging.profile import _detect_film_type
+        from gauge.imaging.double_wire import _detect_film_type
         valleys = np.array([30])
         peaks = np.array([10, 50])
         profile = np.ones(100, dtype=np.float64) * 100.0
@@ -459,7 +459,7 @@ class TestBAMHelpers(unittest.TestCase):
 
     def test_detect_film_type_negative(self):
         """负片: valley(暗丝) - peak(亮谷) - valley(暗丝) → film_type='negative'."""
-        from gauge.imaging.profile import _detect_film_type
+        from gauge.imaging.double_wire import _detect_film_type
         valleys = np.array([10, 50])
         peaks = np.array([30])
         profile = np.ones(100, dtype=np.float64) * 100.0
@@ -470,14 +470,14 @@ class TestBAMHelpers(unittest.TestCase):
 
     def test_detect_film_type_insufficient_data(self):
         """峰谷不足时默认返回 'positive'."""
-        from gauge.imaging.profile import _detect_film_type
+        from gauge.imaging.double_wire import _detect_film_type
         profile = np.ones(100, dtype=np.float64)
         result = _detect_film_type(profile, np.array([], dtype=int), np.array([], dtype=int))
         self.assertEqual(result, "positive")
 
     def test_fit_quadratic_background_positive(self):
         """正片: 遮罩 valley 区后在 gap 区拟合二次背景."""
-        from gauge.imaging.profile import _fit_quadratic_background
+        from gauge.imaging.double_wire import _fit_quadratic_background
         x = np.arange(200, dtype=np.float64)
         sigma = 2.0
         true_bg = np.full_like(x, 100.0)
@@ -498,7 +498,7 @@ class TestBAMHelpers(unittest.TestCase):
 
     def test_fit_quadratic_background_negative(self):
         """负片: 遮罩 peak 区，inverted=False."""
-        from gauge.imaging.profile import _fit_quadratic_background
+        from gauge.imaging.double_wire import _fit_quadratic_background
         x = np.arange(200, dtype=np.float64)
         sigma = 2.0
         true_bg = np.full_like(x, 120.0)
@@ -518,7 +518,7 @@ class TestBAMHelpers(unittest.TestCase):
 
     def test_fit_quadratic_background_short_profile(self):
         """极短剖面不应崩溃."""
-        from gauge.imaging.profile import _fit_quadratic_background
+        from gauge.imaging.double_wire import _fit_quadratic_background
         profile = np.array([10.0, 12.0, 10.0], dtype=np.float64)
         bg = _fit_quadratic_background(profile, np.array([1], dtype=int), inverted=True)
         self.assertEqual(bg.shape, (3,))
@@ -526,7 +526,7 @@ class TestBAMHelpers(unittest.TestCase):
 
     def test_compute_dip_basic(self):
         """已知 profile 和 background 值 → 验证 dip 计算."""
-        from gauge.imaging.profile import _compute_dip
+        from gauge.imaging.double_wire import _compute_dip
         profile = np.ones(100, dtype=np.float64) * 100.0
         profile[20] = 90.0   # wire_a (dark)
         profile[30] = 105.0  # gap (bright)
@@ -540,7 +540,7 @@ class TestBAMHelpers(unittest.TestCase):
 
     def test_compute_dip_with_window(self):
         """half_w > 0 时使用邻域均值."""
-        from gauge.imaging.profile import _compute_dip
+        from gauge.imaging.double_wire import _compute_dip
         profile = np.ones(100, dtype=np.float64) * 100.0
         profile[18:23] = 90.0
         profile[28:33] = 105.0
@@ -552,7 +552,7 @@ class TestBAMHelpers(unittest.TestCase):
 
     def test_compute_dip_fully_merged(self):
         """完全融合（denom≈0）→ 返回 0."""
-        from gauge.imaging.profile import _compute_dip
+        from gauge.imaging.double_wire import _compute_dip
         profile = np.ones(100, dtype=np.float64) * 100.0
         background = np.ones(100, dtype=np.float64) * 100.0
 
@@ -561,7 +561,7 @@ class TestBAMHelpers(unittest.TestCase):
 
     def test_compute_dip_gap_exceeds_wires(self):
         """间隙偏差大于丝偏差 → 钳位到 0."""
-        from gauge.imaging.profile import _compute_dip
+        from gauge.imaging.double_wire import _compute_dip
         profile = np.ones(100, dtype=np.float64) * 100.0
         profile[20] = 110.0  # wire_a
         profile[30] = 80.0   # gap (deep gap — profile farther from bg than wires)
@@ -573,7 +573,7 @@ class TestBAMHelpers(unittest.TestCase):
 
     def test_pair_wires_positive(self):
         """正片: wires=peaks, gaps=valleys."""
-        from gauge.imaging.profile import _pair_wires_and_compute_dips
+        from gauge.imaging.double_wire import _pair_wires_and_compute_dips
         x = np.linspace(0, 6 * np.pi, 300)
         profile = (np.sin(x) * 30.0 + 100.0).astype(np.float64)
         background = np.ones(300, dtype=np.float64) * 100.0
@@ -591,7 +591,7 @@ class TestBAMHelpers(unittest.TestCase):
 
     def test_pair_wires_negative(self):
         """负片: wires=valleys, gaps=peaks."""
-        from gauge.imaging.profile import _pair_wires_and_compute_dips
+        from gauge.imaging.double_wire import _pair_wires_and_compute_dips
         x = np.linspace(0, 6 * np.pi, 300)
         profile = (-np.sin(x) * 30.0 + 100.0).astype(np.float64)
         background = np.ones(300, dtype=np.float64) * 100.0
@@ -608,7 +608,7 @@ class TestBAMHelpers(unittest.TestCase):
 
     def test_pair_wires_filters_wide_gaps(self):
         """间距 > 1.05*dist[0] 的假丝被跳过."""
-        from gauge.imaging.profile import _pair_wires_and_compute_dips
+        from gauge.imaging.double_wire import _pair_wires_and_compute_dips
         profile = np.ones(200, dtype=np.float64) * 100.0
         wire_pos = np.array([20, 40, 60, 150], dtype=int)
         for w in wire_pos:
@@ -626,7 +626,7 @@ class TestBAMHelpers(unittest.TestCase):
 
     def test_pair_wires_no_gap_between(self):
         """两丝之间无 gap → 跳过该对."""
-        from gauge.imaging.profile import _pair_wires_and_compute_dips
+        from gauge.imaging.double_wire import _pair_wires_and_compute_dips
         profile = np.ones(100, dtype=np.float64) * 100.0
         profile[[20, 40, 60]] = 80.0
         background = np.ones(100, dtype=np.float64) * 100.0
@@ -638,7 +638,7 @@ class TestBAMHelpers(unittest.TestCase):
         self.assertEqual(len(pairs), 0)
 
     def test_cleanup_dips_monotonic_removes_anomaly(self):
-        from gauge.imaging.profile import _cleanup_dips_monotonic
+        from gauge.imaging.double_wire import _cleanup_dips_monotonic
         dips = [70.0, 80.0, 60.0, 50.0]
         spacings = [0.80, 0.63, 0.50, 0.40]
         d, s = _cleanup_dips_monotonic(dips, spacings)
@@ -646,7 +646,7 @@ class TestBAMHelpers(unittest.TestCase):
         self.assertEqual(s, [0.63, 0.50, 0.40])
 
     def test_cleanup_dips_monotonic_no_removal(self):
-        from gauge.imaging.profile import _cleanup_dips_monotonic
+        from gauge.imaging.double_wire import _cleanup_dips_monotonic
         dips = [80.0, 75.0, 60.0, 50.0]
         spacings = [0.80, 0.63, 0.50, 0.40]
         d, s = _cleanup_dips_monotonic(dips, spacings)
@@ -654,7 +654,7 @@ class TestBAMHelpers(unittest.TestCase):
         self.assertEqual(s, spacings)
 
     def test_cleanup_dips_monotonic_chain_removal(self):
-        from gauge.imaging.profile import _cleanup_dips_monotonic
+        from gauge.imaging.double_wire import _cleanup_dips_monotonic
         dips = [100.0, 90.0, 85.0, 95.0]
         spacings = [0.80, 0.63, 0.50, 0.40]
         d, s = _cleanup_dips_monotonic(dips, spacings)
@@ -662,21 +662,21 @@ class TestBAMHelpers(unittest.TestCase):
         self.assertEqual(s, [0.80, 0.63, 0.40])
 
     def test_find_crossing_group_all_resolved(self):
-        from gauge.imaging.profile import _find_crossing_group
+        from gauge.imaging.double_wire import _find_crossing_group
         dips = [80.0, 65.0, 45.0, 28.0]
         spacings = [0.80, 0.63, 0.50, 0.40]
         result = _find_crossing_group(dips, spacings, threshold=20.0, min_dip=1.5)
         self.assertIsNone(result)
 
     def test_find_crossing_group_first_unresolved(self):
-        from gauge.imaging.profile import _find_crossing_group
+        from gauge.imaging.double_wire import _find_crossing_group
         dips = [15.0, 8.0, 3.0, 1.0]
         spacings = [0.80, 0.63, 0.50, 0.40]
         result = _find_crossing_group(dips, spacings, threshold=20.0, min_dip=1.5)
         self.assertEqual(result, 1)
 
     def test_find_crossing_group_middle(self):
-        from gauge.imaging.profile import _find_crossing_group
+        from gauge.imaging.double_wire import _find_crossing_group
         dips = [80.0, 65.0, 45.0, 28.0, 15.0, 5.0, 1.0]
         spacings = [0.80, 0.63, 0.50, 0.40, 0.32, 0.25, 0.20]
         result = _find_crossing_group(dips, spacings, threshold=20.0, min_dip=1.5)
@@ -685,7 +685,7 @@ class TestBAMHelpers(unittest.TestCase):
         self.assertLessEqual(result, 5)
 
     def test_find_crossing_group_excludes_low_dips(self):
-        from gauge.imaging.profile import _find_crossing_group
+        from gauge.imaging.double_wire import _find_crossing_group
         dips = [80.0, 65.0, 45.0, 28.0, 18.0, 1.0, 0.5]
         spacings = [0.80, 0.63, 0.50, 0.40, 0.32, 0.25, 0.20]
         result = _find_crossing_group(dips, spacings, threshold=20.0, min_dip=1.5)
@@ -721,19 +721,19 @@ class TestComputeContrast(unittest.TestCase):
 
     def test_auto_film_type(self):
         """film_type='auto' 应检测为 positive."""
-        from gauge.imaging.profile import compute_contrast
+        from gauge.imaging.double_wire import compute_contrast
         result = compute_contrast(self.profile, film_type="auto", min_distance=30)
         self.assertEqual(result.film_type, "positive")
 
     def test_explicit_film_type(self):
         """显式指定 film_type='positive' 应保留."""
-        from gauge.imaging.profile import compute_contrast
+        from gauge.imaging.double_wire import compute_contrast
         result = compute_contrast(self.profile, film_type="positive")
         self.assertEqual(result.film_type, "positive")
 
     def test_produces_dips_and_pairs(self):
         """应产出 dips 和 pairs."""
-        from gauge.imaging.profile import compute_contrast
+        from gauge.imaging.double_wire import compute_contrast
         result = compute_contrast(self.profile, film_type="positive", min_distance=30)
         self.assertGreater(len(result.dips), 0)
         self.assertEqual(len(result.dips), len(result.pairs))
@@ -746,21 +746,21 @@ class TestComputeContrast(unittest.TestCase):
 
     def test_background_length(self):
         """background 与 profile 等长."""
-        from gauge.imaging.profile import compute_contrast
+        from gauge.imaging.double_wire import compute_contrast
         result = compute_contrast(self.profile)
         self.assertEqual(len(result.background), len(self.profile))
         self.assertEqual(result.background.dtype, np.float64)
 
     def test_short_profile_edge_case(self):
         """极短 profile 不应崩溃."""
-        from gauge.imaging.profile import compute_contrast
+        from gauge.imaging.double_wire import compute_contrast
         result = compute_contrast(np.array([10.0, 12.0], dtype=np.float64))
         self.assertEqual(len(result.dips), 0)
         self.assertEqual(result.film_type, "positive")
 
     def test_no_peaks_or_valleys(self):
         """平坦剖面 → 空结果."""
-        from gauge.imaging.profile import compute_contrast
+        from gauge.imaging.double_wire import compute_contrast
         flat = np.ones(200, dtype=np.float64) * 100.0
         result = compute_contrast(flat)
         self.assertEqual(len(result.dips), 0)
@@ -768,7 +768,7 @@ class TestComputeContrast(unittest.TestCase):
     def test_bam_gt_profile_pairs_match_groundtruth_positions(self):
         """真实 BAM 剖面应按 GT 一一配对，第一阶段只校验点位。"""
         import json
-        from gauge.imaging.profile import compute_contrast
+        from gauge.imaging.double_wire import compute_contrast
 
         profile_path = REPO_ROOT / "outputs/double_wire_demo_3/wqxDR__SHLNG-PED-A05+002-Z-NJ01__01_profile.json"
         gt_path = REPO_ROOT / "outputs/double_wire_demo_3/wqxDR__SHLNG-PED-A05+002-Z-NJ01__01_groundtruth.json"
@@ -793,7 +793,7 @@ class TestComputeContrast(unittest.TestCase):
     def test_bam_gt_profile_uses_single_point_dips(self):
         """真实 BAM 剖面 dip 暂统一使用单点极值，避免细丝被窗口均值抹平。"""
         import json
-        from gauge.imaging.profile import compute_contrast
+        from gauge.imaging.double_wire import compute_contrast
 
         profile_path = REPO_ROOT / "outputs/double_wire_demo_3/wqxDR__SHLNG-PED-A05+002-Z-NJ01__01_profile.json"
         gt_path = REPO_ROOT / "outputs/double_wire_demo_3/wqxDR__SHLNG-PED-A05+002-Z-NJ01__01_groundtruth.json"
@@ -816,36 +816,36 @@ class TestFindFirstUnresolvedGroup(unittest.TestCase):
     """Tests for find_first_unresolved_group()."""
 
     def test_all_resolved(self):
-        from gauge.imaging.profile import find_first_unresolved_group
+        from gauge.imaging.double_wire import find_first_unresolved_group
         dips = [80.0, 65.0, 45.0, 28.0]
         result = find_first_unresolved_group(dips)
         self.assertIsNone(result)
 
     def test_first_unresolved(self):
-        from gauge.imaging.profile import find_first_unresolved_group
+        from gauge.imaging.double_wire import find_first_unresolved_group
         dips = [15.0, 8.0, 3.0, 1.0]
         result = find_first_unresolved_group(dips)
         self.assertEqual(result, 1)
 
     def test_monotonicity_cleanup_applied(self):
-        from gauge.imaging.profile import find_first_unresolved_group
+        from gauge.imaging.double_wire import find_first_unresolved_group
         dips = [60.0, 70.0, 55.0, 35.0, 18.0]
         result = find_first_unresolved_group(dips)
         self.assertEqual(result, 5)
 
     def test_empty_dips(self):
-        from gauge.imaging.profile import find_first_unresolved_group
+        from gauge.imaging.double_wire import find_first_unresolved_group
         self.assertIsNone(find_first_unresolved_group([]))
 
     def test_custom_threshold(self):
-        from gauge.imaging.profile import find_first_unresolved_group
+        from gauge.imaging.double_wire import find_first_unresolved_group
         dips = [80.0, 25.0, 16.0, 8.0]
         result = find_first_unresolved_group(dips, dip_threshold=15.0)
         self.assertEqual(result, 4)
 
     def test_end_to_end_positive_film(self):
         """完整流程: 合成正片剖面 -> compute_contrast -> find_first_unresolved_group."""
-        from gauge.imaging.profile import compute_contrast, find_first_unresolved_group
+        from gauge.imaging.double_wire import compute_contrast, find_first_unresolved_group
 
         x = np.arange(400, dtype=np.float64)
         profile = 0.0003 * x**2 + 150.0

@@ -75,10 +75,58 @@ class Annotator:
             removed = self.markers.pop()
             print(f"[annotate] Undo: removed {removed['type']} at idx={removed['idx']}")
 
+    def clear_all_markers(self) -> None:
+        """Remove all annotation markers."""
+        self.markers.clear()
+        print("[annotate] All markers cleared")
+
+    def load_bam_baseline(self, pairs, film_type: str) -> None:
+        """Load BAM algorithm detection results as annotation baseline markers.
+
+        Converts BAM wire-pair triplets to peak/valley markers based on film
+        type.  Existing markers are cleared first.
+
+        Args:
+            pairs: List of (wire_a_idx, gap_idx, wire_b_idx) triplets.
+            film_type: ``"positive"`` (wires=peaks, gaps=valleys) or
+                ``"negative"`` (wires=valleys, gaps=peaks).
+        """
+        self.markers.clear()
+        if not pairs:
+            print("[annotate] BAM baseline: no pairs to load")
+            return
+
+        if film_type == "positive":
+            wire_type = "peak"
+            gap_type = "valley"
+        else:
+            wire_type = "valley"
+            gap_type = "peak"
+
+        seen_wire: set[int] = set()
+        seen_gap: set[int] = set()
+        for w1, gap, w2 in pairs:
+            if w1 not in seen_wire:
+                self.markers.append({"type": wire_type, "idx": int(w1)})
+                seen_wire.add(w1)
+            if w2 not in seen_wire:
+                self.markers.append({"type": wire_type, "idx": int(w2)})
+                seen_wire.add(w2)
+            if gap not in seen_gap:
+                self.markers.append({"type": gap_type, "idx": int(gap)})
+                seen_gap.add(gap)
+
+        n_wires = len(seen_wire)
+        n_gaps = len(seen_gap)
+        print(
+            f"[annotate] BAM baseline loaded: {n_wires} wires + {n_gaps} gaps "
+            f"from {len(pairs)} pairs (film={film_type})"
+        )
+
     # -- Ground truth -------------------------------------------------------
 
     def build_groundtruth(self, source_profile: str) -> dict:
-        from gauge.imaging.profile import build_groundtruth_payload
+        from gauge.imaging.double_wire import build_groundtruth_payload
         return build_groundtruth_payload(
             self.profile_values,
             self.markers,

@@ -23,6 +23,10 @@ class ProfileView:
     """
 
     def __init__(self):
+        # Disable matplotlib's default 's' save-figure shortcut — the
+        # annotator uses 's' for saving ground truth data instead.
+        if "s" in plt.rcParams["keymap.save"]:
+            plt.rcParams["keymap.save"].remove("s")
         self.fig: plt.Figure = plt.figure(figsize=(10, 6))
         self.ax_top: Optional[plt.Axes] = None
         self.ax_bottom: Optional[plt.Axes] = None
@@ -48,7 +52,7 @@ class ProfileView:
             unresolved_group: first unresolved wire group, or None.
             image_stem: image filename stem for the title.
         """
-        from gauge.imaging.profile import bam_pair_marker_indices
+        from gauge.imaging.double_wire import bam_pair_marker_indices
 
         self.fig.clear()
         self.ax_top = self.fig.add_subplot(2, 1, 1)

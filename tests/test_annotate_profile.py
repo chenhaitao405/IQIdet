@@ -5,7 +5,7 @@ from tempfile import TemporaryDirectory
 import numpy as np
 from docopt import docopt
 
-from gauge.imaging.profile import build_groundtruth_payload
+from gauge.imaging.double_wire import build_groundtruth_payload
 from scripts.double_wire._dwlib.io_utils import default_groundtruth_path
 from scripts.double_wire._dwlib.annotation import Annotator
 

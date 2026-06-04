@@ -3,7 +3,8 @@ import unittest
 import numpy as np
 
 try:
-    from gauge.imaging.profile import bam_pair_marker_indices, normalize_profile_obb
+    from gauge.imaging.profile import normalize_profile_obb
+    from gauge.imaging.double_wire import bam_pair_marker_indices
 except ImportError as exc:
     bam_pair_marker_indices = None
     normalize_profile_obb = None

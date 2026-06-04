@@ -33,10 +33,10 @@ sys.path.insert(0, str(_DW_DIR))
 import numpy as np
 from scipy.signal import find_peaks
 
-from gauge.imaging.profile import (
+from gauge.imaging.profile import detect_peaks_valleys
+from gauge.imaging.double_wire import (
     compute_contrast,
     find_first_unresolved_group,
-    detect_peaks_valleys,
     _compute_dip,
     _fit_quadratic_background,
     _detect_film_type,
@@ -814,7 +814,7 @@ def _validate_one(profile_path: Path, gt_path: Path, *,
         }
     
         # === Step 9: Resolution determination ===
-        from gauge.imaging.profile import _DEFAULT_WIRE_SPACINGS
+        from gauge.imaging.double_wire import _DEFAULT_WIRE_SPACINGS
         unresolved = find_first_unresolved_group(dips)
         if unresolved is None:
             resolution_note = "全部线对可分辨，分辨率优于 D13 (0.05mm)"
