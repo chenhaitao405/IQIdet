@@ -1,0 +1,15 @@
+双丝像质计分析 API 自测报告
+============================================================
+时间: 2026-06-04 22:50:46
+总数: 7
+成功: 7  |  失败: 0
+
+图像                                               OK  pairs      film   unresolved
+--------------------------------------------------------------------------------
+wqxDR__SHLNG-PED-A05+002-Z-NJ01__01            PASS      8  negative           D8
+wqxDR__SHLNG-PED-A06+005-Z-NJ01__08            PASS      7  negative         none
+wqxDR__SHLNG-PED-A06+009-Z-NJ01__01            PASS      8  negative         none
+wqxDR__SHLNG-PED-A06+009-Z-NJ01__16            PASS      6  negative           D6
+wqxDR__SHLNG-PED-A10-015-Z-NJ01__01            PASS      8  negative         none
+wqxDR__SHLNG-PED-A20-001-SZ-RC-NJ01__01        PASS      8  negative           D8
+wqxDR__SHLNG-PED-A34+007-SZ-NJ01__08           PASS      8  negative         none
