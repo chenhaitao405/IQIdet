@@ -57,10 +57,10 @@ from _dwlib.profile_view import ProfileView
 from _dwlib.annotation import Annotator
 
 from gauge.imaging.profile import (
-    extract_profile_band,
     extract_profile_strip,
-    compute_contrast,
-    find_first_unresolved_group,
+)
+from gauge.imaging.double_wire import (
+    analyze_double_wire,
 )
 
 
@@ -125,39 +125,46 @@ class BAMAnnotator:
         dy = line_end[1] - line_start[1]
         line_length = max(1, int(np.ceil(np.hypot(dx, dy))))
 
-        # Strip image (for visualization)
+        # Full strip for visualization
         strip = extract_profile_strip(
             self.image_raw, line_start, line_end,
             expand=self.expand, num_samples=line_length,
         )
 
-        # Band-averaged profile (for analysis)
-        profile = extract_profile_band(
-            self.image_raw, line_start, line_end,
-            band_width=self.band_width, num_samples=line_length,
+        # Narrow strip for analysis: center band_width rows around midline
+        half_h = strip.shape[0] // 2
+        half_bw = self.band_width // 2
+        narrow = strip[half_h - half_bw : half_h + half_bw + 1, :]
+
+        result = analyze_double_wire(
+            narrow, min_distance=5, prominence=0.03,
         )
 
-        result = compute_contrast(profile, film_type="auto", min_distance=5, prominence=0.03)
-        unresolved = find_first_unresolved_group(result.dips)
-
         self.view.update(
-            strip, profile, self.expand, self.band_width,
-            result, unresolved, self.image_path.stem,
+            strip, result.profile, self.expand, self.band_width,
+            result, result.first_unresolved_group, self.image_path.stem,
         )
 
         # Redraw annotation markers if active
         if self._annotating and self.annotator is not None:
-            self.annotator.profile_values = profile
+            self.annotator.profile_values = result.profile
             self.annotator.draw_markers(self.view.profile_axes)
             self.view.fig.canvas.draw()
             self.view.fig.canvas.flush_events()
 
-        self._profile = profile
+        self._profile = result.profile
         self._strip = strip
         self._bam_result = result
-        self._unresolved = unresolved
+        self._unresolved = result.first_unresolved_group
 
     # -- Annotation toggle -------------------------------------------------
+
+    def _load_bam_baseline(self) -> None:
+        """Pre-fill annotation markers from BAM algorithm results."""
+        if self.annotator is None or self._bam_result is None:
+            return
+        bam = self._bam_result
+        self.annotator.load_bam_baseline(bam.pairs, bam.film_type)
 
     def _toggle_annotation(self) -> None:
         if self.view is None or self.annotator is None:
@@ -170,6 +177,9 @@ class BAMAnnotator:
             if self.view.profile_axes is None:
                 print("[annotate] No profile axes. Lock line first.")
                 return
+            # Auto-populate from BAM results on first annotation entry
+            if not self.annotator.markers:
+                self._load_bam_baseline()
             self.annotator.profile_values = self._profile
             self.annotator.activate(self.view.fig, self.view.profile_axes)
             self._annotating = True
@@ -220,20 +230,20 @@ class BAMAnnotator:
         dy = line_end[1] - line_start[1]
         line_length = max(1, int(np.ceil(np.hypot(dx, dy))))
 
-        # Strip image
-        strip = extract_profile_strip(
+        # Re-extract narrow strip for unified analysis
+        strip_full = extract_profile_strip(
             image, line_start, line_end,
             expand=self.expand, num_samples=line_length,
         )
-        save_strip_image(strip, paths.strip)
-
-        # Profile extraction + BAM analysis
-        profile = extract_profile_band(
-            image, line_start, line_end,
-            band_width=self.band_width, num_samples=line_length,
+        save_strip_image(strip_full, paths.strip)
+        half_h = strip_full.shape[0] // 2
+        half_bw = self.band_width // 2
+        narrow = strip_full[half_h - half_bw : half_h + half_bw + 1, :]
+        result = analyze_double_wire(
+            narrow, min_distance=5, prominence=0.03,
         )
-        result = compute_contrast(profile, film_type="auto", min_distance=5, prominence=0.03)
-        unresolved = find_first_unresolved_group(result.dips)
+        profile = result.profile
+        unresolved = result.first_unresolved_group
 
         # Profile JSON
         payload = {
@@ -305,6 +315,9 @@ class BAMAnnotator:
         inverted = self._invert_image()
         self._save_one_version(inverted, inverted=True)
 
+        # Auto-advance to next image after save
+        self._request_result("next")
+
     # -- Main loop ---------------------------------------------------------
 
     def run(self) -> None:
@@ -369,6 +382,8 @@ class BAMAnnotator:
             elif key == ord("r"):
                 self.line_selector.reset()
                 self.view.clear()
+                if self.annotator is not None:
+                    self.annotator.clear_all_markers()
             elif key == ord("s"):
                 if self.line_selector.state == LineSelector.STATE_LOCKED:
                     self._save()
