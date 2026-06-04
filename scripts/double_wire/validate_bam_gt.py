@@ -33,8 +33,9 @@ sys.path.insert(0, str(_DW_DIR))
 import numpy as np
 from scipy.signal import find_peaks
 
-from gauge.imaging.profile import detect_peaks_valleys
+from gauge.imaging.profile import detect_peaks_valleys, extract_profile_strip
 from gauge.imaging.double_wire import (
+    analyze_double_wire,
     compute_contrast,
     find_first_unresolved_group,
     _compute_dip,
@@ -140,7 +141,44 @@ def _validate_one(profile_path: Path, gt_path: Path, *,
         f"  |  band: {profile_data.get('band_width', 'N/A')}")
     log()
     
-    result = compute_contrast(profile, film_type="auto", min_distance=5, prominence=0.03)
+    # Re-extract narrow strip from original image to use unified core API
+    image_path = profile_data.get("image_path")
+    profile_line = profile_data.get("profile_line", {})
+    expand = profile_data.get("expand", 60)
+    band_width = profile_data.get("band_width", 21)
+
+    if image_path and profile_line:
+        import cv2
+        raw = cv2.imread(image_path, cv2.IMREAD_UNCHANGED)
+        if raw is not None:
+            if raw.ndim == 3:
+                raw = cv2.cvtColor(raw, cv2.COLOR_BGR2GRAY)
+            start = (profile_line["start"][0], profile_line["start"][1])
+            end = (profile_line["end"][0], profile_line["end"][1])
+            line_len = profile_data.get("line_length_px")
+            if line_len is None:
+                line_len = max(1, int(np.ceil(np.hypot(
+                    end[0] - start[0], end[1] - start[1],
+                ))))
+            strip_full = extract_profile_strip(
+                raw, start, end, expand=expand, num_samples=line_len,
+            )
+            half_h = strip_full.shape[0] // 2
+            half_bw = band_width // 2
+            narrow = strip_full[half_h - half_bw : half_h + half_bw + 1, :]
+            result = analyze_double_wire(narrow, min_distance=5, prominence=0.03)
+            used_fallback = False
+        else:
+            result = compute_contrast(profile, film_type="auto", min_distance=5, prominence=0.03)
+            used_fallback = True
+    else:
+        result = compute_contrast(profile, film_type="auto", min_distance=5, prominence=0.03)
+        used_fallback = True
+
+    if used_fallback:
+        log("WARNING: Could not re-extract strip from original image.")
+        log("  Falling back to profile_values from JSON (legacy path).")
+        log()
     metrics = _pair_metrics(result.pairs, gt["wire_pairs"])
     film_type_ok = result.film_type == gt["film_type"]
     pair_count_ok = len(result.pairs) == gt["num_wire_pairs"]
