@@ -18,7 +18,7 @@
 
 ### `analyze_double_wire()`
 
-位置：`src/gauge/imaging/profile.py`
+位置：`src/gauge/imaging/double_wire.py`（新建，从 `profile.py` 拆分）
 
 ```python
 @dataclass
@@ -50,10 +50,10 @@ def analyze_double_wire(
 ## 架构
 
 ```
-                    ┌──────────────────────────────┐
-                    │  src/gauge/imaging/profile.py │
-                    │  analyze_double_wire()         │
-                    └──────────┬───────────────────┘
+                    ┌──────────────────────────────────┐
+                    │  src/gauge/imaging/double_wire.py │
+                    │  analyze_double_wire()             │
+                    └──────────┬───────────────────────┘
                                │
               ┌────────────────┼────────────────┐
               ▼                ▼                 ▼
@@ -69,7 +69,8 @@ def analyze_double_wire(
 
 | 层 | 文件 | 变更 |
 |----|------|------|
-| 核心算法 | `src/gauge/imaging/profile.py` | 新增 `DoubleWireResult` + `analyze_double_wire()` |
+| 核心算法 | `src/gauge/imaging/double_wire.py` | **新建**：从 `profile.py` 迁入所有双丝函数 + `DoubleWireResult` + `analyze_double_wire()` |
+| 通用剖面 | `src/gauge/imaging/profile.py` | **精简**：仅保留 `extract_profile_band/strip`、OBB 几何、`detect_peaks_valleys` |
 | Service | `src/gauge/services/double_wire/service.py` | 新增 `DoubleWireService` |
 | API | `src/gauge/app/double_wire_api.py` | 新增 FastAPI 包装 + Pydantic 模型 |
 | 门面 | `double_wire_api.py`（根目录） | 新增 import facade |
@@ -103,6 +104,34 @@ def analyze_double_wire(
       narrow = full_strip[center ± band_width//2]
       analyze_double_wire(narrow) → 与 GT pairs 对比
 ```
+
+### profile.py 拆分
+
+`profile.py` 当前 >1300 行，混了通用剖面提取、OBB 几何、双丝算法三种职责。拆为：
+
+```
+src/gauge/imaging/
+├── profile.py              ← 通用函数（~300行）
+│   ├── extract_profile_band()
+│   ├── extract_profile_strip()
+│   ├── fit_obb_and_midline()
+│   ├── unwarp_obb_region()
+│   ├── normalize_profile_obb()
+│   └── detect_peaks_valleys()
+│
+└── double_wire.py          ← 新建，双丝算法全部迁入
+    ├── ComputeContrastResult
+    ├── DoubleWireResult          ← 新增
+    ├── analyze_double_wire()     ← 新增（核心入口）
+    ├── compute_contrast()
+    ├── find_first_unresolved_group()
+    ├── _detect_film_type(), _compute_dip(), _pair_* …
+    ├── bam_pair_marker_indices()
+    ├── pair_wire_markers()
+    └── build_groundtruth_payload()
+```
+
+需更新 import 的文件：`annotate.py`, `validate_bam_gt.py`, `annotation.py`, `profile_view.py`。
 
 ### API 层结构
 
@@ -150,5 +179,5 @@ double_wire_api.py（根目录门面）
 
 - 核心算法 `analyze_double_wire()` 是纯函数，不依赖 matplotlib / OpenCV HighGUI / FastAPI
 - `DoubleWireResult` 含 `np.ndarray`，交给 service 层序列化
-- 现有 `compute_contrast()` / `find_first_unresolved_group()` 签名和行为不变
-- 不修改 `profile.py` 现有函数的对外接口
+- 现有 `compute_contrast()` / `find_first_unresolved_group()` 签名和行为不变，仅迁入新文件
+- `profile.py` 保留的通用函数接口不变
