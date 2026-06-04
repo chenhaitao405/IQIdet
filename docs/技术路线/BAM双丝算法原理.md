@@ -1,38 +1,61 @@
 # BAM 双丝像质计算法原理
 
-**日期：** 2026-06-01
-**来源：** BAM `ctsimu-toolbox` 源码分析 + [[../需求/方案调研|方案调研]] + `src/gauge/imaging/profile.py` 实现
+**日期：** 2026-06-04（根据最新代码重构后更新）
+**来源：** BAM `ctsimu-toolbox` 源码分析 + `src/gauge/imaging/double_wire.py` 实现
 **上游参考：** ISO 19232-5:2018、ASTM E2002-15、JBT 7902-2025
+
+**代码结构（2026-06-04 重构后）：**
+
+| 模块 | 职责 |
+|------|------|
+| `src/gauge/imaging/profile.py` | 剖面提取（`extract_profile_band`/`_strip`）、OBB 几何、`detect_peaks_valleys` |
+| `src/gauge/imaging/double_wire.py` | BAM 分析核心：片型判定、背景拟合、丝配对、dip 计算、等级判定 |
+| `scripts/double_wire/annotate.py` | 交互标注工具（OpenCV + matplotlib） |
+| `scripts/double_wire/validate_bam_gt.py` | GT 验证脚本 |
 
 ---
 
 ## 1. 背景
 
-BAM（Bundesanstalt für Materialforschung und -prüfung，德国联邦材料研究与测试研究所）开源了 `ctsimu-toolbox`，是目前最成熟的 ASTM E2002 双丝 IQI 自动分析实现。核心代码位于 `src/3rdparty/ctsimu-toolbox/ctsimu/image_analysis/isrb.py`（iSRb = interpolated Spatial Resolution basic）。
+BAM（Bundesanstalt für Materialforschung und -prüfung）开源了 `ctsimu-toolbox`，是目前最成熟的 ASTM E2002 双丝 IQI 自动分析实现。
 
-本项目已将此算法本地化实现在 `src/gauge/imaging/profile.py` 中，作为 Phase 2 自动判定的核心引擎。
+本项目将核心算法本地化实现，分为两层：
+- **double_wire.py**：纯算法层，无 GUI 依赖，可集成到自动推理 pipeline
+- **annotate.py**：交互标注层，用于建立 ground truth
 
 ---
 
 ## 2. 核心公式：调制度 Dip
 
-双丝分辨率的数学基础是 ISO 19232-5 / ASTM E2002 定义的**调制度（Modulation Depth / Dip）**：
+### 2.1 数学定义
 
-$$R = \frac{a + b - 2c}{a + b} \times 100\%$$
+ISO 19232-5 / ASTM E2002 定义的调制度（Modulation Depth / Dip）：
 
-三个符号来自灰度剖面上每对双丝的三个关键位置：
+```
+R = (A + B - 2·C) / (A + B) × 100%
+```
 
-| 符号 | 正片含义 | 负片含义 | 剖面形态 |
-|------|---------|---------|----------|
-| **a** | 第一根丝的灰度值（丝→暗→局部极小值） | 第一根丝的灰度值（丝→亮→局部极大值） | 波谷1（正片） |
-| **c** | 两丝间隙的灰度值（间隙→亮→局部极大值） | 两丝间隙的灰度值（间隙→暗→局部极小值） | 波峰（正片） |
-| **b** | 第二根丝的灰度值（局部极小值） | 第二根丝的灰度值（局部极大值） | 波谷2（正片） |
+其中 A、B、C 是相对于**局部背景**的偏离量，而非绝对灰度值：
 
-**直观理解：** 双丝越可分辨 → 两谷越深、中间峰越高 → Dip 越大。双丝完全融合时 a ≈ b ≈ c → Dip ≈ 0。
+```
+A = |background[wire_a] - profile[wire_a]|
+B = |background[wire_b] - profile[wire_b]|
+C = |background[gap_c]   - profile[gap_c]|
+```
 
-**判定标准：** $R < 20\%$ 时该线对不可分辨。从最粗组 D1 向最细遍历，第一个不可分辨组对应的丝径即为基本空间分辨率 SRb，$U_T = 2d$ 为总不清晰度。
+**关键点**：减去背景后，A、B、C 变为丝/间隙相对于局部基线的**偏离幅度**，因此正负片上的 dip 计算公式完全统一。
 
-### 丝对参数表（JBT 7902-2025 表2）
+### 2.2 物理含义
+
+| 情况 | Dip 值 | 含义 |
+|------|--------|------|
+| 双丝清晰可辨 | 接近 100% | 两丝深、中间谷浅 → A+B 远大于 2C |
+| 双丝勉强可辨 | ~20% | C 接近 (A+B)/2 |
+| 双丝完全融合 | 接近 0% | A ≈ B ≈ C → 分子趋近 0 |
+
+**判定标准：** R < 20% 时该线对不可分辨。从最粗组 D1 向最细遍历，第一个不可分辨组即为基本空间分辨率。
+
+### 2.3 丝对参数表（JBT 7902-2025 表2）
 
 | 组号 | d (mm) | UT (mm) | SRb (mm) | LP/mm |
 |------|--------|---------|----------|-------|
@@ -49,376 +72,289 @@ $$R = \frac{a + b - 2c}{a + b} \times 100\%$$
 | D11 | 0.080  | 0.160   | 0.080    | 6.25  |
 | D12 | 0.063  | 0.126   | 0.063    | 7.94  |
 | D13 | 0.050  | 0.100   | 0.050    | 10.00 |
-| D14*| 0.040  | 0.080   | 0.040    | 12.50 |
-| D15*| 0.032  | 0.064   | 0.032    | 15.60 |
-| D16*| 0.025  | 0.050   | 0.025    | 20.00 |
-| D17*| 0.020  | 0.040   | 0.020    | 25.00 |
 
-> D1~D3 为钨丝，D4~D17 为铂丝。\* 标记为扩展组（新团标）。
+> D1~D3 为钨丝，D4~D13 为铂丝。D14~D17 为扩展组（新团标）。
 
 ---
 
 ## 3. 算法流水线
 
-BAM `isrb.py` 的 `Interpolation` 类定义四步核心方法：`profile()` → `calc_dips()` → `interpolate()`。我们的实现扩展为正/负片自动判定 + 细粒度配对验证，共五步：
+`compute_contrast()` 是核心编排函数，共 7 步：
 
 ```
-Step 1: 剖面提取        → 沿双丝方向提取灰度剖面线（束带平均）
-Step 2: 峰谷检测        → 去趋势后用 scipy.signal.find_peaks 检测波峰/波谷
-Step 3: 二次背景拟合    → 消除辐照不均匀（heel effect）
-Step 4: 谷配对 + Dip    → 细粒度相邻 wire-gap-wire 配对 + 单点极值 dip
-Step 5: 二次插值 iSRb   → 解 dip=20% 对应丝径（离散判定可跳过）
-```
-
-### 3.1 Step 1：提取灰度剖面线
-
-**BAM 实现**（`isrb.py:158-251`）：
-沿 RDI 方向用 `skimage.measure.profile_line` 提取灰度剖面。支持通过最小化"垂直方差的方差"来自动优化剖面线角度（Powell 法），适应像质计放置的微小角度偏差。
-
-**我们的实现**（`profile.py:41-110`：`extract_profile_band()`）：
-采样 `band_width`（默认 21）条平行线，用 `scipy.ndimage.map_coordinates` 做双线性子像素插值，沿列向平均。满足 JBT 7902-2025 "不少于 21 行或列像素叠加平均"的要求。
-
-```python
-# profile.py:105-109
-sampled = map_coordinates(image.astype(np.float64), coords, order=1, mode="nearest")
-sampled = sampled.reshape(band_width, num_samples)
-profile = sampled.mean(axis=0)  # 沿束带方向平均
-```
-
-### 3.2 Step 2：峰谷检测
-
-**BAM 实现**（`isrb.py:301`）：
-只检测 valleys（向下峰），对取反后的剖面调用 `find_peaks`：
-```python
-peaks, prop = find_peaks(-self.measure, prominence=prominence, height=height, width=width)
-```
-
-**我们的基础检测函数**（`profile.py`：`detect_peaks_valleys()`）：
-同时检测 peaks 和 valleys，使用**自适应 prominence 阈值**：
-```python
-data_range = float(np.max(profile) - np.min(profile))
-abs_prominence = prominence * data_range  # 默认 0.05 * 动态范围
-peaks, _ = find_peaks(profile, distance=min_distance, prominence=abs_prominence)
-valleys, _ = find_peaks(-profile, distance=min_distance, prominence=abs_prominence)
-```
-
-关键参数：
-
-| 参数 | 含义 | 默认值 | 依据 |
-|------|------|--------|------|
-| `min_distance` | 相邻峰/谷最小间距（像素） | 10 | 2024 灰度直方图论文：$D_{min}=2, D_{max}=20$ |
-| `prominence` | 峰/谷显著性（相对动态范围） | 0.05 | 自适应优于固定值 |
-
-**当前 BAM 主路径不是直接在原始 profile 上配对。** `compute_contrast()` 会先对剖面做二次趋势去除，再执行两级极值检测：
-
-```python
-# 粗检测：用于基础片型判断和负片候选
-peaks, valleys = detect_peaks_valleys(
-    detrended, min_distance=min_distance, prominence=prominence
-)
-
-# 细检测：用于正片细线对配对，允许 D6-D8 这类 1~3px 间距
-fine_peaks, fine_valleys = detect_peaks_valleys(
-    detrended, min_distance=1, prominence=max(0.005, prominence * 0.5)
-)
-```
-
-原因：双丝越往细组，左右 wire 与中间 gap 的间距可缩小到 1~4 像素。若沿用显示层的 `min_distance=10`，会漏掉一侧 wire valley；若只调小全局 `min_distance`，又会引入尾部平台噪声。因此主路径使用细检测生成候选，再通过物理配对规则过滤。
-
-### 3.3 Step 3：二次背景拟合（核心创新）
-
-这是 BAM 算法最关键的步骤，消除 X 射线束不均匀照射（heel effect）导致的剖面基线偏移。
-
-**BAM 实现**（`isrb.py:308-332`）：
-```python
-# 用 peak_widths 确定谷的宽度区域
-widths, _, _, _ = peak_widths(-self.measure, peaks, rel_height=0.9, ...)
-# 掩膜排除峰区
-mask_bg[lim1:lim2+1] = False
-# 在剩余数据点（间隙区）上做二次拟合
-popt_bg, _ = curve_fit(bg_func, self.ind[mask_bg], self.measure[mask_bg])
-bg_val = bg_func(self.ind, *popt_bg)   # y = a·x² + b·x + c
-```
-
-**我们的实现**（`profile.py:279-336`：`_fit_quadratic_background()`）：
-```python
-# 正片：丝是谷 → 取反后调用 peak_widths
-target = -profile if inverted else profile
-widths, _, _, _ = peak_widths(target, wire_indices, rel_height=0.9)
-# 掩膜排除丝区
-mask[lo:hi+1] = False
-# 对间隙区做二次拟合
-popt, _ = curve_fit(lambda x, a, b, c: a*x²+b*x+c, x[mask], profile[mask])
-```
-
-**为什么需要背景拟合？** 不减背景时，Dip 依赖绝对灰度值，不同曝光条件下同一像质计的 Dip 结果不一致。减去二次背景后，A、B、C 变为**丝/间隙相对于局部背景的偏离量**，使 Dip 在正负片上统一。
-
-**适用条件：** 当双丝 ROI 较小（在图像中局部区域）时，背景变化有限，此步可跳过。若全图提取长剖面（跨越整个 IQI），背景拟合很有价值。
-
-### 3.4 Step 4：谷配对 + Dip 计算
-
-#### 配对策略
-
-**BAM 实现**（`isrb.py:335-373`）：
-```python
-dist = peaks[1:] - peaks[:-1]              # 相邻谷间距
-dist_max = 1.05 * dist[0]                  # 以第一对间距的 1.05 倍为上限
-
-for i in range(len(dist)):
-    if dist[i] <= dist_max:                # 间距在阈值内 → 视为线对
-        A = abs(bg_val[lim1] - self.measure[lim1])
-        B = abs(bg_val[lim2] - self.measure[lim2])
-        C_pos = np.argmax(self.measure[lim1:lim2+1]) + lim1
-        C = abs(bg_val[C_pos] - self.measure[C_pos])
-        dips.append(100 * (A + B - 2*C) / (A + B))
-```
-
-**配对核心：** 以最粗丝对 D1 的谷间距为锚点，只有相邻谷间距不超过第一对间距的 1.05 倍时才认为是同一对。这自动过滤了噪声假谷，优于固定像素阈值。
-
-**基础配对函数**（`_pair_wires_and_compute_dips()`）：
-保留 BAM 的相邻 wire 配对思路，并增加片型感知的间隙极值选择：
-```python
-if film_type == "negative":
-    c = int(gaps_between[np.argmin(profile[gaps_between])])  # 负片取最小
-else:
-    c = int(gaps_between[np.argmax(profile[gaps_between])])  # 正片取最大
-```
-
-**当前正片主路径**使用 `_pair_adjacent_wires_with_gaps()`，更严格地按物理三元组配对：
-
-```text
-正片: valley(wire_a) - peak(gap_c) - valley(wire_b)
-负片: peak(wire_a)   - valley(gap_c) - peak(wire_b)
-```
-
-配对步骤：
-
-1. 从 `fine_valleys / fine_peaks` 生成相邻 `wire-gap-wire` 候选。
-2. 检查灰度方向：正片要求 `gap > wire_a` 且 `gap > wire_b`；负片相反。
-3. 用第一组 wire 间距作为锚点，只保留 `dist <= 1.05 * first_dist` 的候选。
-4. 如果后续候选中心距突然大幅跳变，截断尾部噪声，只保留物理连续前缀。
-
-这一步解决了实际验证中出现的问题：D 标签位置正确但普通蓝色 valley 漏标。普通显示层峰谷检测不再作为 BAM 配对依据，BAM 只认最终 `bam_pairs`。
-
-#### Dip 计算：当前采用单点极值法
-
-`_compute_dip()` 仍保留 `half_w` 参数，支持邻域均值；但**当前 `compute_contrast()` 主路径固定使用 `half_w=0` 的单点极值法**：
-
-```python
-dip_half_w = 0
-```
-
-原因：实际样本中 D3 这类细线对的三元组可能是 `(84, 88, 92)`，半间距约 4px。若使用 `half_w=3` 的 7 像素窗口，窗口会把左右 valley 与中间 peak 相互混入，导致 D3 的 dip 从视觉上明显可分辨却被压到约 6%。改为单点法后，同一组 D3 约为 96%。
-
-单点法退化形式：
-```python
-def _region_mean(center):
-    lo = max(0, center - half_w)
-    hi = min(L - 1, center + half_w)
-    return float(profile[lo:hi+1].mean())
-
-# 当前主路径 half_w=0，因此 _region_mean(center) == profile[center]
-```
-
-完整公式仍然相同：
-```python
-def _region_mean(center):
-    lo = max(0, center - half_w)
-    hi = min(L - 1, center + half_w)
-    return float(profile[lo:hi+1].mean())
-
-A = abs(float(background[wire_a]) - _region_mean(wire_a))
-B = abs(float(background[wire_b]) - _region_mean(wire_b))
-C = abs(float(background[gap_c])   - _region_mean(gap_c))
-dip = 100.0 * (A + B - 2.0 * C) / (A + B)
-return max(0.0, dip)  # clamp 到 [0, 100]
-```
-
-| 方案 | 方法 | 噪声鲁棒性 |
-|------|------|-----------|
-| **A（单点极值，当前主路径）** | 取检测位置的单一像素值 | 低，但不会抹平细丝 |
-| B（邻域均值，保留能力） | 取检测位置周围窗口灰度均值 | 中，粗丝更稳但细丝会被抹平 |
-| C（全段积分） | 用极值点间自然分段积分 | 高 |
-
-**文献依据：** 2024 灰度直方图 20% 下凹法论文明确指出：
-> "a、b：双丝中丝对对应各像素的**最小灰度的平均值**"
-> "c：双丝对中像素**最高灰度值的平均值**"
-
-实现上保留 `window_half_width` 参数作 API 兼容；当前 BAM 配对路径统一按 `half_w=0` 执行。后续若恢复邻域均值，应改为**按线对间距自适应窗口**，不能对所有 D 组固定使用 `half_w=3`。
-
-### 3.5 Step 5：二次插值求 iSRb（可选）
-
-标准离散判定精确到 ±1 组。BAM 用二次插值达到 ±0.5 组精度。
-
-**BAM 实现**（`isrb.py:377-486`）：
-```python
-# 清理 Dip 序列：剔除不符合单调递减规律的异常值
-while i < len(use_dips):
-    if (use_dips[i] - use_dips[i-1]) > 5:  # 后续不得比前一个深 5% 以上
-        use_dips = np.delete(use_dips, i-1)
-
-# 找 20% crossing 点，取前后各 2 组参与插值
-# 排除 dip < 1.5% 的低调制组（背景拟合误差被放大，破坏插值稳定性）
-
-# 二次拟合 dip = f(wire_spacing)，解 f(d) = 20%
-popt, _ = curve_fit(Interpolation.quadratic, dists, dips)
-dips20 = Interpolation.inverted_quadratic(20, *popt)
-
-# 根据曲率选择有效根
-if self.a >= 0:
-    self.dip20 = max(dips20)   # 开口向上 → 取大根
-else:
-    self.dip20 = min(dips20)   # 开口向下 → 取小根
-```
-
-**数据处理细节：**
-- 排除 `dip < 1.5%` 的低调制组（"to prevent unpleasant fits"）
-- 后续 Dip 不得比前一个深超过 5 个百分点，否则视为异常并丢弃
-- 取 crossing 点前后各 2 组参与插值（共最多 5 组）
-
----
-
-## 4. 正/负片统一性
-
-公式 $R = \frac{a+b-2c}{a+b}$ 在正负片上**自然统一**：
-
-| 片型 | a, b 对应 | c 对应 | 公式行为 |
-|------|----------|--------|---------|
-| 正片 | 两个波谷（低灰度） | 波峰（高灰度） | c > a,b → R 大 |
-| 负片 | 两个波峰（高灰度） | 波谷（低灰度） | c < a,b → R 大 |
-
-减背景后，A、B、C 都是 `|background - 实际值|`，方向性完全消除。
-
-### 自动判定方法（`_detect_film_type`）
-
-基础方法仍会找剖面中振幅最大的交替三元组（v-p-v 或 p-v-p）：
-
-```python
-# profile.py:220-276
-# v-p-v with deep valleys → positive film  (wires are dark valleys)
-# p-v-p with tall peaks   → negative film (wires are bright peaks)
-if best_type == "v": return "positive"
-if best_type == "p": return "negative"
-```
-
-但当前 `compute_contrast()` 不再只依赖这个结果。实际样本中，最大振幅三元组可能被背景平台或局部强响应误导，曾将正片误判为 `negative`。因此主路径额外构建 positive 候选序列并计算方向显著性：
-
-```python
-positive_scores = _pair_direction_scores(profile, positive_pairs, film_type="positive")
-min_positive_score = 0.08 * profile_range
-has_strong_positive_series = (
-    len(positive_pairs) >= max(3, len(peaks) // 3)
-    and median(positive_scores) >= min_positive_score
-)
-```
-
-若存在足够强且连续的 positive 三元组序列，则判为 `positive`；否则回退到 `_detect_film_type()` 的基础三元组结果。这保证真实正片样本能判对，同时保留负片合成测试不被噪声 positive 候选误判。
-
----
-
-## 5. 整体编排：compute_contrast
-
-`compute_contrast()` 将上述步骤编排为完整的 orchestrator：
-
-```
-compute_contrast(profile, ...)
-  │
-  ├─ 1. 二次趋势去除
-  │     └─ profile - polyfit(profile, deg=2)
-  │
-  ├─ 2. detect_peaks_valleys()          → peaks, valleys
-  │     └─ 粗检测: min_distance/prominence
-  │
-  ├─ 3. detect_peaks_valleys()          → fine_peaks, fine_valleys
-  │     └─ 细检测: min_distance=1, prominence=max(0.005, prominence*0.5)
-  │
-  ├─ 4. 片型判定
-  │     ├─ _detect_film_type() 基础三元组判定
-  │     └─ positive 候选序列 + 方向显著性校正
-  │
-  ├─ 5. 角色分配
-  │     ├─ 正片: wire_positions = valleys, gap_positions = peaks
-  │     └─ 负片: wire_positions = peaks,  gap_positions = valleys
-  │
-  ├─ 6. _fit_quadratic_background()     → background array
-  │
-  └─ 7. 配对 + dip
-        ├─ 正片: _pair_adjacent_wires_with_gaps(fine_valleys, fine_peaks)
-        ├─ 负片: _pair_wires_and_compute_dips(peaks, valleys)
-        ├─ 1.05× 首组间距过滤 + 中心距前缀截断
-        └─ 单点极值 _compute_dip(half_w=0)
+profile (1D, band-averaged)
+    │
+    ├─ 1. 去趋势（2次多项式拟合 → 相减）
+    │      └─ 目的：消除 heel effect，为峰谷检测拉平基线
+    │
+    ├─ 2. 两级峰谷检测（均在去趋势后的剖面上）
+    │      ├─ 粗检测：min_distance=10, prominence=5%（仅做 early-exit 检查）
+    │      └─ 细检测：min_distance=1, prominence=2.5%（用于实际配对）
+    │
+    ├─ 3. 双向候选构建 + 片型自动判定
+    │      ├─ 构建 positive 候选：peaks→wires, valleys→gaps
+    │      ├─ 构建 negative 候选：valleys→wires, peaks→gaps
+    │      ├─ 各自用 _pair_adjacent_wires_with_gaps() 配对
+    │      └─ 比较 median contrast score → 选优胜方向为 pairing_ft
+    │
+    ├─ 4. 选择优胜方的 pairs + background
+    │
+    ├─ 5. _remove_overlapping_pairs()  → 删除共享 wire 的重复 pair
+    │
+    ├─ 6. _recover_tail_pair()         → 在尾部找回被 prominence 漏掉的最细丝对
+    │
+    └─ 7. 重新计算 dips（用清理后的 pair 列表）
 
 返回 ComputeContrastResult(dips, pairs, background, film_type)
 ```
 
+### 3.1 Step 1：去趋势（Detrend）
+
+**这是峰谷检测前最关键的前处理。** X 光管阳极的 heel effect 使剖面基线呈缓慢弯曲，导致不同位置的峰/谷 prominence 不可比较。
+
+```
+detrended = profile - polyfit(profile, deg=2)
+```
+
+- 用 2 次多项式拟合全局背景弯曲（低频）
+- 减去趋势后基线拉平，所有位置的峰谷按统一标准判定
+- 2 次是"能表达曲率的最低阶多项式"——不会过拟合丝的调制信号（高频）
+- **去趋势结果仅用于峰谷检测**，不参与 dip 计算
+
+### 3.2 Step 2：两级峰谷检测
+
+基于 `scipy.signal.find_peaks`，在**去趋势后的剖面**上检测：
+
+| 检测 | min_distance | prominence | 用途 |
+|------|-------------|------------|------|
+| **粗检测** | 10 px | 5% × range | early-exit 检查（两方向都无峰谷则返回空） |
+| **细检测** | 1 px | max(0.005, 2.5% × range) | 实际丝配对 |
+
+需要细检测的原因：双丝越往细组，相邻 wire 与中间 gap 的间距可缩小到 1~4 像素。若用 `min_distance=10` 会漏掉细丝 wire；若全局调小 min_distance 又会引入尾部平台噪声。因此用细检测生成候选 → 通过物理配对规则过滤。
+
+### 3.3 Step 3：背景拟合
+
+使用 **Savitzky-Golay 低通滤波器**（`scipy.signal.savgol_filter`）估计背景曲线：
+
+```python
+window = min(n // 8 * 2 + 1, 201)  # 奇数，最大 201
+background = savgol_filter(profile, window, 2, mode='mirror')
+```
+
+**为什么不用 2 次多项式拟合？**（RC-4 修复）
+
+单次 2 次多项式在丝调制强烈的区域会 overshoot——背景曲线被迫跟随丝的峰谷走，导致 C（gap 偏离背景）被高估，可能出现 "C >> A, B" → dip 异常为负。SG 滤波器用宽窗口（约 profile 长度的 1/8）只跟踪低频趋势，自然忽略窄带丝特征。
+
+**注意**：此"背景拟合"与 Step 1 的"去趋势"是两个独立步骤，服务于不同目的：
+
+| 步骤 | 方法 | 用途 |
+|------|------|------|
+| Step 1 去趋势 | 2次多项式相减 | 峰谷检测的基线拉平 |
+| Step 3 背景拟合 | SG 低通滤波 | dip 计算的局部背景 |
+
+### 3.4 Step 4：丝配对（`_pair_adjacent_wires_with_gaps`）
+
+**核心规则——BAM 首间距规则：**
+
+```
+ref_dist = 第一对 candidate 的丝间距
+dist_max = max(2.0, ref_dist × 1.05)
+
+相邻丝间距 ≤ dist_max → 配成一对
+相邻丝间距 > dist_max → 不配对
+```
+
+配对流程：
+
+1. 遍历相邻 wire 位置，找两者之间的所有 gap 极值点
+2. **片型感知选择 gap**：
+   - Positive（亮丝暗隙）：选灰度最低的 gap（最深暗谷）
+   - Negative（暗丝亮隙）：选灰度最高的 gap（最亮峰）
+3. **灰度方向验证**：gap 灰度必须在两丝之间（正片：`profile[gap] < profile[w1]` 且 `< profile[w2]`；负片相反）
+4. **首间距过滤**：只保留 `dist ≤ dist_max` 的候选
+5. **`_trim_pairs_to_stable_center_prefix`**：若某 pair 的中心间距比前面中位数跳变超过 1.8 倍或 +20px，截断后续
+
+### 3.5 Step 5：片型自动判定
+
+**不再依赖单一的 `_detect_film_type()` 三元组法。** 当前采用**双向假设 + 对比投票**：
+
+```
+同时构建 positive 假设 (peaks=wires, valleys=gaps) 和
+          negative 假设 (valleys=wires, peaks=gaps)
+
+对每种假设，计算 _pair_direction_scores() → 每对丝的对比度分数
+
+判定逻辑（优先级递减）：
+  1. 一方 pair 数 ≥3 而另一方 <3  → 选多的一方（RC-6）
+  2. neg_med > pos_med              → negative
+  3. pos_med > neg_med              → positive
+  4. 平局                            → norm_mean ≥ 0.5 选 negative
+```
+
+**额外规则**：若判定 `pairing_ft = "positive"` 但 `norm_mean ≤ 0.38`（图像整体偏暗），
+说明这是反相底片（negative film 经 photometric inversion），最终 `film_type` 仍标为 `"negative"`。
+
+其中 `_pair_direction_scores()` 为每对丝计算方向对比度：
+```python
+# Positive: 两丝灰度都应高于间隙
+score = min(profile[w1] - profile[gap], profile[w2] - profile[gap])
+
+# Negative: 两丝灰度都应低于间隙
+score = min(profile[gap] - profile[w1], profile[gap] - profile[w2])
+```
+
+### 3.6 Step 6：Dip 计算（`_compute_dip`）
+
+**当前主路径使用单点极值法（half_w=0）**：
+
+```python
+def _compute_dip(profile, wire_a, gap_c, wire_b, background, half_w=0):
+    # half_w=0 时 _region_mean(center) == profile[center]
+    A = |background[wire_a] - profile[wire_a附近平均]|
+    B = |background[wire_b] - profile[wire_b附近平均]|
+    C = |background[gap_c]   - profile[gap_c附近平均]|
+
+    dip = 100 × (A + B - 2C) / (A + B)
+    return max(0.0, dip)
+```
+
+**为什么用 half_w=0？** D6~D8 这类细丝对的三元组可能只有 3~5px 间距。若用 `half_w=3`（7px 窗口），会把左右 wire 与中间 gap 的灰度相互混入，导致 dip 被严重压低。单点法避免了细丝的窗口抹平问题。
+
+| 方案 | half_w | 优点 | 缺点 |
+|------|--------|------|------|
+| 单点极值（当前） | 0 | 细丝不被抹平 | 对单像素噪声敏感 |
+| 邻域均值 | 3 | 粗丝更稳 | 细丝 dip 被压低 |
+| 自适应窗口 | 按间距变化 | 兼顾粗细 | 实现复杂 |
+
+### 3.7 Step 7：后处理清理
+
+#### 7a. 去重叠 pair（`_remove_overlapping_pairs`）
+
+当两个相邻候选 pair 共享同一根 wire（第一个的 wire_b == 第二个的 wire_a），说明其中一个是噪声假阳性。保留 gap-wire 对比度更强的那个。
+
+#### 7b. 尾部恢复（`_recover_tail_pair`）
+
+最细丝对（如 D13）的调制深度可能太低，连细检测的 prominence 阈值都达不到。此函数在尾部区域用极低阈值（1% prominence）重新扫描候选丝对，验证其位置和 dip 的合理性后追加。
+
+#### 7c. 单调性清理（`_cleanup_dips_monotonic`）
+
+粗丝→细丝，dip 应单调递减。若后续 dip 比前一个深超过 5 个百分点，视为检测异常，删除前一个较浅的 pair。
+
+### 3.8 未分辨组判定（`find_first_unresolved_group`）
+
+```
+1. _cleanup_dips_monotonic() → 清理反常 dip
+2. 遍历 dips[]: 第一个 dip < 20% 的位置即为 crossing 点
+3. 在 crossing 点附近取 ±2 组数据做 2次多项式插值
+4. 解 polyfit(spacings, dips, 2) = 20% → 细化 crossing 丝径
+5. 返回 1-indexed 组号（D1=1, D2=2, ...），全部可辨返回 None
+```
+
 ---
 
-## 6. 与 BAM 原文的差异总结
+## 4. 整体编排流程图
 
-| 维度 | BAM `isrb.py` | 本项目 `profile.py` |
-|------|--------------|-------------------|
-| 峰谷检测方向 | 只检测 valleys | 同时检测 peaks + valleys |
-| 背景拟合方向 | 固定方向（假设已知片型） | 支持正/负片自动取反 |
-| Dip 值来源 | 单像素值（`measure[idx]`） | 当前主路径为单点极值（`half_w=0`） |
-| 配对策略 | `1.05 * dist[0]` | 正片用细粒度 `valley-peak-valley`，并增加中心距前缀截断 |
-| 插值求 iSRb | ✓ 已实现 | Phase 2.5 可选（当前用离散判定） |
-| 片型判定 | 不在 isrb 源码内（外部输入） | `_detect_film_type()` + positive 序列显著性校正 |
-| 束带平均 | `profile_line` 单线 | 21 行并行采样 + `map_coordinates` 子像素插值 |
+```
+                    extract_profile_band(image, start, end, band_width=21)
+                                   │
+                                   ▼
+                          1D profile (float64)
+                                   │
+                     ┌─────────────┴─────────────┐
+                     │   compute_contrast(profile) │
+                     └─────────────┬─────────────┘
+                                   │
+              ┌────────────────────┼────────────────────┐
+              │                    ▼                    │
+              │  1. detrended = profile - polyfit²      │
+              │                    │                    │
+              │  2. 粗检测       细检测                 │
+              │     (d=10,p=5%)  (d=1,p=2.5%)          │
+              │                    │                    │
+              │  3. ┌──────────────┴──────────────┐     │
+              │     │  双向候选构建 + 片型判定      │     │
+              │     │  pos: peaks→wires, valleys→gaps │  │
+              │     │  neg: valleys→wires, peaks→gaps │  │
+              │     │  比较 median score → 选优胜方   │     │
+              │     └──────────────┬──────────────┘     │
+              │                    │                    │
+              │  4. 选择优胜方的 pairs + background    │
+              │                    │                    │
+              │  5. _remove_overlapping_pairs()        │
+              │                    │                    │
+              │  6. _recover_tail_pair()               │
+              │                    │                    │
+              │  7. recompute dips → ComputeContrast   │
+              └────────────────────┼────────────────────┘
+                                   │
+                     ┌─────────────┴─────────────┐
+                     │ find_first_unresolved_group │
+                     │   → 1-indexed D group or None│
+                     └─────────────────────────────┘
+```
+
+---
+
+## 5. 与 BAM 原文的差异总结
+
+| 维度 | BAM `isrb.py` | 本项目 `double_wire.py` |
+|------|--------------|------------------------|
+| 峰谷检测方向 | 只检测 valleys | 同时 peaks + valleys |
+| 去趋势 | 无（直接对原始 profile 操作） | 2次多项式去趋势后再检测峰谷 |
+| 背景拟合 | `curve_fit(quadratic)` 对掩膜后的间隙区 | `savgol_filter` 低通滤波（RC-4） |
+| 片型判定 | 不在 isrb 内（外部输入） | 双向假设 + 对比投票 + 亮度归一化兜底 |
+| 配对函数 | `_pair_wires_and_compute_dips` | `_pair_adjacent_wires_with_gaps`（增加灰度方向验证 + 中心距前缀截断） |
+| Dip 计算 | 单像素值 | 当前 half_w=0（等效单点），保留窗口参数 |
+| 参考间距 | `dist[0]`（第一对） | `median(dist[:5])`（前5对中位数，RC-3） |
+| 后处理清理 | 无 | 去重叠 + 尾部恢复 + 单调性清理 |
+| 剖面提取 | `profile_line` 单线 | 21 行双线性子像素插值 + 平均（JBT 7902） |
 | 返回值 | `dip20`（插值丝径） | `ComputeContrastResult`（完整中间结果） |
 
 ---
 
-## 7. 验证与调试脚本口径
+## 6. 验证工具
 
-### 7.1 `validate_bam_gt.py`
+### 6.1 交互标注工具（`annotate.py`）
 
-GT 验证脚本以最终 `compute_contrast()` 输出为准，验收指标为：
+```
+conda activate weld-gpu
+python scripts/double_wire/annotate.py <image_path> [--band-width 21] [--expand 60]
+```
 
+- OpenCV 窗口：2 点画剖面线 → 自动锁定
+- matplotlib 窗口：显示 strip 图 + 剖面曲线 + BAM 检测结果
+- 标注模式：左键点剖面标记 peak/valley → 建立 ground truth
+- 保存：同时输出原图 + 反相(255-x) 双版本
+
+### 6.2 GT 验证（`validate_bam_gt.py`）
+
+以 `compute_contrast()` 输出为准，验收指标：
 - `film_type` 与 GT 一致
 - 算法 pair 数量等于 GT `num_wire_pairs`
-- 无 extra pair / missing pair
+- 无 extra / missing pair
 - 每组 `(wire_a, gap, wire_b)` 最大点位误差 ≤ 5px
 - 全部点位平均误差 ≤ 3px
 
-当前样本 `outputs/double_wire_demo_3/...` 的验证结果：
-
-```text
-Validation result: PASS
-Detected 8 wire pairs, GT has 8
-Mean point error: 0.083px
-Max triplet err: 1.000px
-```
-
-注意：脚本中的 raw extrema / parameter sweep 只是诊断信息，不参与 PASS/FAIL。真正验收只看 `bam_pairs` 对 GT 的三元组点位误差。
-
-### 7.2 `double_wire_demo.py`
-
-交互 demo 当前只展示真实 BAM 点：
-
-- `BAM wires`：来自 `bam_pairs` 的 `wire_a / wire_b`
-- `BAM gaps`：来自 `bam_pairs` 的 `gap`
-- `D1:xx%` 等标签：来自 `bam_dips`
-
-普通 `detect_peaks_valleys()` 的红色 peak 三角 / 蓝色 valley 三角已删除，原因是它们使用显示层粗参数，容易漏掉 D3-D8 细线对的一侧 valley，造成“D 标签正确但蓝点缺失”的误导。
-
 ---
 
-## 8. 异常处理
+## 7. 异常处理
 
 | 异常情况 | 原因 | 处理 |
 |---------|------|------|
-| 峰谷数量不匹配 | 噪声假谷 | `prominence` 阈值过滤 |
-| 谷间距过大 | 图像边缘或非丝区域 | `dist_max` 上限过滤（1.05×） |
-| 谷间距过小 | 噪声 | `min_distance` 下限过滤 |
-| valley 之间无 peak | 双丝已完全融合 | 该组 R ≈ 0，可直接判定为不可分辨 |
-| 所有组 R ≥ 20% | 全部可分辨 | 返回全部可分辨，超出量程上限 |
-| 最粗组即 R < 20% | 图像质量极差 | 返回 D1（最粗组不可分辨） |
-| `dip < 1.5%` | 背景拟合误差放大 | 从插值邻域中排除 |
-| 后续 dip 比前一个深 > 5% | 异常值 | 丢弃 |
+| 剖面过短（< 3px） | 无效输入 | 返回空结果 |
+| 两方向均无峰谷 | 剖面平坦无信号 | 返回空结果 |
+| 片型判定平局 | 双向分数相等 | 用 `norm_mean`（全局亮度）裁决 |
+| 一方候选过少 | 稀疏假阳性主导 | 直接选候选多的一方（RC-6） |
+| 共享 wire 的重叠 pair | 噪声假阳性 | 保留 contrast score 更高者 |
+| 尾部细丝漏检 | prominence 不足 | `_recover_tail_pair` 低阈值扫描 |
+| dip 非单调递减 | 检测异常 | `_cleanup_dips_monotonic` 剔除 |
+| 全部 dip ≥ 20% | 全部可分辨 | 返回 None（超出量程上限） |
+| 最粗组 dip < 20% | 图像质量极差 | 返回 D1 |
+| dip < 1.5% | 背景拟合误差被放大 | 从插值邻域排除 |
 
 ---
 
-## 9. 参考文献
+## 8. 参考文献
 
 1. **ISO 19232-5:2018** — Determination of the image unsharpness and basic spatial resolution value using duplex wire-type IQIs
 2. **ASTM E2002-15** — Standard Practice for Determining Total Image Unsharpness and Basic Spatial Resolution
@@ -427,4 +363,3 @@ Max triplet err: 1.000px
 5. **Sun Chao-ming (2017)** — "Automatic Determination Method of the Modulation of Duplex Wire IQI", *Nondestructive Testing*, 39(2): 22-25
 6. **2024 灰度直方图 20% 下凹法与内插值法** — 无损检测期刊, DOI: 10.11973/wsjc240371
 7. **杨庆国等 (2025)** — "Determining performance of radiographic examination system with duplex-wire type IQI", *Optics and Precision Engineering*, 33(7): 1051-1064
-8. **CN120253177A** — "数字射线成像系统高精度自动测量基本空间分辨率的方法"
