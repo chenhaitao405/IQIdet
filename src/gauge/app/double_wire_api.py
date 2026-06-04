@@ -85,7 +85,13 @@ def close_double_wire_api() -> None:
         _double_wire_service = None
 
 
-def _sync_compute(strip: np.ndarray) -> Dict[str, Any]:
+def _sync_compute(img: np.ndarray) -> Dict[str, Any]:
+    """BGR → GRAY float64 → service.compute."""
+    import cv2
+    if img.ndim == 3:
+        strip = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY).astype(np.float64)
+    else:
+        strip = img.astype(np.float64)
     service = get_double_wire_service()
     return service.compute(strip)
 
